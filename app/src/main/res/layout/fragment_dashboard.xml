@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:app="http://schemas.android.com/apk/res-auto"
+xmlns:tools="http://schemas.android.com/tools"
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+android:orientation="vertical"
+tools:context=".ui.dashboard.DashboardFragment">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/result_title_1d"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:layout_marginBottom="100dp"
+        android:text="RESULTS 24H:"
+        android:textAlignment="center"
+        android:textAllCaps="true"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/results_1d"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:text="..."
+        android:textAlignment="center"
+        android:textAllCaps="true"
+        android:textStyle="bold" />
+
+</LinearLayout>
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/result_title_7d"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:layout_marginBottom="100dp"
+        android:text="RESULTS 1 WEEK:"
+        android:textAlignment="center"
+        android:textAllCaps="true"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/results_7d"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:text="..."
+        android:textAlignment="center"
+        android:textAllCaps="true"
+        android:textStyle="bold" />
+
+</LinearLayout>
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/result_title_30d"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:layout_marginBottom="100dp"
+        android:text="RESULTS 1 MONTH:"
+        android:textAlignment="center"
+        android:textAllCaps="true"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/results_30d"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:text="..."
+        android:textAlignment="center"
+        android:textAllCaps="true"
+        android:textStyle="bold" />
+
+</LinearLayout>
+
+</LinearLayout>
