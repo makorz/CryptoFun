@@ -9,7 +9,6 @@ public class CoinSymbols {
     @SerializedName("symbols")
     private List<CoinSymbol> symbols = null;
 
-
     public CoinSymbols(List<CoinSymbol> name) {
         this.symbols = name;
     }

@@ -47,6 +47,14 @@ public class Kline {
         this.tKlineInterval = tKlineInterval;
     }
 
+    public Kline(String tTokenSymbol, float tVolume, long tNumberOfTrades, long tCloseTime) {
+        this.tTokenSymbol = tTokenSymbol;
+        this.tVolume = tVolume;
+        this.tNumberOfTrades = tNumberOfTrades;
+        this.tCloseTime = tCloseTime;
+
+    }
+
     public int gettId() {
         return tId;
     }

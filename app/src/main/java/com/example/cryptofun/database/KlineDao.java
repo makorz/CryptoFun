@@ -1,5 +1,6 @@
 package com.example.cryptofun.database;
 
+import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
@@ -10,6 +11,7 @@ import java.util.List;
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
 
+@Dao
 public interface KlineDao {
 
     @Query("SELECT * FROM kline_data")

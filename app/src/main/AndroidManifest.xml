@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.cryptofun">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
         android:allowBackup="true"
@@ -15,7 +16,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CryptoFun"
         tools:targetApi="31">
-
+        <service android:name=".services.CreatingDatabaseService"/>
+        <service android:name=".services.UpdatingDatabaseService"/>
+        <receiver android:name=".services.AlarmReceiverLoopingService"/>
 
         <activity
             android:name=".MainActivity"

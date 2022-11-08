@@ -2,12 +2,16 @@ package com.example.cryptofun.data;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.util.ArrayList;
+
 public class CoinSymbol {
 
     @SerializedName("symbol")
     private String symbol;
     @SerializedName("status")
     private String status;
+    private ArrayList<String> permissions;
+    private boolean isMarginTradingAllowed;
 
     public void setSymbol(String symbol) {
         this.symbol = symbol;
@@ -27,5 +31,21 @@ public class CoinSymbol {
 
     public String getSymbol() {
         return symbol;
+    }
+
+    public ArrayList<String> getPermissions() {
+        return permissions;
+    }
+
+    public boolean isMarginTradingAllowed() {
+        return isMarginTradingAllowed;
+    }
+
+    public void setMarginTradingAllowed(boolean marginTradingAllowed) {
+        isMarginTradingAllowed = marginTradingAllowed;
+    }
+
+    public void setPermissions(ArrayList<String> permissions) {
+        this.permissions = permissions;
     }
 }

@@ -6,6 +6,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 
 import java.util.List;
@@ -35,6 +36,7 @@ public class DBHandler extends SQLiteOpenHelper {
     private static final String TABLE_NAME_CONFIG = "config";
     private static final String DESCRIPTION = "description";
     private static final String VALUE = "value";
+
 
 
     // creating a constructor for our database handler.
@@ -105,10 +107,22 @@ public class DBHandler extends SQLiteOpenHelper {
         db.close();
     }
 
+    public void addParam(int id, String descr, String value) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(ID, id);
+        values.put(DESCRIPTION, descr);
+        values.put(VALUE, value);
+        db.insert(TABLE_NAME_CONFIG, null, values);
+        db.close();
+    }
+    // id:1 -> Time of last update
+
     // this method is use to add new kline data to database, interval 1 - 3m, interval = 2 - 15m, interval = 3 - 24h
 //    public void addNewKlineData(String interval, List<rawTable_Kline> object) {
     public int addNewKlineData(List<rawTable_Kline> object) {
 
+        Log.e("DB", "klinesAreInsertedToDB");
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
 
@@ -138,16 +152,70 @@ public class DBHandler extends SQLiteOpenHelper {
 
     public Cursor retrieveAllFromTable(String tableName) {
         SQLiteDatabase sqLiteDatabase = this.getReadableDatabase();
-        @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery("SELECT * FROM " + tableName, null);
+        @SuppressLint("Recycle")
+        Cursor data = sqLiteDatabase.rawQuery("SELECT * FROM " + tableName, null);
         return data;
     }
 
     public Cursor retrieveDataToFindBestCrypto(String tableName, String tokenSymbol) {
         SQLiteDatabase sqLiteDatabase = this.getReadableDatabase();
-        @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery("SELECT * FROM " + tableName + " WHERE " + SYMBOL_CRYPTO + " = '" +
-                tokenSymbol + "' ORDER BY " + OPEN_TIME + " ASC", null);
+        @SuppressLint("Recycle")
+        Cursor data = sqLiteDatabase.rawQuery("SELECT * FROM " + tableName + " WHERE " + SYMBOL_CRYPTO + " = '" +
+                tokenSymbol + "' ORDER BY " + OPEN_TIME + " DESC", null);
         return data;
     }
+
+    public Cursor retrieveParam(int id) {
+        SQLiteDatabase sqLiteDatabase = this.getReadableDatabase();
+        @SuppressLint("Recycle")
+        Cursor data = sqLiteDatabase.rawQuery("SELECT * FROM " + TABLE_NAME_CONFIG + " WHERE " + ID + " = " +
+                id, null);
+        return data;
+    }
+
+    public void deleteWithWhereClause(String tableName, String columnName, int idParam) {
+        SQLiteDatabase sqLiteDatabase = this.getWritableDatabase();
+        @SuppressLint("Recycle")
+        String query = "DELETE FROM " + tableName + " WHERE " + columnName + " = " + idParam;
+        sqLiteDatabase.execSQL(query);
+    }
+
+    public Cursor nrOfKlinesForSymbolInInterval(String symbol, String interval) {
+        SQLiteDatabase sqLiteDatabase = this.getWritableDatabase();
+        @SuppressLint("Recycle")
+        Cursor data = sqLiteDatabase.rawQuery("SELECT count(*) FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' and " + SYMBOL_CRYPTO + " = '" + symbol + "'",null);
+        return data;
+    }
+
+    public void updateWithWhereClause(String tableName, String updatedColumnName, String value, String whereColumnName, String whereSymbol) {
+        SQLiteDatabase sqLiteDatabase = this.getWritableDatabase();
+        String query = "UPDATE " + tableName + " SET " + updatedColumnName + " = '" + value + "' WHERE " + whereColumnName + " = '" +
+                whereSymbol + "'";
+        sqLiteDatabase.execSQL(query);
+    }
+
+    public Cursor retrieveLastCloseTime(String tableName, String interval) {
+        SQLiteDatabase sqLiteDatabase = this.getReadableDatabase();
+        @SuppressLint("Recycle")
+        Cursor data = sqLiteDatabase.rawQuery("SELECT * FROM " + tableName + " WHERE " + INTERVAL + " = '" + interval + "' ORDER BY " + CLOSE_TIME + " DESC", null);
+        return data;
+    }
+
+    public Cursor checkVolumeOfKlineInterval(String interval) {
+        SQLiteDatabase sqLiteDatabase = this.getReadableDatabase();
+        String selectFrom = "SELECT " + SYMBOL_CRYPTO + "," + VOLUME + "," + NUMBER_OF_TRADES + ", max(" + CLOSE_TIME + ") FROM ";
+        @SuppressLint("Recycle")
+        Cursor data = sqLiteDatabase.rawQuery(selectFrom + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' GROUP BY " + SYMBOL_CRYPTO + " ORDER BY " + NUMBER_OF_TRADES + " DESC", null);
+        return data;
+    }
+
+    public void deleteLastKlinesForSymbolInterval(String interval, String symbol, int limit){
+        SQLiteDatabase sqLiteDatabase = this.getWritableDatabase();
+        String query = "DELETE FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + ID + " in (" + "SELECT " + ID + " FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" +
+                interval + "' and " + SYMBOL_CRYPTO + " = '" + symbol + "' ORDER BY " + CLOSE_TIME + " DESC LIMIT " + limit + ")" ;
+        sqLiteDatabase.execSQL(query);
+    }
+
 
     public void clearTable(String table_name) {
         SQLiteDatabase sqLiteDatabase = this.getWritableDatabase();

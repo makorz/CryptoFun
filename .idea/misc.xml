@@ -3,12 +3,17 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/moqui/AndroidStudioProjects/CryptoFun/app/src/main/res/drawable/ic_home_black_24dp.xml" value="0.2085" />
+        <entry key="..\:/Users/moqui/AndroidStudioProjects/CryptoFun/app/src/main/res/drawable/ic_launcher_background.xml" value="0.147" />
         <entry key="..\:/Users/moqui/AndroidStudioProjects/CryptoFun/app/src/main/res/layout/activity_main.xml" value="0.33" />
         <entry key="..\:/Users/moqui/AndroidStudioProjects/CryptoFun/app/src/main/res/layout/card_view_crypto.xml" value="0.3625" />
         <entry key="..\:/Users/moqui/AndroidStudioProjects/CryptoFun/app/src/main/res/layout/fragment_dashboard.xml" value="0.3625" />
         <entry key="..\:/Users/moqui/AndroidStudioProjects/CryptoFun/app/src/main/res/layout/fragment_home.xml" value="0.33" />
+        <entry key="..\:/Users/moqui/AndroidStudioProjects/CryptoFun/app/src/main/res/layout/fragment_loading.xml" value="0.3614583333333333" />
         <entry key="..\:/Users/moqui/AndroidStudioProjects/CryptoFun/app/src/main/res/layout/fragment_notifications.xml" value="0.3625" />
+        <entry key="..\:/Users/moqui/AndroidStudioProjects/CryptoFun/app/src/main/res/layout/list_view_approved_coins.xml" value="0.3614583333333333" />
         <entry key="..\:/Users/moqui/AndroidStudioProjects/CryptoFun/app/src/main/res/menu/bottom_nav_menu.xml" value="0.18541666666666667" />
+        <entry key="..\:/Users/moqui/AppData/Local/Android/Sdk/platforms/android-32/data/res/layout/simple_list_item_1.xml" value="0.3625" />
       </map>
     </option>
   </component>
