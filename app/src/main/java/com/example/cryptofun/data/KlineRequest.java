@@ -8,6 +8,8 @@ public class KlineRequest {
     private String symbol;
     private String interval;
     private String[][] dataOfSymbolInterval;
+    private int whatToDoInDB;
+    int howManyOldOnesToDelete;
 
     public KlineRequest(Observable<?> request, String symbol, String interval) {
         this.request = request;
@@ -15,11 +17,28 @@ public class KlineRequest {
         this.interval = interval;
     }
 
-    public KlineRequest(Observable<?> request, String symbol, String interval, String[][] dataOfSymbolInterval) {
+    public KlineRequest(Observable<?> request, String symbol, String interval, int whatToDoInDB, int howManyOldOnesToDelete) {
         this.request = request;
         this.symbol = symbol;
         this.interval = interval;
-        this.dataOfSymbolInterval = dataOfSymbolInterval;
+        this.whatToDoInDB = whatToDoInDB;
+        this.howManyOldOnesToDelete = howManyOldOnesToDelete;
+    }
+
+    public int getHowManyOldOnesToDelete() {
+        return howManyOldOnesToDelete;
+    }
+
+    public void setHowManyOldOnesToDelete(int howManyOldOnesToDelete) {
+        this.howManyOldOnesToDelete = howManyOldOnesToDelete;
+    }
+
+    public int getWhatToDoInDB() {
+        return whatToDoInDB;
+    }
+
+    public void setWhatToDoInDB(int whatToDoInDB) {
+        this.whatToDoInDB = whatToDoInDB;
     }
 
     public Observable<?> getRequest() {

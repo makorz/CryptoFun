@@ -15,10 +15,10 @@
 -->
 
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@android:id/text1"
+    android:id="@android:id/text2"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:textSize="11sp"
+    android:textSize="13sp"
     android:padding="1dp"
     android:textStyle="bold"
     android:fadeScrollbars="false"
@@ -26,4 +26,3 @@
     android:gravity="center_vertical" />
 <!--    android:textStyle=""-->
 <!--    android:textAppearance="?android:attr/textAppearanceListItemSmall"-->
-

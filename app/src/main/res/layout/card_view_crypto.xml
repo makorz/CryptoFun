@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?><!-- XML implementation of Card Layout -->
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="150dp"
-    android:layout_height="45dp"
+    android:layout_width="85dp"
+    android:layout_height="32dp"
     android:layout_gravity="center"
-    android:layout_margin="5dp"
-    app:cardCornerRadius="5dp"
+    android:layout_margin="1dp"
+    app:cardCornerRadius="3dp"
     app:cardElevation="3dp">
 
     <LinearLayout
@@ -17,16 +17,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="2dp"
-            android:layout_marginStart="15dp"
-            android:layout_marginEnd="15dp">
+            android:layout_marginTop="1dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp">
 
             <TextView
                 android:id="@+id/text"
                 android:layout_height="wrap_content"
                 android:layout_weight="2"
                 android:textAlignment="center"
-                android:textSize="14sp"
+                android:textSize="11sp"
                 android:textAllCaps="true"
                 android:textStyle="bold"
                 android:layout_width="0dp"/>
@@ -37,17 +37,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="2dp"
-            android:layout_marginBottom="2dp"
-            android:layout_marginStart="15dp"
-            android:layout_marginEnd="15dp">
+            android:layout_marginTop="1dp"
+            android:layout_marginBottom="1dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp">
 
             <TextView
                 android:id="@+id/value"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="14sp"
+                android:textSize="10sp"
                 android:textAlignment="textStart"
                 android:textAllCaps="true"
                 android:textStyle="bold" />
@@ -57,7 +57,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="14sp"
+                android:textSize="11sp"
                 android:textAlignment="textEnd"
                 android:textAllCaps="true"
                 android:textStyle="bold" />

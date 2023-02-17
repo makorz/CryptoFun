@@ -1,27 +1,32 @@
-package com.example.cryptofun.ui.dashboard;
+package com.example.cryptofun.ui.orders;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.example.cryptofun.databinding.FragmentDashboardBinding;
+import com.example.cryptofun.databinding.FragmentOrdersBinding;
 
-public class DashboardFragment extends Fragment {
+public class OrdersFragment extends Fragment {
 
-    private FragmentDashboardBinding binding;
+    private FragmentOrdersBinding binding;
+    private static final String TAG = "DashboardFrag";
+
+
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        DashboardViewModel dashboardViewModel =
-                new ViewModelProvider(this).get(DashboardViewModel.class);
 
-        binding = FragmentDashboardBinding.inflate(inflater, container, false);
+        Log.e(TAG, "CreateView");
+        OrdersViewModel ordersViewModel =
+                new ViewModelProvider(this).get(OrdersViewModel.class);
+
+        binding = FragmentOrdersBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
        // final TextView textView = binding.textDashboard;

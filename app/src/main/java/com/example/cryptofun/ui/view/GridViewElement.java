@@ -1,6 +1,8 @@
 package com.example.cryptofun.ui.view;
 
-public class GridViewElement {
+import java.io.Serializable;
+
+public class GridViewElement implements Serializable {
 
     private String symbol;
     private float percent;

@@ -1,35 +1,27 @@
 package com.example.cryptofun.services;
 
 import android.annotation.SuppressLint;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
+
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.Color;
-import android.os.Build;
-import android.os.IBinder;
+
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.work.Worker;
+import androidx.work.WorkerParameters;
 
 import com.example.cryptofun.data.CoinSymbol;
 import com.example.cryptofun.data.CoinSymbols;
 import com.example.cryptofun.data.KlineRequest;
 import com.example.cryptofun.database.DBHandler;
 import com.example.cryptofun.database.rawTable_Kline;
-import com.example.cryptofun.retrofit.RetrofitClient;
 import com.example.cryptofun.retrofit.RetrofitClient2;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
@@ -41,105 +33,17 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class CreatingDatabaseService extends Service {
+public class CreatingDatabaseWorker extends Worker {
 
-    private static final String TAG = "CRTService";
+    private static final String TAG = "CRTWorker";
 
     private static final String TABLE_NAME_KLINES_DATA = "klines_data";
     private static final String TABLE_SYMBOL_AVG = "crypto_avg_price";
     private List<String> listOfSymbols = new ArrayList<>();
     private DBHandler databaseDB;
 
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        databaseDB = new DBHandler(this);
-        new Thread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.e("CRTStart", "SIZE ON START -> " + listOfSymbols.size() );
-
-                        // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            String CHANNEL_ID = "cryptoFun";
-
-                            PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent,
-                                            PendingIntent.FLAG_IMMUTABLE);
-
-                            NotificationChannel chan = new NotificationChannel(
-                                    CHANNEL_ID,
-                                    TAG,
-                                    NotificationManager.IMPORTANCE_LOW);
-                            chan.setLightColor(Color.BLUE);
-                            chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
-
-                            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                            assert manager != null;
-                            manager.createNotificationChannel(chan);
-
-                            Notification notification =
-                                    new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-                                            .setContentTitle("CreatingDB")
-                                            .setContentText("Preparing for money, buddy!")
-                                            .setContentIntent(pendingIntent)
-                                            .setChannelId(CHANNEL_ID)
-                                            .build();
-
-                            // Notification ID cannot be 0.
-                            startForeground(3, notification);
-
-                        }
-                        getDataOfCryptoFromAPI();
-
-                    }
-                }
-        ).start();
-
-        return START_STICKY;
-    }
-//    @Override
-//    public void onCreate() {
-//        databaseDB = new DBHandler(this);
-//        listOfSymbols.clear();
-//        Log.e("CRTStart", "SIZE ON START -> " + listOfSymbols.size() );
-//        String CHANNEL_ID = "cryptoFun";
-//
-//        // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-//        PendingIntent pendingIntent =
-//                PendingIntent.getActivity(getApplicationContext(), 0, intent,
-//                        PendingIntent.FLAG_IMMUTABLE);
-//
-//        NotificationChannel chan = new NotificationChannel(
-//                CHANNEL_ID,
-//                TAG,
-//                NotificationManager.IMPORTANCE_LOW);
-//        chan.setLightColor(Color.BLUE);
-//        chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
-//
-//        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-//        assert manager != null;
-//        manager.createNotificationChannel(chan);
-//
-//        Notification notification =
-//                new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-//                        .setContentTitle("Approving")
-//                        .setContentText("Searching for money, buddy!")
-//                        .setContentIntent(pendingIntent)
-//                        .setChannelId(CHANNEL_ID)
-//                        .build();
-//
-//        // Notification ID cannot be 0.
-//        startForeground(3, notification);
-//        getDataOfCryptoFromAPI();
-//
-//        super.onCreate();
-//    }
-
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
+    public CreatingDatabaseWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
+        super(context, workerParams);
     }
 
     @SuppressLint("CheckResult")
@@ -171,8 +75,8 @@ public class CreatingDatabaseService extends Service {
         }
 
         List<Observable<?>> observableRequestList = new ArrayList<>();
-        Log.e("OBSERVABLE", "request size: " + request.size());
-        Log.e("OBSERVABLE", "listOfCrypto size: " + listOfSymbols.size());
+        Log.e(TAG, "request size: " + request.size());
+        Log.e(TAG, "listOfCrypto size: " + listOfSymbols.size());
         for (int i = 0; i < request.size(); i++) {
             observableRequestList.add(request.get(i).getRequest());
 
@@ -184,7 +88,7 @@ public class CreatingDatabaseService extends Service {
                             @Override
                             public Object apply(Object[] objects) throws Exception {
                                 // Objects[] is an array of combined results of completed requests
-                                Log.e("OBSERVABLE", " HOW MANY? --> " + objects.length);
+                                Log.e(TAG, " OBSERVABLE HOW MANY? --> " + objects.length);
                                 for (int i = 0; i < objects.length; i++) {
                                     request.get(i).setDataOfSymbolInterval((String[][]) objects[i]);
                                 }
@@ -201,7 +105,7 @@ public class CreatingDatabaseService extends Service {
                             @Override
                             public void accept(Object o) throws Exception {
                                 //Do something on successful completion of all requests
-                                Log.e("OBSERVABLE", " PERFECT");
+                                Log.e(TAG, " PERFECT");
                                 Toast.makeText(getApplicationContext(), "Writing into DB", Toast.LENGTH_SHORT).show();
 
                                 for (int i = 0; i < request.size(); i++) {
@@ -228,7 +132,6 @@ public class CreatingDatabaseService extends Service {
                                         klinesDataList.remove(i);
                                     }
                                 }
-                                //Add everything to DB and refresh View
                                 if (databaseDB.addNewKlineData(klinesDataList) > 50) {
                                     getDataOfCryptoFromAPI();
                                 }
@@ -242,10 +145,8 @@ public class CreatingDatabaseService extends Service {
                         new Consumer<Throwable>() {
                             @Override
                             public void accept(Throwable e) throws Exception {
-                                //x zibit
-                                // Toast.makeText(CreatingDatabaseService.this, "ERROR WHILE COLLECTING DATA " +  e.toString(), Toast.LENGTH_SHORT).show();
                                 Toast.makeText(getApplicationContext(), "Error: " + e, Toast.LENGTH_LONG).show();
-                                Log.e("OBSERVABLE", " IS FUCKED " + e.toString());
+                                Log.e(TAG, " IS FUCKED " + e.toString());
                             }
                         }
                 );
@@ -271,23 +172,10 @@ public class CreatingDatabaseService extends Service {
                       for (int i = 0; i < tokenList.size(); i++) {
 
                         if (tokenList.get(i).getSymbol().contains("USDT")
-
                                 && tokenList.get(i).getStatus().equals("TRADING")
                                 && !tokenList.get(i).getSymbol().contains("BUSD")
                                 && !tokenList.get(i).getSymbol().contains("230331")
-//                                && !tokenList.get(i).getSymbol().contains("EUR")
-//                                && !tokenList.get(i).getSymbol().contains("PLN")
-//                                && !tokenList.get(i).getSymbol().contains("UP")
-//                                && !tokenList.get(i).getSymbol().contains("DOWN")
-//                                && !tokenList.get(i).getSymbol().contains("BTCST")
-//                                && (tokenList.get(i).getPermissions().contains("MARGIN")
-//                                || (tokenList.get(i).getPermissions().contains("TRD_GRP_004") || tokenList.get(i).getPermissions().contains("TRD_GRP_005")
-//                                || tokenList.get(i).getPermissions().contains("TRD_GRP_006")))
-//
-//                                && tokenList.get(i).getPermissions().contains("MARGIN")
-//                                && (tokenList.get(i).getPermissions().contains("TRD_GRP_004") || tokenList.get(i).getPermissions().contains("TRD_GRP_005")
-//                                || tokenList.get(i).getPermissions().contains("TRD_GRP_006"))
-                        ) { // && tokenList.get(i).getPermissions().contains("MARGIN") && !tokenList.get(i).getSymbol().contains("BUSD")
+                        ) {
 
                             String tempSymbol = tokenList.get(i).getSymbol().replace("USDT","");
                             arrayUSDTtemp.add(tempSymbol);
@@ -299,20 +187,8 @@ public class CreatingDatabaseService extends Service {
                                 && tokenList.get(i).getStatus().equals("TRADING")
                                 && !tokenList.get(i).getSymbol().contains("USDT")
                                 && !tokenList.get(i).getSymbol().contains("230331")
-//                                && !tokenList.get(i).getSymbol().contains("UP")
-//                                && !tokenList.get(i).getSymbol().contains("DOWN")
-//                                && !tokenList.get(i).getSymbol().contains("EUR")
-//                                && !tokenList.get(i).getSymbol().contains("PLN")
-//                                && (tokenList.get(i).getPermissions().contains("MARGIN")
-//                                || (tokenList.get(i).getPermissions().contains("TRD_GRP_004") || tokenList.get(i).getPermissions().contains("TRD_GRP_005")
-//                                || tokenList.get(i).getPermissions().contains("TRD_GRP_006")))
-//
-//                                && (tokenList.get(i).getPermissions().contains("TRD_GRP_004") || tokenList.get(i).getPermissions().contains("TRD_GRP_005")
-//                                || tokenList.get(i).getPermissions().contains("TRD_GRP_006"))
-                        ) { //
-
+                        ) {
                             arrayBUSDtemp.add(tokenList.get(i).getSymbol());
-
                         }
 
                     }
@@ -323,16 +199,13 @@ public class CreatingDatabaseService extends Service {
                     }
 
                     listOfSymbols.addAll(arrayBUSDtemp);
-
-                    Log.e("CRTDB", listOfSymbols.toString());
-
+                    Log.e(TAG, listOfSymbols.toString());
                     databaseDB.addNewCrypto(listOfSymbols);
                     getDataOfCryptoFromAPI();
                 }
 
                 @Override
                 public void onFailure(@NonNull Call<CoinSymbols> call, @NonNull Throwable t) {
-                    System.out.println("An error has occurred" + t);
                 }
 
             });
@@ -384,9 +257,25 @@ public class CreatingDatabaseService extends Service {
         Intent intent = new Intent("DB_created");
         Log.e(TAG, "SendMessage1");
         intent.putExtra("finishedCRTDB", true);
-        LocalBroadcastManager.getInstance(CreatingDatabaseService.this).sendBroadcast(intent);
-        stopSelf();
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+
     }
 
 
+    @NonNull
+    @Override
+    public Result doWork() {
+        databaseDB = new DBHandler(getApplicationContext());
+        new Thread(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.e(TAG, "SIZE ON START -> " + listOfSymbols.size() );
+                        getDataOfCryptoFromAPI();
+
+                    }
+                }
+        ).start();
+        return Result.success();
+    }
 }

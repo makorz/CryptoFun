@@ -11,14 +11,15 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.os.Build;
-import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.Process;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.work.Worker;
+import androidx.work.WorkerParameters;
 
 import com.example.cryptofun.data.ApprovedToken;
 import com.example.cryptofun.data.KlineRequest;
@@ -26,10 +27,8 @@ import com.example.cryptofun.data.ObservableModel;
 import com.example.cryptofun.database.DBHandler;
 import com.example.cryptofun.database.Kline;
 import com.example.cryptofun.database.rawTable_Kline;
-import com.example.cryptofun.retrofit.RetrofitClient;
 import com.example.cryptofun.retrofit.RetrofitClient2;
 
-import java.net.SocketTimeoutException;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -44,9 +43,9 @@ import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
-public class UpdatingDatabaseService extends Service {
+public class UpdatingDatabaseWorker extends Worker {
 
-    private static final String TAG = "UPDTService";
+    private static final String TAG = "UPDTWorker";
 
     private static final String TABLE_NAME_KLINES_DATA = "klines_data";
     private static final String TABLE_SYMBOL_AVG = "crypto_avg_price";
@@ -57,80 +56,25 @@ public class UpdatingDatabaseService extends Service {
     private static final String ID = "id";
     private DBHandler databaseDB;
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-
-        new Thread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        databaseDB = new DBHandler(getApplicationContext());
-                        Log.e(TAG, "Service is running...");
-
-                        // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-
-                            String CHANNEL_ID = "cryptoFun";
-                            PendingIntent pendingIntent =
-                                    PendingIntent.getActivity(getApplicationContext(), 0, intent,
-                                            PendingIntent.FLAG_IMMUTABLE);
-
-                            NotificationChannel chan = new NotificationChannel(
-                                    CHANNEL_ID,
-                                    TAG,
-                                    NotificationManager.IMPORTANCE_LOW);
-                            chan.setLightColor(Color.BLUE);
-                            chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
-
-                            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                            assert manager != null;
-                            manager.createNotificationChannel(chan);
-
-                            Notification notification =
-                                    new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-                                            .setContentTitle("UPDating")
-                                            .setContentText("Searching for money, buddy!")
-                                            .setContentIntent(pendingIntent)
-                                            .setChannelId(CHANNEL_ID)
-                                            .build();
-
-                            // Notification ID cannot be 0.
-                            startForeground(1, notification);
-
-                        }
-                        checkDBLastTimeOfUpdate();
-                    }
-                }
-        ).start();
-
-        return START_STICKY;
+    public UpdatingDatabaseWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
+        super(context, workerParams);
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Log.e(TAG, "destroy");
-    }
 
     private void sendMessageToActivity(String date, boolean updateStart) {
         Intent intent = new Intent("DB_updated");
         intent.putExtra("updateDate", date);
         intent.putExtra("updateStarted", updateStart);
         Log.e(TAG, "Send Broadcast Message " + updateStart);
-        LocalBroadcastManager.getInstance(UpdatingDatabaseService.this).sendBroadcast(intent);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
         databaseDB.close();
-        stopSelf();
+
     }
 
     private void sendInfoToActivity() {
         Intent intent = new Intent("DB_update_start");
         Log.e(TAG, "Loading icon START");
-        LocalBroadcastManager.getInstance(UpdatingDatabaseService.this).sendBroadcast(intent);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
     }
 
     private void updateDBtoCurrentValues(long timeOfUpdate) {
@@ -332,7 +276,7 @@ public class UpdatingDatabaseService extends Service {
                             @Override
                             public Object apply(Object[] objects) throws Exception {
                                 // Objects[] is an array of combined results of completed requests
-                                Log.e(TAG, "OBSERVABLE  HOW MANY? --> " + objects.length);
+                                Log.e(TAG, "OBSERVABLE HOW MANY? --> " + objects.length);
                                 for (int i = 0; i < objects.length; i++) {
                                     request.get(i).setDataOfSymbolInterval((String[][]) objects[i]);
                                 }
@@ -409,17 +353,11 @@ public class UpdatingDatabaseService extends Service {
                             @Override
                             public void accept(Throwable e) throws Exception {
                                 //Do something on error completion of requests
-//                                if (e instanceof SocketTimeoutException) {
-//
-//                                    re
-//                                }
                                 Log.e(TAG, "FUCKED " + e);
-
                                 Toast.makeText(getApplicationContext(), "Error: " + e, Toast.LENGTH_LONG).show();
                                 startCountingAndReturnResult();
                             }
                         }
-
                 );
     }
 
@@ -742,4 +680,19 @@ public class UpdatingDatabaseService extends Service {
     }
 
 
+    @NonNull
+    @Override
+    public Result doWork() {
+        new Thread(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        databaseDB = new DBHandler(getApplicationContext());
+                        Log.e(TAG, "Service is running...");
+                        checkDBLastTimeOfUpdate();
+                    }
+                }
+        ).start();
+        return Result.success();
+    }
 }

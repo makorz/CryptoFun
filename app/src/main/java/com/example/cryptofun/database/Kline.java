@@ -47,12 +47,24 @@ public class Kline {
         this.tKlineInterval = tKlineInterval;
     }
 
-    public Kline(String tTokenSymbol, float tVolume, long tNumberOfTrades, long tCloseTime) {
-        this.tTokenSymbol = tTokenSymbol;
-        this.tVolume = tVolume;
-        this.tNumberOfTrades = tNumberOfTrades;
-        this.tCloseTime = tCloseTime;
+//    public Kline(String tTokenSymbol, float tVolume, long tNumberOfTrades, long tCloseTime, float tClosePrice) {
+//        this.tTokenSymbol = tTokenSymbol;
+//        this.tVolume = tVolume;
+//        this.tNumberOfTrades = tNumberOfTrades;
+//        this.tCloseTime = tCloseTime;
+//        this.tClosePrice = tClosePrice;
+//
+//    }
 
+    public int getStatusOfKline() {
+        float redOrGreen = this.tOpenPrice - this.tClosePrice;
+        if ( redOrGreen < 0 ) {
+            return 1;
+        } else if (redOrGreen > 0){
+            return 0;
+        } else {
+            return 2;
+        }
     }
 
     public int gettId() {
@@ -98,4 +110,5 @@ public class Kline {
     public String gettKlineInterval() {
         return tKlineInterval;
     }
+
 }
