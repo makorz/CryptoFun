@@ -56,10 +56,25 @@ public class UpdatingDatabaseWorker extends Worker {
     private static final String ID = "id";
     private DBHandler databaseDB;
 
+    @NonNull
+    @Override
+    public Result doWork() {
+        new Thread(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        databaseDB = new DBHandler(getApplicationContext());
+                        Log.e(TAG, "Service is running...");
+                        checkDBLastTimeOfUpdate();
+                    }
+                }
+        ).start();
+        return Result.success();
+    }
+
     public UpdatingDatabaseWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
     }
-
 
     private void sendMessageToActivity(String date, boolean updateStart) {
         Intent intent = new Intent("DB_updated");
@@ -680,19 +695,5 @@ public class UpdatingDatabaseWorker extends Worker {
     }
 
 
-    @NonNull
-    @Override
-    public Result doWork() {
-        new Thread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        databaseDB = new DBHandler(getApplicationContext());
-                        Log.e(TAG, "Service is running...");
-                        checkDBLastTimeOfUpdate();
-                    }
-                }
-        ).start();
-        return Result.success();
-    }
+
 }

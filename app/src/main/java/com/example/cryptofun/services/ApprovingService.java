@@ -1,7 +1,6 @@
 package com.example.cryptofun.services;
 
 import android.annotation.SuppressLint;
-import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -11,7 +10,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -28,10 +26,10 @@ import com.example.cryptofun.ui.view.ListViewElement;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.text.DateFormat;
-import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
@@ -62,35 +60,32 @@ public class ApprovingService extends Service {
                         Log.e(TAG, "START");
 
                         // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            String CHANNEL_ID = "cryptoFun";
-                            PendingIntent pendingIntent =
-                                    PendingIntent.getActivity(getApplicationContext(), 0, intent,
-                                            PendingIntent.FLAG_IMMUTABLE);
+                        String CHANNEL_ID = "cryptoFun";
+                        PendingIntent pendingIntent =
+                                PendingIntent.getActivity(getApplicationContext(), 0, intent,
+                                        PendingIntent.FLAG_IMMUTABLE);
 
-                            NotificationChannel chan = new NotificationChannel(
-                                    CHANNEL_ID,
-                                    TAG,
-                                    NotificationManager.IMPORTANCE_LOW);
-                            chan.setLightColor(Color.BLUE);
-                            chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
+                        NotificationChannel chan = new NotificationChannel(
+                                CHANNEL_ID,
+                                TAG,
+                                NotificationManager.IMPORTANCE_LOW);
+                        chan.setLightColor(Color.BLUE);
+                        chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
 
-                            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                            assert manager != null;
-                            manager.createNotificationChannel(chan);
+                        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                        assert manager != null;
+                        manager.createNotificationChannel(chan);
 
-                            Notification notification =
-                                    new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-                                            .setContentTitle("Approving")
-                                            .setContentText("Verifying money, buddy!")
-                                            .setContentIntent(pendingIntent)
-                                            .setChannelId(CHANNEL_ID)
-                                            .build();
+                        Notification notification =
+                                new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
+                                        .setContentTitle("Approving")
+                                        .setContentText("Verifying money, buddy!")
+                                        .setContentIntent(pendingIntent)
+                                        .setChannelId(CHANNEL_ID)
+                                        .build();
 
-                            // Notification ID cannot be 0.
-                            startForeground(2, notification);
-                        }
-
+                        // Notification ID cannot be 0.
+                        startForeground(2, notification);
 
                         approvingCryptos();
                     }
@@ -112,17 +107,11 @@ public class ApprovingService extends Service {
         Log.e(TAG, "SendMessage " + Thread.currentThread() + " " + Thread.activeCount());
         Bundle bundle = new Bundle();
         // 1 - 30min, 2 - 2h, 3 - 6h
-       // bundle.putStringArrayList("list1", (ArrayList<String>) list1);
-       // bundle.putStringArrayList("list2", (ArrayList<String>) list2);
-        //bundle.putStringArrayList("list3", (ArrayList<String>) list3);
         bundle.putSerializable("list1", (Serializable) list1);
         bundle.putSerializable("list2", (Serializable) list2);
         bundle.putSerializable("list3", (Serializable) list3);
         bundle.putSerializable("list4", (Serializable) list4);
         bundle.putSerializable("list5", (Serializable) list5);
-
-       // bundle.putStringArrayList("list4", (ArrayList<String>) list4);
-       // bundle.putStringArrayList("list5", (ArrayList<String>) list5);
         bundle.putSerializable("cryptoGridViewList", (Serializable) gridList);
         intent.putExtra("bundleApprovedCrypto", bundle);
         LocalBroadcastManager.getInstance(ApprovingService.this).sendBroadcast(intent);
@@ -137,9 +126,6 @@ public class ApprovingService extends Service {
     }
 
     public void approvingCryptos() {
-
-//        List<String> listOfApprovedCryptos = new ArrayList<>();
-//        List<ApprovedToken> approvedTokens = new ArrayList<>();
         long timeToClearOldApproved = System.currentTimeMillis() - 900000;
         long sixHours = 21600000;
         long twoHour = 7200000;
@@ -147,54 +133,16 @@ public class ApprovingService extends Service {
         long now = 1800000;
         databaseDB.deleteOldApproved(TABLE_NAME_APPROVED, TIME_APPROVED, timeToClearOldApproved);
 
-//        Cursor data = databaseDB.retrieveAllFromTableApproved(TABLE_NAME_APPROVED);
-//        if (data.getCount() == 0) {
-//            listOfApprovedCryptos.add("No Crypto is worth buying right now!");
-//        } else {
-//            while (data.moveToNext()) {
-//                approvedTokens.add(new ApprovedToken(data.getString(1), data.getInt(4), data.getInt(3), data.getFloat(2), data.getLong(5)));
-//            }
-//            approvedTokens.sort(Collections.reverseOrder());
-//        }
-//        data.close();
-
-//        for (int i = 0; i < approvedTokens.size(); i++) {
-//
-//            String longOrShort;
-//            if (approvedTokens.get(i).getLongOrShort() == 1) {
-//                longOrShort = "LONG";
-//            } else {
-//                longOrShort = "SHORT";
-//            }
-//
-//            listOfApprovedCryptos.add((i + 1) + ". " + approvedTokens.get(i).getSymbol() + " <" + longOrShort + "> VOL: " + Math.round(approvedTokens.get(i).getVolumeOnKlines()) + " TRADES: " + approvedTokens.get(i).getNrOfTradesOnKlines());
-
-        // Write parameters to text file
-//            String toFile = approvedTokens.get(i).getSymbol() + ";" + longOrShort + ";" + Math.round(approvedTokens.get(i)
-//             .getVolumeOnKlines()) + ";" + approvedTokens.get(i).getNrOfTradesOnKlines()
-//             + ";" + approvedTokens.get(i).getTime() + "\n";
-//            writeToFile(toFile, getApplicationContext());
-
-        //List<String> lastSixHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(sixHours, twoHour);
-        ArrayList<ListViewElement>  lastSixHoursTokensStat = getListOfSymbolsAccordingToProvidedTime2(sixHours, twoHour);
-        ArrayList<ListViewElement>  lastTwoHoursTokensStat = getListOfSymbolsAccordingToProvidedTime2(twoHour, halfHour);
-        ArrayList<ListViewElement>  last30MinTokensStat = getListOfSymbolsAccordingToProvidedTime2(halfHour, 0);
+        ArrayList<ListViewElement>  lastSixHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(sixHours, twoHour);
+        ArrayList<ListViewElement>  lastTwoHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(twoHour, halfHour);
+        ArrayList<ListViewElement>  last30MinTokensStat = getListOfSymbolsAccordingToProvidedTime(halfHour, 0);
         ArrayList<ListViewElement>  occurrencesOfLONGFreshApprovedTokens = new ArrayList<>();
         ArrayList<ListViewElement>  occurrencesOfSHORTFreshApprovedTokens = new ArrayList<>();
 
         if (last30MinTokensStat.size() > 0) {
 
-            boolean nothingOnList = last30MinTokensStat.get(0).getText().contains("Nothing");
-
             for (int i = 0; i < last30MinTokensStat.size(); i++) {
-                String a = last30MinTokensStat.get(i).getText();
-                //Log.e("APPPROVEDEDDEDD", String.valueOf(nothingOnList));
-                String result = a.substring(a.indexOf("[") + 1, a.indexOf("]"));
-                String result2 = "";
-                if (!nothingOnList) {
-                    Log.e(TAG, a);
-                    result2 = a.substring(a.indexOf("%") + 2, a.indexOf("[") - 1);
-                }
+                String result = last30MinTokensStat.get(i).getText();
                 int occurences = 1;
                 for (int j = 0; j < lastTwoHoursTokensStat.size(); j++) {
                     if (lastTwoHoursTokensStat.get(j).getText().contains(result)) {
@@ -206,14 +154,13 @@ public class ApprovingService extends Service {
                         occurences++;
                     }
                 }
-                String finalResult = result + " [" + result2 + "] on " + occurences + ".";
-                if (occurences > 1 && result2.contains("LONG")) {
+                String finalResult = result + " on " + occurences + " lists.";
+                if (occurences > 1 && last30MinTokensStat.get(i).isItLONG()) {
 
                     occurrencesOfLONGFreshApprovedTokens.add(new ListViewElement(finalResult));
-                } else if (occurences > 1 && result2.contains("SHORT")) {
+                } else if (occurences > 1 ) {
                     occurrencesOfSHORTFreshApprovedTokens.add(new ListViewElement(finalResult));
                 }
-
             }
         }
 
@@ -222,80 +169,7 @@ public class ApprovingService extends Service {
 
     }
 
-//    private List<String> getListOfSymbolsAccordingToProvidedTime(long timeFrom, long timeTo) {
-//
-//        @SuppressLint("SimpleDateFormat")
-//        DateFormat df = new SimpleDateFormat("HH:mm");
-//        long currentTime = System.currentTimeMillis();
-//        List<String> returnList = new ArrayList<>();
-//
-//        Cursor data2 = databaseDB.firstAppearOfTokenInCertainTime(currentTime - timeFrom, currentTime - timeTo);
-//
-//        if (data2.getCount() == 0) {
-//            returnList.add("[Nothing found in database.]");
-//        } else {
-//            while (data2.moveToNext()) {
-//
-//                ApprovedToken tempToken = new ApprovedToken(data2.getString(0), data2.getInt(8), data2.getFloat(5), data2.getLong(7), data2.getFloat(9));
-//                String finalString;
-//                String symbol = tempToken.getSymbol();
-//                int longOrShort = tempToken.getLongOrShort();
-//                long approveTime = tempToken.getTime();
-//                float closePrice = tempToken.getClosePrice();
-//                float price = tempToken.getPriceOnTimeOfApprove();
-//
-//                //Log.e("APPROVE SERVICE", symbol + " " + longOrShort + " " + approveTime + " " + (currentTime - timeFrom) + " ");
-//
-//                if (approveTime > currentTime - timeFrom) {
-//                    Timestamp stamp = new Timestamp(approveTime);
-//                    String date = df.format(new Date(stamp.getTime()));
-//
-//                    String longShort = "";
-//                    DecimalFormat dfNr = new DecimalFormat("00.##");
-//                    DecimalFormat dfPr = new DecimalFormat("#.######");
-//
-//                    float percentOfChange = ((closePrice / price) * 100) - 100;
-//
-//                    //Log.e("APPHIST", price + " " + closePrice + " " + percentOfChange);
-//
-//                    if (longOrShort == 0) {
-//                        if (percentOfChange < -0.25) {
-//                            longShort = "SHORT";
-////                            finalString = date + " -- " + longShort + " [" + symbol + "] -- " +  dfPr.format(price)
-////                                    + " (" + dfNr.format(percentOfChange) +"%)";
-//                            finalString = dfNr.format(percentOfChange) + "% " + longShort + " [" + symbol + "]" + " " + date
-//                                    + " (" + dfPr.format(price) + ")";
-//                            returnList.add(finalString);
-//                        }
-//                    } else if (longOrShort == 1) {
-//                        if (percentOfChange > 0.25) {
-//                            longShort = "LONG";
-////                            finalString = date + " -- " + longShort + " [" + symbol + "] -- " + dfPr.format(price)
-////                                    + " (" + dfNr.format(percentOfChange) +"%)";
-//                            finalString = dfNr.format(percentOfChange) + "% " + longShort + " [" + symbol + "]" + " " + date
-//                                    + " (" + dfPr.format(price) + ")";
-//                            returnList.add(finalString);
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//        data2.close();
-//
-//
-//        if (returnList.size() == 0) {
-//            returnList.add("[Nothing passed a test.]");
-//        } else {
-//            Collections.sort(returnList, Collections.reverseOrder());
-//        }
-//
-//        Log.e(TAG, timeFrom + "  " + returnList);
-//
-//        return returnList;
-//
-//    }
-
-    private ArrayList<ListViewElement>  getListOfSymbolsAccordingToProvidedTime2(long timeFrom, long timeTo) {
+    private ArrayList<ListViewElement> getListOfSymbolsAccordingToProvidedTime(long timeFrom, long timeTo) {
 
         @SuppressLint("SimpleDateFormat")
         DateFormat df = new SimpleDateFormat("HH:mm");
@@ -305,49 +179,30 @@ public class ApprovingService extends Service {
         Cursor data2 = databaseDB.firstAppearOfTokenInCertainTime(currentTime - timeFrom, currentTime - timeTo);
 
         if (data2.getCount() == 0) {
-            returnList.add(new ListViewElement("[Nothing found in database.]"));
+            returnList.add(new ListViewElement("Nothing in DB"));
         } else {
             while (data2.moveToNext()) {
 
                 ApprovedToken tempToken = new ApprovedToken(data2.getString(0), data2.getInt(8), data2.getFloat(5), data2.getLong(7), data2.getFloat(9));
-                String finalString;
                 String symbol = tempToken.getSymbol();
                 int longOrShort = tempToken.getLongOrShort();
                 long approveTime = tempToken.getTime();
                 float closePrice = tempToken.getClosePrice();
                 float price = tempToken.getPriceOnTimeOfApprove();
-
                 //Log.e("APPROVE SERVICE", symbol + " " + longOrShort + " " + approveTime + " " + (currentTime - timeFrom) + " ");
 
                 if (approveTime > currentTime - timeFrom) {
                     Timestamp stamp = new Timestamp(approveTime);
                     String date = df.format(new Date(stamp.getTime()));
-
-                    String longShort = "";
-                    DecimalFormat dfNr = new DecimalFormat("00.##");
-                    DecimalFormat dfPr = new DecimalFormat("#.######");
-
                     float percentOfChange = ((closePrice / price) * 100) - 100;
-
-                    //Log.e("APPHIST", price + " " + closePrice + " " + percentOfChange);
 
                     if (longOrShort == 0) {
                         if (percentOfChange < -0.25) {
-                            longShort = "SHORT";
-//                            finalString = date + " -- " + longShort + " [" + symbol + "] -- " +  dfPr.format(price)
-//                                    + " (" + dfNr.format(percentOfChange) +"%)";
-                            finalString = dfNr.format(percentOfChange) + "% " + longShort + " [" + symbol + "]" + " " + date
-                                    + " (" + dfPr.format(price) + ")";
-                            returnList.add(new ListViewElement(finalString));
+                            returnList.add(new ListViewElement(symbol, percentOfChange, price, date,false));
                         }
                     } else if (longOrShort == 1) {
                         if (percentOfChange > 0.25) {
-                            longShort = "LONG";
-//                            finalString = date + " -- " + longShort + " [" + symbol + "] -- " + dfPr.format(price)
-//                                    + " (" + dfNr.format(percentOfChange) +"%)";
-                            finalString = dfNr.format(percentOfChange) + "% " + longShort + " [" + symbol + "]" + " " + date
-                                    + " (" + dfPr.format(price) + ")";
-                            returnList.add(new ListViewElement(finalString));
+                            returnList.add(new ListViewElement(symbol, percentOfChange, price, date,true));
                         }
                     }
                 }
@@ -355,17 +210,16 @@ public class ApprovingService extends Service {
         }
         data2.close();
 
-
         if (returnList.size() == 0) {
-            returnList.add(new ListViewElement("[Nothing passed a test.]"));
+            returnList.add(new ListViewElement("Nothing good", 0, 0, "",true));
         } else {
-            Collections.sort(returnList, Collections.reverseOrder());
+            Collections.sort(returnList, new Comparator<ListViewElement>() {
+                public int compare(ListViewElement o1, ListViewElement o2) {
+                    return Float.compare(o2.getPercentChange(), o1.getPercentChange());
+                }
+            });
         }
-
-        //Log.e(TAG, timeFrom + "  " + returnList);
-
         return returnList;
-
     }
 
 //    private void writeToFile(String data, Context context) {
@@ -534,16 +388,5 @@ public class ApprovingService extends Service {
         data.close();
         return bigVolume;
     }
-
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getApplicationContext().getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
 
 }

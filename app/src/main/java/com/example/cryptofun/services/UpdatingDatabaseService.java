@@ -44,6 +44,8 @@ import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
+
+
 public class UpdatingDatabaseService extends Service {
 
     private static final String TAG = "UPDTService";
@@ -116,6 +118,82 @@ public class UpdatingDatabaseService extends Service {
         super.onDestroy();
         Log.e(TAG, "destroy");
     }
+
+//    public boolean isPriceStartingToGain(ArrayList<Kline> klines) {
+//        double highestClosePrice = Double.MIN_VALUE;
+//        double lowestClosePrice = Double.MAX_VALUE;
+//
+//        // Find the highest and lowest close prices
+//        for (Kline kline : klines) {
+//            double closePrice = kline.gettClosePrice();
+//            if (closePrice > highestClosePrice) {
+//                highestClosePrice = closePrice;
+//            }
+//            if (closePrice < lowestClosePrice) {
+//                lowestClosePrice = closePrice;
+//            }
+//        }
+//
+//        // Check if the current close price is lower than the highest close price
+//        // and if it has increased by at least 10% from the lowest close price
+//        Kline currentKline = klines.get(0);
+//        double currentClosePrice = currentKline.gettClosePrice();
+//        if (currentClosePrice < highestClosePrice && currentClosePrice >= lowestClosePrice * 1.1) {
+//            return true;
+//        } else {
+//            return false;
+//        }
+//    }
+//
+//    public boolean isPriceStartingToLose(ArrayList<Kline> klines) {
+//        double highestClosePrice = Double.MIN_VALUE;
+//        double lowestClosePrice = Double.MAX_VALUE;
+//
+//        // Find the highest and lowest close prices
+//        for (Kline kline : klines) {
+//            double closePrice = kline.gettClosePrice();
+//            if (closePrice > highestClosePrice) {
+//                highestClosePrice = closePrice;
+//            }
+//            if (closePrice < lowestClosePrice) {
+//                lowestClosePrice = closePrice;
+//            }
+//        }
+//
+//        // Check if the current close price is higher than the lowest close price
+//        // and if it has decreased by at least 10% from the highest close price
+//        Kline currentKline = klines.get(0);
+//        double currentClosePrice = currentKline.gettClosePrice();
+//        if (currentClosePrice > lowestClosePrice && currentClosePrice <= highestClosePrice * 0.9) {
+//            return true;
+//        } else {
+//            return false;
+//        }
+//    }
+
+
+//    public boolean predictKlineChange(List<Kline> klinesList15Min, List<Kline> klinesList3Min) {
+//        // First, we calculate the average price change over the last 3 intervals
+//        double avgPriceChange3Min = 0;
+//        for (int i = klinesList3Min.size() - 1; i > 0; i--) {
+//            avgPriceChange3Min += (klinesList3Min.get(i).gettClosePrice() - klinesList3Min.get(i-1).gettClosePrice());
+//        }
+//        avgPriceChange3Min /= (klinesList3Min.size() - 1);
+//
+//        // Next, we calculate the average price change over the last 2 klines (30 minutes)
+//        double klineAvgPriceChange = 0;
+//        for (int i = klinesList15Min.size() - 1; i > klinesList15Min.size() - 3; i--) {
+//            klineAvgPriceChange += (klinesList15Min.get(i).gettClosePrice() - klinesList15Min.get(i-1).gettClosePrice());
+//        }
+//        klineAvgPriceChange /= 2;
+//
+//        // Finally, we compare the two average price changes and predict whether the klines will change in the next 30 minutes
+//        if (avgPriceChange3Min > klineAvgPriceChange) {
+//            return true; // Prices are increasing, so we predict a change
+//        } else {
+//            return false; // Prices are decreasing or staying the same, so we predict no change
+//        }
+//    }
 
     private void sendMessageToActivity(String date, boolean updateStart) {
         Intent intent = new Intent("DB_updated");
@@ -408,13 +486,7 @@ public class UpdatingDatabaseService extends Service {
                         new Consumer<Throwable>() {
                             @Override
                             public void accept(Throwable e) throws Exception {
-                                //Do something on error completion of requests
-//                                if (e instanceof SocketTimeoutException) {
-//
-//                                    re
-//                                }
                                 Log.e(TAG, "FUCKED " + e);
-
                                 Toast.makeText(getApplicationContext(), "Error: " + e, Toast.LENGTH_LONG).show();
                                 startCountingAndReturnResult();
                             }
@@ -570,6 +642,8 @@ public class UpdatingDatabaseService extends Service {
         data.close();
 
         float volumeOfLast15mKlines = countMoneyVolumeAtInterval(coinKlines15m, 0, 2);
+
+        //boolean isPriceAboutToChange = predictKlineChange(coinKlines15m, coinKlines3m);
 
         if (volumeOfLast15mKlines > acceptableVolume) {
 

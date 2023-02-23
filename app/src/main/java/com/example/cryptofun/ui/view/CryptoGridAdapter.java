@@ -1,4 +1,4 @@
-package com.example.cryptofun.ui.home;
+package com.example.cryptofun.ui.view;
 
 import android.graphics.Color;
 import android.view.LayoutInflater;
@@ -9,14 +9,14 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.cryptofun.databinding.CardViewCryptoBinding;
-import com.example.cryptofun.ui.view.GridViewElement;
 
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 public class CryptoGridAdapter extends RecyclerView.Adapter<CryptoGridAdapter.ViewHolder>{
 
-    private final List<GridViewElement> items;
+    private ArrayList<GridViewElement> items;
 
     public static class ViewHolder extends RecyclerView.ViewHolder{
 
@@ -33,7 +33,7 @@ public class CryptoGridAdapter extends RecyclerView.Adapter<CryptoGridAdapter.Vi
     }
 
     //data is passed to constructor
-    CryptoGridAdapter(List<GridViewElement> items){
+    public CryptoGridAdapter(ArrayList<GridViewElement> items){
        // LayoutInflater inflater = LayoutInflater.from(context);
         this.items = items;
     }
@@ -56,8 +56,8 @@ public class CryptoGridAdapter extends RecyclerView.Adapter<CryptoGridAdapter.Vi
         float percent = items.get(position).getPercent();
 
         if ( !name.contains("%")) {
-            DecimalFormat df = new DecimalFormat("#.###");
-            DecimalFormat df2 = new DecimalFormat("#.#");
+            DecimalFormat df = new DecimalFormat("0.###");
+            DecimalFormat df2 = new DecimalFormat("0.00");
 
             holder.title.setText(name);
             String valueFormatted = df.format(value) + "$";
@@ -70,7 +70,7 @@ public class CryptoGridAdapter extends RecyclerView.Adapter<CryptoGridAdapter.Vi
                 holder.percent.setTextColor(Color.GREEN);
             }
         } else {
-            DecimalFormat df = new DecimalFormat("#.#");
+            DecimalFormat df = new DecimalFormat("0.00");
             holder.title.setText(name);
             String percentFormatted = df.format(percent) + "%";
             holder.percent.setText(percentFormatted);
@@ -87,6 +87,11 @@ public class CryptoGridAdapter extends RecyclerView.Adapter<CryptoGridAdapter.Vi
     @Override
     public int getItemCount() {
         return items.size();
+    }
+
+    public void updateList(ArrayList<GridViewElement> newList) {
+        items = newList;
+        notifyDataSetChanged();
     }
 
 }

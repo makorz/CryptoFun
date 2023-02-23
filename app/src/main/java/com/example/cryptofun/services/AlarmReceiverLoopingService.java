@@ -34,8 +34,8 @@ public class AlarmReceiverLoopingService extends BroadcastReceiver {
         if (!isMyServiceRunning(ApprovingService.class, context) && !isMyServiceRunning(UpdatingDatabaseService.class, context)) {
             Log.e(TAG, "start service");
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(UpdatingDatabaseWorker.class).addTag("UPDATE_WORKER_TAG").build();
-                WorkManager.getInstance(context).enqueueUniqueWork("UPDATE_WORKER_TAG", ExistingWorkPolicy.KEEP,request);
+                OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(UpdatingDatabaseWorker.class).addTag("WORKER_TAG").build();
+                WorkManager.getInstance(context).enqueueUniqueWork("WORKER_TAG", ExistingWorkPolicy.KEEP,request);
             } else {
                 context.startForegroundService(in);
             }

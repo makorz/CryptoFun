@@ -1,22 +1,14 @@
 package com.example.cryptofun.services;
 
 import android.annotation.SuppressLint;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
+
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
@@ -25,14 +17,15 @@ import com.example.cryptofun.data.ApprovedToken;
 import com.example.cryptofun.database.DBHandler;
 import com.example.cryptofun.database.Kline;
 import com.example.cryptofun.ui.view.GridViewElement;
+import com.example.cryptofun.ui.view.ListViewElement;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.text.DateFormat;
-import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
@@ -47,22 +40,37 @@ public class ApprovingWorker extends Worker {
     private static final String TABLE_NAME_KLINES_DATA = "klines_data";
     private static final String TABLE_SYMBOL_AVG = "crypto_avg_price";
 
+    @NonNull
+    @Override
+    public Result doWork() {
+        databaseDB = DBHandler.getInstance(getApplicationContext());
+        new Thread(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.e(TAG, "START");
+                        approvingCryptos();
+                    }
+                }
+        ).start();
+        return Result.success();
+    }
+
     public ApprovingWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
     }
 
-    private void sendMessageToActivity(List<String> list1, List<String> list2, List<String> list3,
-                                       List<String> list4, List<String> list5, ArrayList<GridViewElement> gridList) {
+    private void sendMessageToActivity(ArrayList<ListViewElement> list1, ArrayList<ListViewElement> list2, ArrayList<ListViewElement> list3, ArrayList<ListViewElement> list4, ArrayList<ListViewElement> list5, ArrayList<GridViewElement> gridList) {
 
         Intent intent = new Intent("ApprovedService");
         Log.e(TAG, "SendMessage " + Thread.currentThread() + " " + Thread.activeCount());
         Bundle bundle = new Bundle();
         // 1 - 30min, 2 - 2h, 3 - 6h
-        bundle.putStringArrayList("list1", (ArrayList<String>) list1);
-        bundle.putStringArrayList("list2", (ArrayList<String>) list2);
-        bundle.putStringArrayList("list3", (ArrayList<String>) list3);
-        bundle.putStringArrayList("list4", (ArrayList<String>) list4);
-        bundle.putStringArrayList("list5", (ArrayList<String>) list5);
+        bundle.putSerializable("list1", (Serializable) list1);
+        bundle.putSerializable("list2", (Serializable) list2);
+        bundle.putSerializable("list3", (Serializable) list3);
+        bundle.putSerializable("list4", (Serializable) list4);
+        bundle.putSerializable("list5", (Serializable) list5);
         bundle.putSerializable("cryptoGridViewList", (Serializable) gridList);
         intent.putExtra("bundleApprovedCrypto", bundle);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
@@ -84,42 +92,34 @@ public class ApprovingWorker extends Worker {
         long now = 1800000;
         databaseDB.deleteOldApproved(TABLE_NAME_APPROVED, TIME_APPROVED, timeToClearOldApproved);
 
-        List<String> lastSixHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(sixHours, twoHour);
-        List<String> lastTwoHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(twoHour, halfHour);
-        List<String> last30MinTokensStat = getListOfSymbolsAccordingToProvidedTime(halfHour, 0);
-        List<String> occurrencesOfLONGFreshApprovedTokens = new ArrayList<>();
-        List<String> occurrencesOfSHORTFreshApprovedTokens = new ArrayList<>();
+        ArrayList<ListViewElement> lastSixHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(sixHours, twoHour);
+        ArrayList<ListViewElement> lastTwoHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(twoHour, halfHour);
+        ArrayList<ListViewElement>last30MinTokensStat = getListOfSymbolsAccordingToProvidedTime(halfHour, 0);
+        ArrayList<ListViewElement> occurrencesOfLONGFreshApprovedTokens = new ArrayList<>();
+        ArrayList<ListViewElement> occurrencesOfSHORTFreshApprovedTokens = new ArrayList<>();
 
         if (last30MinTokensStat.size() > 0) {
 
-            boolean nothingOnList = last30MinTokensStat.get(0).contains("Nothing");
-
             for (int i = 0; i < last30MinTokensStat.size(); i++) {
-                String a = last30MinTokensStat.get(i);
-                //Log.e("APPPROVEDEDDEDD", String.valueOf(nothingOnList));
-                String result = a.substring(a.indexOf("[") + 1, a.indexOf("]"));
-                String result2 = "";
-                if (!nothingOnList) {
-                    Log.e(TAG, a);
-                    result2 = a.substring(a.indexOf("%") + 2, a.indexOf("[")-1);
-                }
-                int occurences = 1;
+                String result = last30MinTokensStat.get(i).getText();
+                int occurrences = 1;
                 for (int j = 0; j < lastTwoHoursTokensStat.size(); j++) {
-                    if (lastTwoHoursTokensStat.get(j).contains(result)) {
-                        occurences++;
+                    if (lastTwoHoursTokensStat.get(j).getText().contains(result)) {
+                        occurrences++;
                     }
                 }
                 for (int k = 0; k < lastSixHoursTokensStat.size(); k++) {
-                    if (lastSixHoursTokensStat.get(k).contains(result)) {
-                        occurences++;
+                    if (lastSixHoursTokensStat.get(k).getText().contains(result)) {
+                        occurrences++;
                     }
                 }
-                if (occurences > 1 && result2.contains("LONG")) {
-                    occurrencesOfLONGFreshApprovedTokens.add(result + " [" + result2 + "] on " + occurences + ".");
-                } else if (occurences > 1 && result2.contains("SHORT")) {
-                     occurrencesOfSHORTFreshApprovedTokens.add(result + " [" + result2 + "] on " + occurences + ".");
-                }
+                String finalResult = result + " on " + occurrences + " lists.";
+                if (occurrences > 1 && last30MinTokensStat.get(i).isItLONG()) {
 
+                    occurrencesOfLONGFreshApprovedTokens.add(new ListViewElement(finalResult));
+                } else if (occurrences > 1 ) {
+                    occurrencesOfSHORTFreshApprovedTokens.add(new ListViewElement(finalResult));
+                }
             }
         }
 
@@ -128,59 +128,40 @@ public class ApprovingWorker extends Worker {
 
     }
 
-    private List<String> getListOfSymbolsAccordingToProvidedTime(long timeFrom, long timeTo) {
+    private ArrayList<ListViewElement> getListOfSymbolsAccordingToProvidedTime(long timeFrom, long timeTo) {
 
         @SuppressLint("SimpleDateFormat")
         DateFormat df = new SimpleDateFormat("HH:mm");
         long currentTime = System.currentTimeMillis();
-        List<String> returnList = new ArrayList<>();
+        ArrayList<ListViewElement> returnList = new ArrayList<>();
 
         Cursor data2 = databaseDB.firstAppearOfTokenInCertainTime(currentTime - timeFrom, currentTime - timeTo);
 
         if (data2.getCount() == 0) {
-            returnList.add("[Nothing found in database.]");
+            returnList.add(new ListViewElement("Nothing in DB"));
         } else {
             while (data2.moveToNext()) {
 
                 ApprovedToken tempToken = new ApprovedToken(data2.getString(0), data2.getInt(8), data2.getFloat(5), data2.getLong(7), data2.getFloat(9));
-                String finalString;
                 String symbol = tempToken.getSymbol();
                 int longOrShort = tempToken.getLongOrShort();
                 long approveTime = tempToken.getTime();
                 float closePrice = tempToken.getClosePrice();
                 float price = tempToken.getPriceOnTimeOfApprove();
-
                 //Log.e("APPROVE SERVICE", symbol + " " + longOrShort + " " + approveTime + " " + (currentTime - timeFrom) + " ");
 
                 if (approveTime > currentTime - timeFrom) {
                     Timestamp stamp = new Timestamp(approveTime);
                     String date = df.format(new Date(stamp.getTime()));
-
-                    String longShort = "";
-                    DecimalFormat dfNr = new DecimalFormat("00.##");
-                    DecimalFormat dfPr = new DecimalFormat("#.######");
-
                     float percentOfChange = ((closePrice / price) * 100) - 100;
-
-                    //Log.e("APPHIST", price + " " + closePrice + " " + percentOfChange);
 
                     if (longOrShort == 0) {
                         if (percentOfChange < -0.25){
-                            longShort = "SHORT";
-//                            finalString = date + " -- " + longShort + " [" + symbol + "] -- " +  dfPr.format(price)
-//                                    + " (" + dfNr.format(percentOfChange) +"%)";
-                            finalString = dfNr.format(percentOfChange) +"% " + longShort  + " [" + symbol + "]" + " " + date
-                                    + " (" + dfPr.format(price) + ")";
-                            returnList.add(finalString);
+                            returnList.add(new ListViewElement(symbol, percentOfChange, price, date,false));
                         }
                     } else if (longOrShort == 1) {
                         if (percentOfChange > 0.25) {
-                            longShort = "LONG";
-//                            finalString = date + " -- " + longShort + " [" + symbol + "] -- " + dfPr.format(price)
-//                                    + " (" + dfNr.format(percentOfChange) +"%)";
-                            finalString = dfNr.format(percentOfChange) +"% " + longShort  + " [" + symbol + "]" + " " + date
-                                    + " (" + dfPr.format(price) + ")";
-                            returnList.add(finalString);
+                            returnList.add(new ListViewElement(symbol, percentOfChange, price, date,true));
                         }
                     }
                 }
@@ -188,15 +169,15 @@ public class ApprovingWorker extends Worker {
         }
         data2.close();
 
-
         if (returnList.size() == 0) {
-            returnList.add("[Nothing passed a test.]");
+            returnList.add(new ListViewElement("Nothing good", 0, 0, "",true));
         } else {
-            Collections.sort(returnList,Collections.reverseOrder());
+            Collections.sort(returnList, new Comparator<ListViewElement>() {
+                public int compare(ListViewElement o1, ListViewElement o2) {
+                    return Float.compare(o2.getPercentChange(), o1.getPercentChange());
+                }
+            });
         }
-
-        Log.e(TAG, timeFrom + "  " + returnList);
-
         return returnList;
 
     }
@@ -211,7 +192,7 @@ public class ApprovingWorker extends Worker {
 //        }
 //    }
 
-    public void setMainParametersOnView(List<String> tokenList1, List<String> tokenList2, List<String> tokenList3, List<String> tokenList4, List<String> tokenList5) {
+    public void setMainParametersOnView(ArrayList<ListViewElement> tokenList1, ArrayList<ListViewElement> tokenList2, ArrayList<ListViewElement>tokenList3, ArrayList<ListViewElement>tokenList4, ArrayList<ListViewElement> tokenList5) {
 
         ArrayList<GridViewElement> cryptoGridViewList = new ArrayList<>();
         Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
@@ -369,19 +350,4 @@ public class ApprovingWorker extends Worker {
     }
 
 
-    @NonNull
-    @Override
-    public Result doWork() {
-        databaseDB = DBHandler.getInstance(getApplicationContext());
-        new Thread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.e(TAG, "START");
-                        approvingCryptos();
-                    }
-                }
-        ).start();
-        return Result.success();
-    }
 }

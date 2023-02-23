@@ -1,94 +1,265 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-xmlns:app="http://schemas.android.com/apk/res-auto"
-xmlns:tools="http://schemas.android.com/tools"
-android:layout_width="match_parent"
-android:layout_height="match_parent"
-android:orientation="vertical"
-tools:context=".ui.orders.OrdersFragment">
-
-<LinearLayout
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".ui.orders.OrdersFragment">
 
-    <TextView
-        android:id="@+id/result_title_1d"
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="5dp"
-        android:layout_marginBottom="100dp"
-        android:text="RESULTS 24H:"
-        android:textAlignment="center"
-        android:textAllCaps="true"
-        android:textStyle="bold" />
+        android:orientation="horizontal">
 
-    <TextView
-        android:id="@+id/results_1d"
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_real_test"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginBottom="12dp"
+                android:layout_marginTop="15dp"
+                android:text="Real/Test:"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tv_isolated_crossed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginBottom="12dp"
+                android:layout_marginTop="13dp"
+                android:text="Isolated/Crossed:"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tv_long_short"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginBottom="11dp"
+                android:layout_marginTop="14dp"
+                android:text="Long/Short:"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tv_symbol"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginBottom="11dp"
+                android:layout_marginTop="16dp"
+                android:text="Symbol:"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tv_amount_usdt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Amount of USDT:"
+                android:layout_marginStart="12dp"
+                android:layout_marginBottom="11dp"
+                android:layout_marginTop="12dp"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tv_sl_percentage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SL Percentage:"
+                android:layout_marginStart="12dp"
+                android:layout_marginBottom="11dp"
+                android:layout_marginTop="12dp"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tv_margin_amount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Margin Amount:"
+                android:layout_marginStart="12dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="11dp"
+                android:textSize="16sp" />
+
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1.5"
+            android:orientation="vertical">
+
+            <RadioGroup
+                android:id="@+id/radio_group_real_test"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rb_real"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="16dp"
+                    android:text="Real" />
+
+                <RadioButton
+                    android:id="@+id/rb_test"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Test" />
+
+            </RadioGroup>
+
+            <RadioGroup
+                android:id="@+id/radio_group_isolated_crossed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rb_isolated"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="16dp"
+                    android:text="Isolated" />
+
+                <RadioButton
+                    android:id="@+id/rb_crossed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Crossed" />
+
+            </RadioGroup>
+
+            <RadioGroup
+                android:id="@+id/radio_group_long_short"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rb_long"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="16dp"
+                    android:text="Long" />
+
+                <RadioButton
+                    android:id="@+id/rb_short"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Short" />
+            </RadioGroup>
+
+            <EditText
+                android:id="@+id/et_symbol"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:hint="Enter symbol"
+                android:inputType="textCapWords" />
+
+            <EditText
+                android:id="@+id/et_amount_usdt"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:inputType="number"
+                android:hint="Enter USDT (full nr)" />
+
+            <EditText
+                android:id="@+id/et_sl_percentage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:inputType="number"
+                android:hint="Enter SL % (full nr)" />
+
+            <EditText
+                android:id="@+id/et_margin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:hint="Enter margin (full nr)"
+                android:inputType="number" />
+
+        </LinearLayout>
+
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/linear_space_1"
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="4dp"
+        android:background="@color/orange_700"
+        android:orientation="horizontal" />
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="5dp"
-        android:text="..."
-        android:textAlignment="center"
-        android:textAllCaps="true"
-        android:textStyle="bold" />
+        android:orientation="vertical"
+        >
 
-</LinearLayout>
+        <Button
+            android:id="@+id/bt_order"
+            android:layout_gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Place Order"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:textSize="16sp" />
 
-<LinearLayout
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/result_title_7d"
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/linear_space_2"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="5dp"
-        android:layout_marginBottom="100dp"
-        android:text="RESULTS 1 WEEK:"
-        android:textAlignment="center"
-        android:textAllCaps="true"
-        android:textStyle="bold" />
+        android:layout_height="3dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:background="@color/orange_700"
+        android:orientation="horizontal" />
 
-    <TextView
-        android:id="@+id/results_7d"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="5dp"
-        android:text="..."
-        android:textAlignment="center"
-        android:textAllCaps="true"
-        android:textStyle="bold" />
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-</LinearLayout>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="2dp"
+            android:text="Current orders list (test and real):"
+            android:textAlignment="center" />
 
-<LinearLayout
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical">
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rw_currentOrders"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="5dp" />
 
-    <TextView
-        android:id="@+id/result_title_30d"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="5dp"
-        android:layout_marginBottom="100dp"
-        android:text="RESULTS 1 MONTH:"
-        android:textAlignment="center"
-        android:textAllCaps="true"
-        android:textStyle="bold" />
+    </LinearLayout>
 
-    <TextView
-        android:id="@+id/results_30d"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="5dp"
-        android:text="..."
-        android:textAlignment="center"
-        android:textAllCaps="true"
-        android:textStyle="bold" />
 
-</LinearLayout>
+
 
 </LinearLayout>

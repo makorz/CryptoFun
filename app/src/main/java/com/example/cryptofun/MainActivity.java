@@ -22,8 +22,6 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.navigation.NavController;
-import androidx.navigation.fragment.NavHostFragment;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 
@@ -47,10 +45,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
     private ActivityMainBinding binding;
-    private NavController navController;
-    private NavHostFragment navHostFragment;
     private boolean DBCreated = false;
-    DBHandler databaseDB;
+    private DBHandler databaseDB;
 
     private final Fragment fragment0 = new LoadingFragment();
     private final Fragment fragment1 = new HomeFragment();
@@ -61,41 +57,6 @@ public class MainActivity extends AppCompatActivity {
     final FragmentManager fm = getSupportFragmentManager();
     BottomNavigationView bottomNavigationView;
 
-    @Override
-    protected void onPostResume() {
-        Log.e(TAG, "PostResume");
-        super.onPostResume();
-    }
-
-    @Override
-    protected void onStart() {
-        Log.e(TAG, "Start");
-        super.onStart();
-    }
-
-    @Override
-    protected void onStop() {
-        Log.e(TAG, "Stop");
-        super.onStop();
-    }
-
-    @Override
-    protected void onPause() {
-        Log.e(TAG, "Pause");
-        super.onPause();
-    }
-
-    @Override
-    protected void onResume() {
-        Log.e(TAG, "Resume");
-        super.onResume();
-    }
-
-    @Override
-    protected void onRestart() {
-        Log.e(TAG, "Restart");
-        super.onRestart();
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -106,7 +67,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
         Objects.requireNonNull(this.getSupportActionBar()).hide();
         getWindow().setNavigationBarColor(ContextCompat.getColor(this,R.color.orange_700));
-
 
         TextView timeView = binding.textMain;
         bottomNavigationView = findViewById(R.id.nav_view2);
@@ -153,26 +113,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-//         Passing each menu ID as a set of Ids because each
-//         menu should be considered as top level destinations.
-//        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
-//                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
-//                .build();
-//        navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment_activity_main);
-//        assert navHostFragment != null;
-//        navController = navHostFragment.getNavController();
-//        //NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
-//        NavigationUI.setupWithNavController(binding.navView2, navController);
-
-
-
-
-
         if (!isMyServiceRunning(CreatingDatabaseService.class) && !isMyServiceRunning(CreatingDatabaseWorker.class)) {
             ProgressBar loadingBar = binding.loaderOfData;
             loadingBar.setVisibility(View.VISIBLE);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                OneTimeWorkRequest request = new OneTimeWorkRequest.Builder ( CreatingDatabaseWorker.class ).addTag ( "CREATE_WORKER_TAG" ).build ();
+                OneTimeWorkRequest request = new OneTimeWorkRequest.Builder ( CreatingDatabaseWorker.class ).addTag ( "WORKER_TAG" ).build ();
                 WorkManager.getInstance ( this ).enqueue ( request );
             } else {
                 Intent serviceIntent = new Intent(this,
@@ -221,9 +166,6 @@ public class MainActivity extends AppCompatActivity {
 
                 } else {
                     Log.e(TAG, "SendUPDMessageReceivedB");
-//                    Log.e(TAG, "Is UPDRunning? " + isMyServiceRunning(UpdatingDatabaseService.class));
-//                    Log.e(TAG, "Is CRTRunning? " + isMyServiceRunning(CreatingDatabaseService.class));
-//                    Log.e(TAG, "Is AlarmRunning? " + isMyServiceRunning(AlarmReceiverLoopingService.class));
                     TextView timeView = binding.textMain;
                     timeView.setText(intent.getStringExtra("updateDate"));
                     AlarmReceiverLoopingService alarm = new AlarmReceiverLoopingService();
@@ -232,7 +174,6 @@ public class MainActivity extends AppCompatActivity {
             } else if (intent.getAction().equals("DB_created")) {
                 DBCreated = intent.getBooleanExtra("finishedCRTDB", false);
                 Log.e(TAG, "SendCRTMessageReceived");
-                //navController.popBackStack(R.id.navigation_loading, true);
                 AlarmReceiverLoopingService alarm = new AlarmReceiverLoopingService();
                 alarm.setAlarm(getApplicationContext(), 0);
             }
@@ -263,5 +204,42 @@ public class MainActivity extends AppCompatActivity {
         }
         return false;
     }
+
+    @Override
+    protected void onPostResume() {
+        Log.e(TAG, "PostResume");
+        super.onPostResume();
+    }
+
+    @Override
+    protected void onStart() {
+        Log.e(TAG, "Start");
+        super.onStart();
+    }
+
+    @Override
+    protected void onStop() {
+        Log.e(TAG, "Stop");
+        super.onStop();
+    }
+
+    @Override
+    protected void onPause() {
+        Log.e(TAG, "Pause");
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        Log.e(TAG, "Resume");
+        super.onResume();
+    }
+
+    @Override
+    protected void onRestart() {
+        Log.e(TAG, "Restart");
+        super.onRestart();
+    }
+
 
 }

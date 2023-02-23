@@ -29,8 +29,8 @@ public class ResultsFragment extends Fragment {
         binding = FragmentResultsBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        final TextView textView = binding.textResults;
-        resultsViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
+//        final TextView textView = binding.textResults;
+//        resultsViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
         return root;
     }
 

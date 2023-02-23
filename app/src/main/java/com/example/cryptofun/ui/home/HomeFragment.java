@@ -11,9 +11,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -25,16 +23,17 @@ import androidx.work.ExistingWorkPolicy;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 
-import com.example.cryptofun.R;
 import com.example.cryptofun.databinding.FragmentHomeBinding;
 import com.example.cryptofun.database.DBHandler;
-import com.example.cryptofun.services.AlarmReceiverLoopingService;
 import com.example.cryptofun.services.ApprovingService;
 import com.example.cryptofun.services.ApprovingWorker;
 import com.example.cryptofun.services.UpdatingDatabaseService;
 import com.example.cryptofun.services.UpdatingDatabaseWorker;
+import com.example.cryptofun.ui.view.CryptoGridAdapter;
+import com.example.cryptofun.ui.view.CryptoListAdapter;
 import com.example.cryptofun.ui.view.GridViewElement;
 import com.example.cryptofun.ui.view.ListViewElement;
+import com.example.cryptofun.ui.view.SimpleListAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,8 +44,9 @@ public class HomeFragment extends Fragment {
 
     private FragmentHomeBinding binding;
     private DBHandler databaseDB;
-    private ListView topListView, middleListView, bottomListView, mainListView, mainListView2;
-    private RecyclerView.LayoutManager layoutManager, list6Manager, list2Manager, list30Manager, listLONGManager, listSHORTManager;
+    CryptoListAdapter myAdapter6, myAdapter2, myAdapter30;
+    SimpleListAdapter myAdapterLONG, myAdapterSHORT;
+    CryptoGridAdapter gridAdapter;
     private int resumeControl;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -57,18 +57,26 @@ public class HomeFragment extends Fragment {
 
         binding = FragmentHomeBinding.inflate(inflater, container, false);
 
-        layoutManager = new GridLayoutManager(getContext(), 6, GridLayoutManager.HORIZONTAL, false);
-        list6Manager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,false);
-        list2Manager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,false);
-        list30Manager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,false);
-        listLONGManager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,false);
-        listSHORTManager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,false);
-        binding.cryptoRecyclerView.setLayoutManager(layoutManager);
-        binding.cryptoList6RecyclerView.setLayoutManager(list6Manager);
-        binding.cryptoList2RecyclerView.setLayoutManager(list2Manager);
-        binding.cryptoList30RecyclerView.setLayoutManager(list30Manager);
-        binding.cryptoListLONGRecyclerView.setLayoutManager(listLONGManager);
-        binding.cryptoListSHORTRecyclerView.setLayoutManager(listSHORTManager);
+        binding.cryptoRecyclerView.setLayoutManager(new GridLayoutManager(getContext(), 6, GridLayoutManager.HORIZONTAL, false));
+        binding.cryptoList6RecyclerView.setLayoutManager( new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,false));
+        binding.cryptoList2RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,false));
+        binding.cryptoList30RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,false));
+        binding.cryptoListLONGRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,false));
+        binding.cryptoListSHORTRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,false));
+        ArrayList<ListViewElement> initialList = new ArrayList<>();
+        ArrayList<GridViewElement> initialGrid = new ArrayList<>();
+        gridAdapter = new CryptoGridAdapter(initialGrid);
+        myAdapter6 = new CryptoListAdapter(initialList);
+        myAdapter2 = new CryptoListAdapter(initialList);
+        myAdapter30 = new CryptoListAdapter(initialList);
+        myAdapterLONG = new SimpleListAdapter(initialList);
+        myAdapterSHORT = new SimpleListAdapter(initialList);
+        binding.cryptoRecyclerView.setAdapter(gridAdapter);
+        binding.cryptoList6RecyclerView.setAdapter(myAdapter6);
+        binding.cryptoList2RecyclerView.setAdapter(myAdapter2);
+        binding.cryptoList30RecyclerView.setAdapter(myAdapter30);
+        binding.cryptoListLONGRecyclerView.setAdapter(myAdapterLONG);
+        binding.cryptoListSHORTRecyclerView.setAdapter(myAdapterSHORT);
 
         View root = binding.getRoot();
         databaseDB = new DBHandler(getContext());
@@ -80,8 +88,7 @@ public class HomeFragment extends Fragment {
         Log.e(TAG, "isServiceRunning APRV: " + isMyServiceRunning(ApprovingService.class, getContext()) + " UPDT: "
                 + isMyServiceRunning(UpdatingDatabaseService.class, getContext()));
 
-        if ((!isMyServiceRunning(ApprovingService.class, getContext()) && !isMyServiceRunning(UpdatingDatabaseService.class, getContext()))
-                && (!isMyServiceRunning(ApprovingWorker.class, getContext()) && !isMyServiceRunning(UpdatingDatabaseWorker.class, getContext()))) {
+        if ((!isMyServiceRunning(ApprovingService.class, getContext()) && !isMyServiceRunning(UpdatingDatabaseService.class, getContext()))) {
             Log.e(TAG, "APRVServiceBegin");
             resumeControl = 1;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -123,32 +130,28 @@ public class HomeFragment extends Fragment {
                 Bundle bundle = intent.getBundleExtra("bundleApprovedCrypto");
                 Log.e(TAG, "APRVServiceReceived " + Thread.currentThread());
 
-                ArrayList<GridViewElement> cryptoGridViewList = (ArrayList<GridViewElement>) bundle.getSerializable("cryptoGridViewList");
-                binding.cryptoRecyclerView.setAdapter(new CryptoGridAdapter(cryptoGridViewList));
-                ArrayList<ListViewElement> cryptoListView6 = (ArrayList<ListViewElement>) bundle.getSerializable("list3");
-                binding.cryptoList6RecyclerView.setAdapter(new CryptoListAdapter(cryptoListView6));
-                ArrayList<ListViewElement> cryptoListView2 = (ArrayList<ListViewElement>) bundle.getSerializable("list2");
-                binding.cryptoList2RecyclerView.setAdapter(new CryptoListAdapter(cryptoListView2));
-                ArrayList<ListViewElement> cryptoListView30 = (ArrayList<ListViewElement>) bundle.getSerializable("list1");
-                binding.cryptoList30RecyclerView.setAdapter(new CryptoListAdapter(cryptoListView30));
-                ArrayList<ListViewElement> cryptoListViewLONG = (ArrayList<ListViewElement>) bundle.getSerializable("list4");
-                binding.cryptoListLONGRecyclerView.setAdapter(new CryptoListAdapter(cryptoListViewLONG));
-                ArrayList<ListViewElement> cryptoListViewsSHORT = (ArrayList<ListViewElement>) bundle.getSerializable("list5");
-                binding.cryptoListSHORTRecyclerView.setAdapter(new CryptoListAdapter(cryptoListViewsSHORT));
+                onReceiveNewGridList(gridAdapter, (ArrayList<GridViewElement>) bundle.getSerializable("cryptoGridViewList"));
+                onReceiveNewList(myAdapter2, (ArrayList<ListViewElement>) bundle.getSerializable("list2"));
+                onReceiveNewList(myAdapter6, (ArrayList<ListViewElement>) bundle.getSerializable("list3"));
+                onReceiveNewList(myAdapter30, (ArrayList<ListViewElement>) bundle.getSerializable("list1"));
+                onReceiveNewSimpleList(myAdapterLONG, (ArrayList<ListViewElement>) bundle.getSerializable("list4"));
+                onReceiveNewSimpleList(myAdapterSHORT, (ArrayList<ListViewElement>) bundle.getSerializable("list5"));
 
             } else if (intent.getAction().equals("DB_updated")) {
                 Log.e(TAG, "SendUPDMessageReceived");
                 if (!intent.getExtras().getBoolean("updateStarted")) {
-                    Intent serviceIntent = new Intent(getActivity(),
-                            ApprovingService.class);
 
-                    if (!isMyServiceRunning(ApprovingService.class, getContext())) {
+                    if (!isMyServiceRunning(ApprovingService.class, getContext()) && !isMyServiceRunning(UpdatingDatabaseService.class, getContext())) {
                         Log.e(TAG, "APRVServiceBegin");
 
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(ApprovingWorker.class).addTag("UPDATE_WORKER_TAG").build();
-                            WorkManager.getInstance(getContext()).enqueueUniqueWork("UPDATE_WORKER_TAG", ExistingWorkPolicy.KEEP,request);
+                            Log.e(TAG, "APRVServiceBegin2");
+                            OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(ApprovingWorker.class).addTag("WORKER_TAG").build();
+                            WorkManager.getInstance(getContext()).enqueueUniqueWork("WORKER_TAG", ExistingWorkPolicy.KEEP,request);
                         } else {
+                            Log.e(TAG, "APRVServiceBegin3");
+                            Intent serviceIntent = new Intent(getActivity(),
+                                    ApprovingService.class);
                             getContext().startForegroundService(serviceIntent);
                         }
 
@@ -197,22 +200,34 @@ public class HomeFragment extends Fragment {
     @Override
     public void onResume() {
         Log.e(TAG,"Resume");
-        Intent serviceIntent = new Intent(getActivity(),
-                ApprovingService.class);
-
-        if (!isMyServiceRunning(ApprovingService.class, getContext()) && !isMyServiceRunning(UpdatingDatabaseService.class, getContext())
-                && resumeControl != 1) {
-            Log.e(TAG, "APRVServiceBeginFromResume");
-            resumeControl = 1;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(ApprovingWorker.class).addTag("UPDATE_WORKER_TAG").build();
-                WorkManager.getInstance(getContext()).enqueueUniqueWork("UPDATE_WORKER_TAG", ExistingWorkPolicy.KEEP,request);
-            } else {
-                getContext().startForegroundService(serviceIntent);
-            }
-            resumeControl = 0;
-        }
+//        Intent serviceIntent = new Intent(getActivity(),
+//                ApprovingService.class);
+//
+//        if (!isMyServiceRunning(ApprovingService.class, getContext()) && !isMyServiceRunning(UpdatingDatabaseService.class, getContext())
+//                && resumeControl != 1) {
+//            Log.e(TAG, "APRVServiceBeginFromResume");
+//            resumeControl = 1;
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//                OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(ApprovingWorker.class).addTag("UPDATE_WORKER_TAG").build();
+//                WorkManager.getInstance(getContext()).enqueueUniqueWork("UPDATE_WORKER_TAG", ExistingWorkPolicy.KEEP,request);
+//            } else {
+//                getContext().startForegroundService(serviceIntent);
+//            }
+//            resumeControl = 0;
+//        }
 
         super.onResume();
+    }
+
+    public void onReceiveNewList(CryptoListAdapter adapter, ArrayList<ListViewElement> newList) {
+        adapter.updateList(newList);
+    }
+
+    public void onReceiveNewSimpleList(SimpleListAdapter adapter, ArrayList<ListViewElement> newList) {
+        adapter.updateList(newList);
+    }
+
+    public void onReceiveNewGridList(CryptoGridAdapter adapter, ArrayList<GridViewElement> newList) {
+        adapter.updateList(newList);
     }
 }
