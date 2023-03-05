@@ -24,21 +24,22 @@ public class AlarmReceiverLoopingService extends BroadcastReceiver {
     private static final String TAG = "AlarmService";
     
     @Override
-    public void onReceive(Context context, Intent intent)
-    {
+    public void onReceive(Context context, Intent intent){
+
         Intent in = new Intent(context, UpdatingDatabaseService.class);
 
         Log.e(TAG, "isServiceRunning APRV: " + isMyServiceRunning(ApprovingService.class, context) + " UPDT: "
                 + isMyServiceRunning(UpdatingDatabaseService.class, context));
 
-        if (!isMyServiceRunning(ApprovingService.class, context) && !isMyServiceRunning(UpdatingDatabaseService.class, context)) {
-            Log.e(TAG, "start service");
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(UpdatingDatabaseWorker.class).addTag("WORKER_TAG").build();
-                WorkManager.getInstance(context).enqueueUniqueWork("WORKER_TAG", ExistingWorkPolicy.KEEP,request);
-            } else {
-                context.startForegroundService(in);
-            }
+        if (!isMyServiceRunning(UpdatingDatabaseService.class, context)) {
+            Log.e(TAG, "Start service UPD");
+            context.startForegroundService(in);
+        }
+
+        if (!isMyServiceRunning(ApprovingService.class, context)) {
+            Log.e(TAG, "Start service APRV");
+            Intent serviceIntent = new Intent(context, ApprovingService.class);
+            context.startForegroundService(serviceIntent);
         }
 
         setAlarm(context, 1);
@@ -61,14 +62,13 @@ public class AlarmReceiverLoopingService extends BroadcastReceiver {
         Intent i = new Intent(context, AlarmReceiverLoopingService.class);
         PendingIntent pi = PendingIntent.getBroadcast(context, 0, i, PendingIntent.FLAG_IMMUTABLE);
         assert am != null;
-        if (when == 0) {
-            Log.e(TAG, "000");
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 10L * 1000L, pi);
-        } else {
-            Log.e(TAG, "111");
+//        if (when == 0) {
+//            Log.e(TAG, "000");
+//            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 10L * 1000L, pi);
+//        } else {
+            Log.e(TAG, "Time: 60s");
             am.setAlarmClock(new AlarmManager.AlarmClockInfo((System.currentTimeMillis() + 60L * 1000L), pi), pi);
-            //am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, (System.currentTimeMillis() + 60L * 1000L) , pi); //Next alarm in 60s
-        }
+//        }
 
     }
 

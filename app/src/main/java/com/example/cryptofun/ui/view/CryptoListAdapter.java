@@ -63,8 +63,8 @@ public class CryptoListAdapter extends RecyclerView.Adapter<CryptoListAdapter.Vi
         String time = items.get(position).getTime();
         boolean isItLong = items.get(position).isItLONG();
 
-        DecimalFormat dfNr = new DecimalFormat("0.##");
-        DecimalFormat dfPr = new DecimalFormat("#.######");
+        DecimalFormat dfNr = new DecimalFormat("0.00");
+        DecimalFormat dfPr = new DecimalFormat("0.00000");
         holder.title.setText(symbol);
         if (symbol.contains("Nothing")) {
 
@@ -81,7 +81,12 @@ public class CryptoListAdapter extends RecyclerView.Adapter<CryptoListAdapter.Vi
                 holder.longOrShort.setTextColor(Color.RED);
             }
             holder.percent.setText(dfNr.format(percentChange) + "%");
-            holder.firstPrice.setText(dfPr.format(priceWhenCaught));
+            if (priceWhenCaught > 10) {
+                holder.firstPrice.setText(dfNr.format(priceWhenCaught));
+            } else {
+                holder.firstPrice.setText(dfPr.format(priceWhenCaught));
+            }
+
             holder.time.setText(time);
         }
 

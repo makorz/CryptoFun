@@ -1,37 +1,60 @@
 package com.example.cryptofun.services;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.example.cryptofun.R;
+import com.example.cryptofun.data.AccountBalance;
 import com.example.cryptofun.data.ApprovedToken;
+import com.example.cryptofun.data.MarkPrice;
 import com.example.cryptofun.database.DBHandler;
 import com.example.cryptofun.database.Kline;
+import com.example.cryptofun.retrofit.RetrofitClientFutures;
+import com.example.cryptofun.retrofit.RetrofitClientSecret;
 import com.example.cryptofun.ui.view.GridViewElement;
 import com.example.cryptofun.ui.view.ListViewElement;
+import com.example.cryptofun.ui.view.OrderListViewElement;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.sql.Array;
 import java.sql.Timestamp;
 import java.text.DateFormat;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
+
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.core.Observer;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class ApprovingService extends Service {
 
@@ -43,6 +66,24 @@ public class ApprovingService extends Service {
     private final List<String> listOfSymbols = new ArrayList<>();
     private static final String TABLE_NAME_KLINES_DATA = "klines_data";
     private static final String TABLE_SYMBOL_AVG = "crypto_avg_price";
+    private static final String ID = "id";
+    private static final String TABLE_NAME_CONFIG = "config";
+    private static final String DESCRIPTION = "description";
+    private static final String VALUE_STRING = "value_string";
+    private static final String VALUE_INT = "value_int";
+    private static final String VALUE_REAL = "value_real";
+    private static final String TABLE_NAME_ORDERS = "current_orders";
+    int howManyNeedsToDo = 6;
+    int serviceFinishedEverything = 0;
+
+    ArrayList<ListViewElement> lastSixHoursTokensStat = new ArrayList<>();
+    ArrayList<ListViewElement> lastTwoHoursTokensStat = new ArrayList<>();
+    ArrayList<ListViewElement> last30MinTokensStat = new ArrayList<>();
+    ArrayList<ListViewElement> occurrencesOfLONGFreshApprovedTokens = new ArrayList<>();
+    ArrayList<ListViewElement> occurrencesOfSHORTFreshApprovedTokens = new ArrayList<>();
+    ArrayList<GridViewElement> cryptoGridViewList = new ArrayList<>();
+    ArrayList<ListViewElement> cryptoForLONGOrders = new ArrayList<>();
+    ArrayList<ListViewElement> cryptoForSHORTOrders = new ArrayList<>();
 
     @Override
     public void onDestroy() {
@@ -52,42 +93,19 @@ public class ApprovingService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        databaseDB = DBHandler.getInstance(this);
+        databaseDB = DBHandler.getInstance(getApplicationContext());
+
         new Thread(
                 new Runnable() {
                     @Override
                     public void run() {
                         Log.e(TAG, "START");
-
                         // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-                        String CHANNEL_ID = "cryptoFun";
-                        PendingIntent pendingIntent =
-                                PendingIntent.getActivity(getApplicationContext(), 0, intent,
-                                        PendingIntent.FLAG_IMMUTABLE);
-
-                        NotificationChannel chan = new NotificationChannel(
-                                CHANNEL_ID,
-                                TAG,
-                                NotificationManager.IMPORTANCE_LOW);
-                        chan.setLightColor(Color.BLUE);
-                        chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
-
-                        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                        assert manager != null;
-                        manager.createNotificationChannel(chan);
-
-                        Notification notification =
-                                new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-                                        .setContentTitle("Approving")
-                                        .setContentText("Verifying money, buddy!")
-                                        .setContentIntent(pendingIntent)
-                                        .setChannelId(CHANNEL_ID)
-                                        .build();
-
+                        Notification notification = createNotification();
                         // Notification ID cannot be 0.
-                        startForeground(2, notification);
-
+                        startForeground(1, notification);
                         approvingCryptos();
+
                     }
                 }
         ).start();
@@ -95,33 +113,67 @@ public class ApprovingService extends Service {
         return START_STICKY;
     }
 
+    private Notification createNotification() {
+
+        String CHANNEL_ID = "cryptoFun";
+
+        NotificationChannel chan = new NotificationChannel(
+                CHANNEL_ID,
+                TAG,
+                NotificationManager.IMPORTANCE_LOW);
+        chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        assert manager != null;
+        manager.createNotificationChannel(chan);
+
+        // Create a notification to indicate that the service is running.
+        // You can customize the notification to display the information you want.
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Approving")
+                .setContentText("It's coming!")
+                .setSmallIcon(R.drawable.crypto_fun_logo)
+                .setPriority(NotificationCompat.PRIORITY_MIN);
+
+        return builder.build();
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
 
-    private void sendMessageToActivity(ArrayList<ListViewElement> list1, ArrayList<ListViewElement> list2, ArrayList<ListViewElement>  list3,
-                                       ArrayList<ListViewElement>  list4, ArrayList<ListViewElement>  list5, ArrayList<GridViewElement> gridList) {
-
-        Intent intent = new Intent("ApprovedService");
-        Log.e(TAG, "SendMessage " + Thread.currentThread() + " " + Thread.activeCount());
-        Bundle bundle = new Bundle();
-        // 1 - 30min, 2 - 2h, 3 - 6h
-        bundle.putSerializable("list1", (Serializable) list1);
-        bundle.putSerializable("list2", (Serializable) list2);
-        bundle.putSerializable("list3", (Serializable) list3);
-        bundle.putSerializable("list4", (Serializable) list4);
-        bundle.putSerializable("list5", (Serializable) list5);
-        bundle.putSerializable("cryptoGridViewList", (Serializable) gridList);
-        intent.putExtra("bundleApprovedCrypto", bundle);
-        LocalBroadcastManager.getInstance(ApprovingService.this).sendBroadcast(intent);
-        databaseDB.close();
-        stopSelf();
+    private void sendMessageToActivity() {
+        Log.e(TAG, "RESULT: " + serviceFinishedEverything + " HOW: " + howManyNeedsToDo);
+        if (serviceFinishedEverything >= howManyNeedsToDo) {
+            Intent intent = new Intent("ApprovedService");
+            Log.e(TAG, "SendMessage " + Thread.currentThread() + " " + Thread.activeCount());
+            Bundle bundle = new Bundle();
+            // 1 - 30min, 2 - 2h, 3 - 6h
+            bundle.putSerializable("list1", (Serializable) last30MinTokensStat);
+            bundle.putSerializable("list2", (Serializable) lastTwoHoursTokensStat);
+            bundle.putSerializable("list3", (Serializable) lastSixHoursTokensStat);
+            bundle.putSerializable("list4", (Serializable) occurrencesOfLONGFreshApprovedTokens);
+            bundle.putSerializable("list5", (Serializable) occurrencesOfSHORTFreshApprovedTokens);
+            bundle.putSerializable("cryptoGridViewList", (Serializable) cryptoGridViewList);
+            intent.putExtra("bundleApprovedCrypto", bundle);
+            LocalBroadcastManager.getInstance(ApprovingService.this).sendBroadcast(intent);
+            stopForeground(true);
+            stopSelf();
+        }
     }
+
 
     private void sendInfoToActivity() {
         Intent intent = new Intent("Approve_Fragment_Prepared");
         Log.e(TAG, "Fragment updated");
+        Bundle bundle = new Bundle();
+        bundle.putSerializable("list1", (Serializable) last30MinTokensStat);
+        bundle.putSerializable("list2", (Serializable) lastTwoHoursTokensStat);
+        bundle.putSerializable("list3", (Serializable) lastSixHoursTokensStat);
+        bundle.putSerializable("list4", (Serializable) occurrencesOfLONGFreshApprovedTokens);
+        bundle.putSerializable("list5", (Serializable) occurrencesOfSHORTFreshApprovedTokens);
+        bundle.putSerializable("cryptoGridViewList", (Serializable) cryptoGridViewList);
+        intent.putExtra("bundleApprovedCrypto", bundle);
         LocalBroadcastManager.getInstance(ApprovingService.this).sendBroadcast(intent);
     }
 
@@ -130,14 +182,13 @@ public class ApprovingService extends Service {
         long sixHours = 21600000;
         long twoHour = 7200000;
         long halfHour = 1800000;
+        long tenMinutes = 600000;
         long now = 1800000;
         databaseDB.deleteOldApproved(TABLE_NAME_APPROVED, TIME_APPROVED, timeToClearOldApproved);
 
-        ArrayList<ListViewElement>  lastSixHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(sixHours, twoHour);
-        ArrayList<ListViewElement>  lastTwoHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(twoHour, halfHour);
-        ArrayList<ListViewElement>  last30MinTokensStat = getListOfSymbolsAccordingToProvidedTime(halfHour, 0);
-        ArrayList<ListViewElement>  occurrencesOfLONGFreshApprovedTokens = new ArrayList<>();
-        ArrayList<ListViewElement>  occurrencesOfSHORTFreshApprovedTokens = new ArrayList<>();
+        lastSixHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(sixHours, twoHour);
+        lastTwoHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(twoHour, halfHour);
+        last30MinTokensStat = getListOfSymbolsAccordingToProvidedTime(tenMinutes, 0);
 
         if (last30MinTokensStat.size() > 0) {
 
@@ -155,17 +206,21 @@ public class ApprovingService extends Service {
                     }
                 }
                 String finalResult = result + " on " + occurences + " lists.";
-                if (occurences > 1 && last30MinTokensStat.get(i).isItLONG()) {
-
-                    occurrencesOfLONGFreshApprovedTokens.add(new ListViewElement(finalResult));
-                } else if (occurences > 1 ) {
-                    occurrencesOfSHORTFreshApprovedTokens.add(new ListViewElement(finalResult));
+                if (last30MinTokensStat.get(i).isItLONG()) {
+                    cryptoForLONGOrders.add(last30MinTokensStat.get(i));
+                    if (occurences > 1) {
+                        occurrencesOfLONGFreshApprovedTokens.add(new ListViewElement(finalResult));
+                    }
+                } else {
+                    cryptoForSHORTOrders.add(last30MinTokensStat.get(i));
+                    if (occurences > 1) {
+                        occurrencesOfSHORTFreshApprovedTokens.add(new ListViewElement(finalResult));
+                    }
                 }
             }
         }
 
-        setMainParametersOnView(last30MinTokensStat, lastTwoHoursTokensStat, lastSixHoursTokensStat,
-                occurrencesOfLONGFreshApprovedTokens, occurrencesOfSHORTFreshApprovedTokens);
+        setMainParametersOnView();
 
     }
 
@@ -179,7 +234,8 @@ public class ApprovingService extends Service {
         Cursor data2 = databaseDB.firstAppearOfTokenInCertainTime(currentTime - timeFrom, currentTime - timeTo);
 
         if (data2.getCount() == 0) {
-            returnList.add(new ListViewElement("Nothing in DB"));
+            //returnList.add(new ListViewElement("Nothing in DB"));
+            Log.e(TAG, "Nothing in DB");
         } else {
             while (data2.moveToNext()) {
 
@@ -198,11 +254,11 @@ public class ApprovingService extends Service {
 
                     if (longOrShort == 0) {
                         if (percentOfChange < -0.25) {
-                            returnList.add(new ListViewElement(symbol, percentOfChange, price, date,false));
+                            returnList.add(new ListViewElement(symbol, percentOfChange, price, date, false));
                         }
                     } else if (longOrShort == 1) {
                         if (percentOfChange > 0.25) {
-                            returnList.add(new ListViewElement(symbol, percentOfChange, price, date,true));
+                            returnList.add(new ListViewElement(symbol, percentOfChange, price, date, true));
                         }
                     }
                 }
@@ -211,7 +267,8 @@ public class ApprovingService extends Service {
         data2.close();
 
         if (returnList.size() == 0) {
-            returnList.add(new ListViewElement("Nothing good", 0, 0, "",true));
+            Log.e(TAG, "Nothing good in DB");
+            //returnList.add(new ListViewElement("Nothing good", 0, 0, "", true));
         } else {
             Collections.sort(returnList, new Comparator<ListViewElement>() {
                 public int compare(ListViewElement o1, ListViewElement o2) {
@@ -232,9 +289,17 @@ public class ApprovingService extends Service {
 //        }
 //    }
 
-    public void setMainParametersOnView(ArrayList<ListViewElement>  tokenList1, ArrayList<ListViewElement>  tokenList2, ArrayList<ListViewElement> tokenList3, ArrayList<ListViewElement> tokenList4, ArrayList<ListViewElement> tokenList5) {
+    public void setMainParametersOnView() {
 
-        ArrayList<GridViewElement> cryptoGridViewList = new ArrayList<>();
+        ArrayList<GridViewElement> cryptoPercentageList = new ArrayList<>();
+
+        float percentU15 = 0;
+        float percentU5 = 0;
+        float percentU0 = 0;
+        float percentO0 = 0;
+        float percentO5 = 0;
+        float percentO15 = 0;
+
         Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
         if (data.getCount() == 0) {
             Log.e(TAG, "Table " + TABLE_SYMBOL_AVG + " is empty");
@@ -245,7 +310,7 @@ public class ApprovingService extends Service {
             }
             int nrOfGridElements = 36;
             List<String> biggestNrOfTradesSymbols = getBiggestNrOfTradesSymbols("4h", nrOfGridElements);
-            ArrayList<GridViewElement> cryptoPercentageList = new ArrayList<>();
+
             for (int i = 0; i < listOfSymbols.size(); i++) {
                 cryptoPercentageList.add(get24hPercentChangeForCrypto(listOfSymbols.get(i)));
                 //Log.e("HomeFragments", "Crypto percentage: " + cryptoPercentageList.get(i).getSymbol() + " " + cryptoPercentageList.get(i).getPercent());
@@ -277,12 +342,12 @@ public class ApprovingService extends Service {
                 }
             }
 
-            float percentU15 = (float) under15 / cryptoPercentageList.size() * 100;
-            float percentU5 = (float) under5 / cryptoPercentageList.size() * 100;
-            float percentU0 = (float) under0 / cryptoPercentageList.size() * 100;
-            float percentO0 = (float) over0 / cryptoPercentageList.size() * 100;
-            float percentO5 = (float) over5 / cryptoPercentageList.size() * 100;
-            float percentO15 = (float) over15 / cryptoPercentageList.size() * 100;
+            percentU15 = (float) under15 / cryptoPercentageList.size() * 100;
+            percentU5 = (float) under5 / cryptoPercentageList.size() * 100;
+            percentU0 = (float) under0 / cryptoPercentageList.size() * 100;
+            percentO0 = (float) over0 / cryptoPercentageList.size() * 100;
+            percentO5 = (float) over5 / cryptoPercentageList.size() * 100;
+            percentO15 = (float) over15 / cryptoPercentageList.size() * 100;
 
             if (biggestNrOfTradesSymbols.size() > 1) {
                 cryptoGridViewList.add(new GridViewElement("< -15%", percentU15, under15));
@@ -295,12 +360,235 @@ public class ApprovingService extends Service {
                     cryptoGridViewList.add(get24hPercentChangeForCrypto(biggestNrOfTradesSymbols.get(i)));
                 }
             }
+
+
         }
         data.close();
 
-        sendInfoToActivity();
-        sendMessageToActivity(tokenList1, tokenList2, tokenList3, tokenList4, tokenList5, cryptoGridViewList);
+        float underPercentage = percentU0 + percentU5 + percentU15;
+        float overPercentage = percentO0 + percentO5 + percentO15;
+
+        if (overPercentage > 85) {
+            serviceFinishedEverything = 6;
+            sendMessageToActivity();
+        } else if (underPercentage > 85) {
+            serviceFinishedEverything = 6;
+            sendMessageToActivity();
+        } else if (underPercentage > 60 && (percentU15 + percentU5) < 8) {
+            if (cryptoForLONGOrders.size() > 0) {
+                serviceFinishedEverything++;
+                automaticOrdersFunction(cryptoForLONGOrders);
+            } else {
+                serviceFinishedEverything = 6;
+                sendMessageToActivity();
+            }
+        } else if (overPercentage > 60 && (percentO15 + percentO5) < 8) {
+            if (cryptoForSHORTOrders.size() > 0) {
+                serviceFinishedEverything++;
+                automaticOrdersFunction(cryptoForSHORTOrders);
+            } else {
+                serviceFinishedEverything = 6;
+                sendMessageToActivity();
+            }
+        } else {
+            serviceFinishedEverything = 6;
+            sendMessageToActivity();
+        }
+
+//        if ((percentU15 + percentU5) > 5 && percentU0 > 60) {
+//            if (cryptoForLONGOrders.size() > 0) {
+//                serviceFinishedEverything++;
+//                automaticOrdersFunction(cryptoForLONGOrders);
+//            }
+//        } else if ((percentO15 + percentO5) > 5 && percentO0 > 60) {
+//            if (cryptoForSHORTOrders.size() > 0) {
+//                serviceFinishedEverything++;
+//                automaticOrdersFunction(cryptoForSHORTOrders);
+//            }
+//        } else {
+//            serviceFinishedEverything = 6;
+//            sendMessageToActivity();
+//        }
+//
+
+
+//
+//        if (last30MinTokensStat.size() > 0) {
+//            serviceFinishedEverything++;
+//            automaticOrdersFunction(last30MinTokensStat);
+//        } else {
+//            serviceFinishedEverything = 6;
+//            sendMessageToActivity();
+//        }
     }
+
+
+    public void automaticOrdersFunction(ArrayList<ListViewElement> listOfCryptosToTry) {
+
+        // Retrieve test accounts balances to prepare for making orders
+        ArrayList<Float> testAccountBalances = new ArrayList<>();
+        for (int i = 6; i < 11; i++) {
+            Cursor data = databaseDB.retrieveParam(i);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param for test account " + (i - 5));
+                databaseDB.addParam(i, "Test account nr " + (i - 5) + " balance", "", 0, 100);
+                testAccountBalances.add(100f);
+            } else if (data.getCount() >= 2) {
+                databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, i);
+                databaseDB.addParam(i, "Test account nr " + (i - 5) + " balance", "", 0, 100);
+                testAccountBalances.add(100f);
+            } else {
+                data.moveToFirst();
+                testAccountBalances.add(data.getFloat(4));
+            }
+            data.close();
+        }
+
+
+        Cursor data = databaseDB.retrieveAllFromTable(TABLE_NAME_ORDERS);
+        ArrayList<OrderListViewElement> currentOrders = new ArrayList<>();
+        if (data.getCount() == 0) {
+            Log.e(TAG, "No active orders");
+        } else {
+            while (data.moveToNext()) {
+
+                OrderListViewElement tempToken = new OrderListViewElement(data.getString(1), data.getInt(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(9), data.getInt(8), data.getInt(11), data.getInt(10), data.getInt(12));
+                currentOrders.add(tempToken);
+
+            }
+        }
+        data.close();
+
+        Log.e(TAG, "AUTOMATIC: " + testAccountBalances);
+
+        //Default params for my order
+        int margin = 20;
+        int stopLimit = 2;
+        int takeProfit = 10;
+        boolean isItReal = false;
+        boolean isItCrossed = false;
+
+        ArrayList<String> currentMadeOrders = new ArrayList<>();
+        //For each test account try to make order if balance is good
+        for (int i = 0; i < 5; i++) {
+            Log.e(TAG, "Checking account nr " + (i + 5) + " " + testAccountBalances.size());
+
+            if (testAccountBalances.get(i) > 50) {
+
+                Random random = new Random();
+                // Generate a random index that has not been used before
+                int index = random.nextInt(listOfCryptosToTry.size());
+                Log.e(TAG, "Random index: " + index);
+
+                // Get the element at the random index
+                ListViewElement randomElement = listOfCryptosToTry.get(index);
+
+                boolean thisSymbolIsAlreadyOrdered = false;
+
+                for (OrderListViewElement obj : currentOrders) {
+                    // Check if the field value equals the search string
+                    if (obj.getSymbol().equals(randomElement.getText())) {
+                        thisSymbolIsAlreadyOrdered = true;
+                    }
+                }
+
+                for (String obj2 : currentMadeOrders) {
+                    // Check if the field value equals the search string
+                    if (obj2.equals(randomElement.getText())) {
+                        thisSymbolIsAlreadyOrdered = true;
+                    }
+                }
+
+                if (!thisSymbolIsAlreadyOrdered) {
+                    int entryAmount = (int) (testAccountBalances.get(i) * 0.95);
+                    currentMadeOrders.add(randomElement.getText());
+
+                    boolean isItShort;
+
+                    if (randomElement.isItLONG()) {
+                        isItShort = false;
+                    } else {
+                        isItShort = true;
+                    }
+
+                    int finalI = i;
+                    getMarkPrice(isItReal, randomElement.getText())
+                            .subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(new Observer<MarkPrice>() {
+                                @Override
+                                public void onSubscribe(@NonNull Disposable d) {
+                                    // do something when the subscription is made
+                                }
+
+                                @Override
+                                public void onNext(@NonNull MarkPrice markPrice) {
+                                    // handle the MarkPrice object returned by the API
+                                    Log.e(TAG, markPrice.toString());
+                                    Log.e(TAG, "Automatic Order Made for " + randomElement.getText() + " on automatic test account " + (finalI + 1) + ".");
+
+                                    makeOrder(isItReal, randomElement.getText(), entryAmount, stopLimit, takeProfit, margin, markPrice.getMarkPrice(), isItCrossed, isItShort, System.currentTimeMillis(), testAccountBalances.get(finalI), (finalI + 6));
+                                }
+
+                                @Override
+                                public void onError(@NonNull Throwable e) {
+                                    // handle any errors that occur
+                                    Log.e(TAG, "An error has occurred: " + e.getMessage());
+                                }
+
+                                @Override
+                                public void onComplete() {
+                                    // do something when the observable completes
+                                }
+                            });
+
+                }
+
+            }
+            serviceFinishedEverything++;
+        }
+        sendMessageToActivity();
+    }
+
+    private void makeOrder(boolean isItReal, String symbol, int entryAmount, int stopLimit, int takeProfit, int margin, float currentPrice, boolean isItCrossed, boolean isItShort, long time, float balance, int nrOfParameterToUpdate) {
+
+        if (isItReal) {
+            Log.e(TAG, "REAL");
+        } else {
+            Log.e(TAG, "TEST");
+            Log.e(TAG, isItCrossed + " " + isItShort);
+            float stopLimitPrice = currentPrice * (1 - (float) stopLimit / 100);
+            float takeProfitPrice = currentPrice * (1 + (float) takeProfit / 100);
+            int isItShortValue = 0;
+            int isItRealValue = 0;
+            int isItCrossedValue = 0;
+            if (isItShort) {
+                stopLimitPrice = currentPrice * (1 + (float) stopLimit / 100);
+                takeProfitPrice = currentPrice * (1 - (float) takeProfit / 100);
+                isItShortValue = 1;
+            }
+            if (isItCrossed) {
+                isItCrossedValue = 1;
+            }
+
+            Log.e(TAG, isItCrossedValue + " " + isItShortValue);
+            OrderListViewElement toDB = new OrderListViewElement(symbol, isItRealValue, (float) entryAmount, currentPrice, currentPrice, stopLimitPrice, takeProfitPrice, time, margin, isItShortValue, isItCrossedValue, nrOfParameterToUpdate);
+            DBHandler databaseDBforRetrofit = DBHandler.getInstance(getApplicationContext());
+            String nrOfParameter = String.valueOf(nrOfParameterToUpdate);
+            databaseDBforRetrofit.addNewOrder(toDB);
+            databaseDBforRetrofit.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_REAL, balance - entryAmount, ID, nrOfParameter);
+
+        }
+    }
+    public Observable<MarkPrice> getMarkPrice(boolean isItReal, String symbol) {
+        return RetrofitClientFutures.getInstance()
+                .getMyApi()
+                .getMarkPrice(symbol)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+    }
+
+
 
     // Calculate 24h change of price in %
     public GridViewElement get24hPercentChangeForCrypto(String symbol) {

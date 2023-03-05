@@ -16,21 +16,20 @@
             android:id="@+id/tv_real_balance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"
-            android:text="Real account balance (USDT):"
-            android:textSize="16sp" />
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="User real account balance (USDT):"
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/tv_real_number_balance"
             android:layout_width="match_parent"
             android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
-            android:layout_marginTop="16dp"
-            android:textAlignment="center"
-            android:text="200.00" />
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="14dp"
+            android:textAlignment="textEnd" />
 
     </LinearLayout>
 
@@ -43,21 +42,156 @@
             android:id="@+id/tv_test_balance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginEnd="16dp"
-            android:text="Test account balance (USDT):"
-            android:textSize="16sp" />
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="User test account balance (USDT):"
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/tv_test_number_balance"
             android:layout_width="match_parent"
             android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
-            android:layout_marginTop="16dp"
-            android:textAlignment="center"
-            android:text="200.00" />
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="14dp"
+            android:textAlignment="textEnd" />
 
     </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_test_balance1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="Auto test account nr 1 balance:"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_test_number_balance1"
+            android:layout_width="match_parent"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="14dp"
+            android:textAlignment="textEnd" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_test_balance2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="Auto test account nr 2 balance:"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_test_number_balance2"
+            android:layout_width="match_parent"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="14dp"
+            android:textAlignment="textEnd" />
+
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_test_balance3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="Auto test account nr 3 balance:"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_test_number_balance3"
+            android:layout_width="match_parent"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="14dp"
+            android:textAlignment="textEnd" />
+
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_test_balance4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="Auto test account nr 4 balance:"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_test_number_balance4"
+            android:layout_width="match_parent"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="14dp"
+            android:textAlignment="textEnd" />
+
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_test_balance5"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="Auto test account nr 5 balance:"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_test_number_balance5"
+            android:layout_width="match_parent"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="14dp"
+            android:layout_marginTop="14dp"
+            android:textAlignment="textEnd" />
+
+
+    </LinearLayout>
+
+
 </LinearLayout>

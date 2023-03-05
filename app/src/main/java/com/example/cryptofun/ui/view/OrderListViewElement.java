@@ -7,17 +7,19 @@ import java.io.Serializable;
 public class OrderListViewElement implements Serializable, Comparable<OrderListViewElement> {
 
     private String symbol;
-    private boolean isItReal;
+    private int isItReal;
     private float entryAmount;
     private float entryPrice;
     private float currentPrice;
     private float stopLimitPrice;
     private float takeProfitPrice;
-    private float amountRightNow;
-    private String timeWhenPlaced;
+    private long timeWhenPlaced;
     private int margin;
+    private int isItShort;
+    private int isItCrossed;
+    private int accountNumber;
 
-    public OrderListViewElement(String symbol, boolean isItReal, float entryAmount, float entryPrice, float currentPrice, float stopLimitPrice, float takeProfitPrice, float amountRightNow, String timeWhenPlaced, int margin) {
+    public OrderListViewElement(String symbol, int isItReal, float entryAmount, float entryPrice, float currentPrice, float stopLimitPrice, float takeProfitPrice, long timeWhenPlaced, int margin, int isItShort, int isItCrossed) {
         this.symbol = symbol;
         this.isItReal = isItReal;
         this.entryAmount = entryAmount;
@@ -25,9 +27,58 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
         this.currentPrice = currentPrice;
         this.stopLimitPrice = stopLimitPrice;
         this.takeProfitPrice = takeProfitPrice;
-        this.amountRightNow = amountRightNow;
         this.timeWhenPlaced = timeWhenPlaced;
         this.margin = margin;
+        this.isItShort = isItShort;
+        this.isItCrossed = isItCrossed;
+    }
+
+
+    public OrderListViewElement(String symbol, int isItReal, float entryAmount, float entryPrice, float currentPrice, float stopLimitPrice, float takeProfitPrice, long timeWhenPlaced, int margin, int isItShort, int isItCrossed, int accountNumber) {
+        this.symbol = symbol;
+        this.isItReal = isItReal;
+        this.entryAmount = entryAmount;
+        this.entryPrice = entryPrice;
+        this.currentPrice = currentPrice;
+        this.stopLimitPrice = stopLimitPrice;
+        this.takeProfitPrice = takeProfitPrice;
+        this.timeWhenPlaced = timeWhenPlaced;
+        this.margin = margin;
+        this.isItShort = isItShort;
+        this.isItCrossed = isItCrossed;
+        this.accountNumber = accountNumber;
+    }
+
+    public int getAccountNumber() {
+        return accountNumber;
+    }
+
+    public void setAccountNumber(int accountNumber) {
+        this.accountNumber = accountNumber;
+    }
+
+    public int getIsItReal() {
+        return isItReal;
+    }
+
+    public void setIsItReal(int isItReal) {
+        this.isItReal = isItReal;
+    }
+
+    public int getIsItShort() {
+        return isItShort;
+    }
+
+    public void setIsItShort(int isItShort) {
+        this.isItShort = isItShort;
+    }
+
+    public int getIsItCrossed() {
+        return isItCrossed;
+    }
+
+    public void setIsItCrossed(int isItCrossed) {
+        this.isItCrossed = isItCrossed;
     }
 
     public int getMargin() {
@@ -44,14 +95,6 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
 
     public void setSymbol(String symbol) {
         this.symbol = symbol;
-    }
-
-    public boolean isItReal() {
-        return isItReal;
-    }
-
-    public void setItReal(boolean itReal) {
-        this.isItReal = itReal;
     }
 
     public float getEntryAmount() {
@@ -94,14 +137,6 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
         this.takeProfitPrice = takeProfitPrice;
     }
 
-    public float getAmountRightNow() {
-        return amountRightNow;
-    }
-
-    public void setAmountRightNow(float amountRightNow) {
-        this.amountRightNow = amountRightNow;
-    }
-
     public float getPercentOfPriceChange() {
         return ((getCurrentPrice() / getEntryPrice()) * 100) - 100;
     }
@@ -111,34 +146,33 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
     }
 
     public float getCurrentAmount() {
-
         float marg = (float) this.margin;
-        Log.e("ORDER1", String.valueOf(getPercentOfPriceChange()));
-        Log.e("ORDER12", String.valueOf(marg));
-        Log.e("ORDER13", String.valueOf(this.entryAmount));
+        float result;
+        if (this.getIsItShort() >= 1 ) {
+            result = (marg * this.entryAmount) + (marg * this.entryAmount) * (- getPercentOfPriceChange() / 100) - this.entryAmount * (marg - 1) - (this.entryAmount * marg * 0.0003f * 2f);
+        } else {
+            result = (marg * this.entryAmount) + (marg * this.entryAmount) * (getPercentOfPriceChange() / 100) - this.entryAmount * (marg - 1) - (this.entryAmount * marg * 0.0003f * 2f);
+        }
 
-        Log.e("ORDER14", String.valueOf((marg * this.entryAmount)));
-        Log.e("ORDER15", String.valueOf((marg * this.entryAmount) * (getPercentOfPriceChange() / 100)));
-        Log.e("ORDER16", String.valueOf(this.entryAmount * (marg - 1)));
-        Log.e("ORDER17", String.valueOf((this.entryAmount * marg * 0.0003f * 2f)));
-
-        float result = (marg * this.entryAmount) + (marg * this.entryAmount) * (getPercentOfPriceChange() / 100) - this.entryAmount * (marg - 1) - (this.entryAmount * marg * 0.0003f * 2f);
-        Log.e("ORDER2", String.valueOf(result));
         return result;
-
     }
 
-    public String getTimeWhenPlaced() {
+    public long getTimeWhenPlaced() {
         return timeWhenPlaced;
     }
 
-    public void setTimeWhenPlaced(String timeWhenPlaced) {
+    public void setTimeWhenPlaced(long timeWhenPlaced) {
         this.timeWhenPlaced = timeWhenPlaced;
     }
 
+//    @Override
+//    public int compareTo(OrderListViewElement element) {
+//        return this.getTimeWhenPlaced().compareTo(element.getTimeWhenPlaced());
+
+
     @Override
     public int compareTo(OrderListViewElement element) {
-        return this.getTimeWhenPlaced().compareTo(element.getTimeWhenPlaced());
+        return Long.compare(this.getTimeWhenPlaced(), element.getTimeWhenPlaced());
     }
 
 }

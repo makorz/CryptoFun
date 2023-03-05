@@ -47,6 +47,7 @@ dependencies {
     implementation 'androidx.navigation:navigation-ui:2.5.3'
         // Retrofit for notifications and use of Cloud Functions in Firebase
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+
     implementation 'com.squareup.retrofit2:converter-gson:2.6.2'
     implementation 'com.google.android.gms:play-services-base:18.1.0'
     
@@ -55,6 +56,8 @@ dependencies {
     // explicitly depend on RxJava's latest version for bug fixes and new features.
     // (see https://github.com/ReactiveX/RxJava/releases for latest 3.x.x version)
     implementation 'io.reactivex.rxjava3:rxjava:3.0.0'
+    // Tabs for Dialog
+    implementation "com.google.android.material:material:1.9.0-alpha02"
 
     //For backroudwork in Android 12+
     implementation 'androidx.work:work-runtime:2.8.0'

@@ -4,13 +4,10 @@ import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.Color;
-import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
@@ -20,16 +17,15 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.example.cryptofun.R;
 import com.example.cryptofun.data.CoinSymbol;
 import com.example.cryptofun.data.CoinSymbols;
 import com.example.cryptofun.data.KlineRequest;
 import com.example.cryptofun.database.DBHandler;
 import com.example.cryptofun.database.rawTable_Kline;
-import com.example.cryptofun.retrofit.RetrofitClient;
-import com.example.cryptofun.retrofit.RetrofitClient2;
+import com.example.cryptofun.retrofit.RetrofitClientFutures;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
@@ -53,7 +49,7 @@ public class CreatingDatabaseService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        databaseDB = new DBHandler(this);
+        databaseDB = DBHandler.getInstance(getApplicationContext());
         new Thread(
                 new Runnable() {
                     @Override
@@ -61,35 +57,9 @@ public class CreatingDatabaseService extends Service {
                         Log.e("CRTStart", "SIZE ON START -> " + listOfSymbols.size() );
 
                         // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            String CHANNEL_ID = "cryptoFun";
-
-                            PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent,
-                                            PendingIntent.FLAG_IMMUTABLE);
-
-                            NotificationChannel chan = new NotificationChannel(
-                                    CHANNEL_ID,
-                                    TAG,
-                                    NotificationManager.IMPORTANCE_LOW);
-                            chan.setLightColor(Color.BLUE);
-                            chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
-
-                            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                            assert manager != null;
-                            manager.createNotificationChannel(chan);
-
-                            Notification notification =
-                                    new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-                                            .setContentTitle("CreatingDB")
-                                            .setContentText("Preparing for money, buddy!")
-                                            .setContentIntent(pendingIntent)
-                                            .setChannelId(CHANNEL_ID)
-                                            .build();
-
-                            // Notification ID cannot be 0.
-                            startForeground(3, notification);
-
-                        }
+                        Notification notification = createNotification();
+                        // Notification ID cannot be 0.
+                        startForeground(1, notification);
                         getDataOfCryptoFromAPI();
 
                     }
@@ -98,43 +68,31 @@ public class CreatingDatabaseService extends Service {
 
         return START_STICKY;
     }
-//    @Override
-//    public void onCreate() {
-//        databaseDB = new DBHandler(this);
-//        listOfSymbols.clear();
-//        Log.e("CRTStart", "SIZE ON START -> " + listOfSymbols.size() );
-//        String CHANNEL_ID = "cryptoFun";
-//
-//        // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-//        PendingIntent pendingIntent =
-//                PendingIntent.getActivity(getApplicationContext(), 0, intent,
-//                        PendingIntent.FLAG_IMMUTABLE);
-//
-//        NotificationChannel chan = new NotificationChannel(
-//                CHANNEL_ID,
-//                TAG,
-//                NotificationManager.IMPORTANCE_LOW);
-//        chan.setLightColor(Color.BLUE);
-//        chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
-//
-//        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-//        assert manager != null;
-//        manager.createNotificationChannel(chan);
-//
-//        Notification notification =
-//                new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-//                        .setContentTitle("Approving")
-//                        .setContentText("Searching for money, buddy!")
-//                        .setContentIntent(pendingIntent)
-//                        .setChannelId(CHANNEL_ID)
-//                        .build();
-//
-//        // Notification ID cannot be 0.
-//        startForeground(3, notification);
-//        getDataOfCryptoFromAPI();
-//
-//        super.onCreate();
-//    }
+
+    private Notification createNotification() {
+
+        String CHANNEL_ID = "cryptoFun";
+        NotificationChannel chan = new NotificationChannel(
+                CHANNEL_ID,
+                TAG,
+                NotificationManager.IMPORTANCE_LOW);
+        chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
+
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        assert manager != null;
+        manager.createNotificationChannel(chan);
+
+        // Create a notification to indicate that the service is running.
+        // You can customize the notification to display the information you want.
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("CRTDatabase")
+                .setContentText("Preparing for money, buddy!")
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setSmallIcon(R.drawable.crypto_fun_logo);
+
+        return builder.build();
+    }
+
 
     @Nullable
     @Override
@@ -159,13 +117,13 @@ public class CreatingDatabaseService extends Service {
         int LIMIT4h = 10;
         for (int i = 0; i < listOfSymbols.size(); i++) {
             // Make a collection of all requests you need to call at once, there can be any number of requests, not only 3. You can have 2 or 5, or 100.
-            request.add(new KlineRequest(RetrofitClient2.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT15m, "15m"),
+            request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT15m, "15m"),
                     listOfSymbols.get(i), "15m"));
-            request.add(new KlineRequest(RetrofitClient2.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT3m, "3m"),
+            request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT3m, "3m"),
                     listOfSymbols.get(i), "3m"));
 //            request.add(new KlineRequest(RetrofitClient.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT1d, "1d"),
 //                    listOfSymbols.get(i), "1d"));
-            request.add(new KlineRequest(RetrofitClient2.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT4h, "4h"),
+            request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT4h, "4h"),
                     listOfSymbols.get(i), "4h"));
 
         }
@@ -255,7 +213,7 @@ public class CreatingDatabaseService extends Service {
 
         Cursor data = databaseDB.retrieveAllFromTable(TABLE_SYMBOL_AVG);
         if (data.getCount() == 0) {
-            Call<CoinSymbols> call = RetrofitClient2.getInstance().getMyApi().getFuturesSymbols();
+            Call<CoinSymbols> call = RetrofitClientFutures.getInstance().getMyApi().getFuturesSymbols();
             call.enqueue(new Callback<CoinSymbols>() {
                 @Override
                 public void onResponse(@NonNull Call<CoinSymbols> call, @NonNull Response<CoinSymbols> response) {
@@ -374,7 +332,7 @@ public class CreatingDatabaseService extends Service {
                 }
                 data3.close();
                 sendMessageToActivity();
-                databaseDB.close();
+                //databaseDB.close();
             }
 
         }
@@ -385,6 +343,7 @@ public class CreatingDatabaseService extends Service {
         Log.e(TAG, "SendMessage1");
         intent.putExtra("finishedCRTDB", true);
         LocalBroadcastManager.getInstance(CreatingDatabaseService.this).sendBroadcast(intent);
+        stopForeground(true);
         stopSelf();
     }
 

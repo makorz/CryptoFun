@@ -56,12 +56,20 @@ public class CryptoGridAdapter extends RecyclerView.Adapter<CryptoGridAdapter.Vi
         float percent = items.get(position).getPercent();
 
         if ( !name.contains("%")) {
-            DecimalFormat df = new DecimalFormat("0.###");
+            DecimalFormat df = new DecimalFormat("0.0000");
             DecimalFormat df2 = new DecimalFormat("0.00");
+            DecimalFormat df3 = new DecimalFormat("0.0");
 
             holder.title.setText(name);
-            String valueFormatted = df.format(value) + "$";
+            String valueFormatted;
+            if (value > 10) {
+                valueFormatted = df3.format(value) + "$";
+            } else {
+                valueFormatted = df.format(value) + "$";
+            }
             holder.value.setText(valueFormatted);
+
+
             String percentFormatted = df2.format(percent) + "%";
             holder.percent.setText(percentFormatted);
             if (items.get(position).getPercent() < 0) {

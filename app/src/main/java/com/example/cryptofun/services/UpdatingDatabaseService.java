@@ -4,32 +4,27 @@ import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.Color;
-import android.os.Build;
-import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.Process;
+import android.os.PowerManager;
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.example.cryptofun.R;
 import com.example.cryptofun.data.ApprovedToken;
 import com.example.cryptofun.data.KlineRequest;
 import com.example.cryptofun.data.ObservableModel;
 import com.example.cryptofun.database.DBHandler;
 import com.example.cryptofun.database.Kline;
 import com.example.cryptofun.database.rawTable_Kline;
-import com.example.cryptofun.retrofit.RetrofitClient;
-import com.example.cryptofun.retrofit.RetrofitClient2;
+import com.example.cryptofun.retrofit.RetrofitClientFutures;
 
-import java.net.SocketTimeoutException;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -55,9 +50,10 @@ public class UpdatingDatabaseService extends Service {
     private static final String TABLE_NAME_APPROVED = "approved_tokens";
     private static final String TABLE_NAME_APPROVED_HISTORIC = "historic_approved_tokens";
     private static final String TABLE_NAME_CONFIG = "config";
-    private static final String VALUE = "value";
+    private static final String VALUE_STRING = "value_string";
     private static final String ID = "id";
     private DBHandler databaseDB;
+    private PowerManager.WakeLock mWakeLock;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -66,46 +62,46 @@ public class UpdatingDatabaseService extends Service {
                 new Runnable() {
                     @Override
                     public void run() {
-                        databaseDB = new DBHandler(getApplicationContext());
+                        databaseDB = DBHandler.getInstance(getApplicationContext());
                         Log.e(TAG, "Service is running...");
+                        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyService:WakeLockTag");
+                        mWakeLock.acquire(5*60*1000L );
 
                         // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-
-                            String CHANNEL_ID = "cryptoFun";
-                            PendingIntent pendingIntent =
-                                    PendingIntent.getActivity(getApplicationContext(), 0, intent,
-                                            PendingIntent.FLAG_IMMUTABLE);
-
-                            NotificationChannel chan = new NotificationChannel(
-                                    CHANNEL_ID,
-                                    TAG,
-                                    NotificationManager.IMPORTANCE_LOW);
-                            chan.setLightColor(Color.BLUE);
-                            chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
-
-                            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                            assert manager != null;
-                            manager.createNotificationChannel(chan);
-
-                            Notification notification =
-                                    new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
-                                            .setContentTitle("UPDating")
-                                            .setContentText("Searching for money, buddy!")
-                                            .setContentIntent(pendingIntent)
-                                            .setChannelId(CHANNEL_ID)
-                                            .build();
-
-                            // Notification ID cannot be 0.
-                            startForeground(1, notification);
-
-                        }
+                        Notification notification = createNotification();
+                        // Notification ID cannot be 0.
+                        startForeground(1, notification);
                         checkDBLastTimeOfUpdate();
                     }
                 }
         ).start();
 
         return START_STICKY;
+    }
+
+    private Notification createNotification() {
+
+        String CHANNEL_ID = "cryptoFun";
+        NotificationChannel chan = new NotificationChannel(
+                CHANNEL_ID,
+                TAG,
+                NotificationManager.IMPORTANCE_LOW);
+        chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
+
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        assert manager != null;
+        manager.createNotificationChannel(chan);
+
+        // Create a notification to indicate that the service is running.
+        // You can customize the notification to display the information you want.
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("UPDating")
+                .setContentText("Searching for money, buddy!")
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setSmallIcon(R.drawable.crypto_fun_logo);
+
+        return builder.build();
     }
 
     @Override
@@ -199,13 +195,14 @@ public class UpdatingDatabaseService extends Service {
         Intent intent = new Intent("DB_updated");
         intent.putExtra("updateDate", date);
         intent.putExtra("updateStarted", updateStart);
-        Log.e(TAG, "Send Broadcast Message " + updateStart);
+        Log.e(TAG, "Send Broadcast Message Update Started Background" + updateStart);
         LocalBroadcastManager.getInstance(UpdatingDatabaseService.this).sendBroadcast(intent);
-        databaseDB.close();
+       // databaseDB.close();
+        stopForeground(true);
         stopSelf();
     }
 
-    private void sendInfoToActivity() {
+     private void sendInfoToActivity() {
         Intent intent = new Intent("DB_update_start");
         Log.e(TAG, "Loading icon START");
         LocalBroadcastManager.getInstance(UpdatingDatabaseService.this).sendBroadcast(intent);
@@ -394,7 +391,7 @@ public class UpdatingDatabaseService extends Service {
         List<Observable<?>> observableRequestList = new ArrayList<>();
 
         for (int i = 0; i < list.size(); i++) {
-            request.add(new KlineRequest(RetrofitClient2.getInstance().getMyApi().getKlinesData(list.get(i).getSymbol(), list.get(i).getNrOfKlinesToDownload(), list.get(i).getInterval()),
+            request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(list.get(i).getSymbol(), list.get(i).getNrOfKlinesToDownload(), list.get(i).getInterval()),
                     list.get(i).getSymbol(), list.get(i).getInterval(), list.get(i).getWhatToDoWithDB(), list.get(i).getHowManyOldOnesToDelete()));
         }
 
@@ -476,7 +473,8 @@ public class UpdatingDatabaseService extends Service {
                                 //Add everything to DB and refresh View
                                 if (databaseDB.addNewKlineData(klinesDataList) > 50) {
                                     klinesDataList.clear();
-                                    startCountingAndReturnResult();
+
+                                    startCountingAndReturnResult(false);
 
                                 }
                             }
@@ -488,14 +486,14 @@ public class UpdatingDatabaseService extends Service {
                             public void accept(Throwable e) throws Exception {
                                 Log.e(TAG, "FUCKED " + e);
                                 Toast.makeText(getApplicationContext(), "Error: " + e, Toast.LENGTH_LONG).show();
-                                startCountingAndReturnResult();
+                                startCountingAndReturnResult(true);
                             }
                         }
 
                 );
     }
 
-    private void startCountingAndReturnResult() {
+    private void startCountingAndReturnResult(boolean wasThereError) {
         Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
         List<String> listOfSymbols = new ArrayList<>();
         if (data.getCount() == 0) {
@@ -508,18 +506,32 @@ public class UpdatingDatabaseService extends Service {
             for (int i = 0; i < listOfSymbols.size(); i++) {
                 countBestCryptoToBuy(listOfSymbols.get(i));
             }
-
             Timestamp stamp = new Timestamp(System.currentTimeMillis());
             long eightHours = 28800000;
-            long oneHour = 3600000;
-            long halfHour = 1800000;
             long olderThan = System.currentTimeMillis() - eightHours;
             @SuppressLint("SimpleDateFormat")
             DateFormat df = new SimpleDateFormat("HH:mm - EEE, dd");
-            String date = "Update time:  " + df.format(new Date(stamp.getTime()));
+            String date;
+            if (wasThereError) {
+                Log.e(TAG,"Error from Observable");
+                Cursor data2 = databaseDB.retrieveParam(1);
+                if (data2.getCount() == 0) {
+                    Log.e(TAG,"No param");
+                    date = "No update time";
+                } else {
+                    data2.moveToFirst();
+                    date = data2.getString(2);
+                }
+                data2.close();
+            } else {
+                date = "Update time:  " + df.format(new Date(stamp.getTime()));
+            }
             databaseDB.clearHistoric(olderThan);
             sendMessageToActivity(date, false);
-
+        }
+        if (mWakeLock != null) {
+            mWakeLock.release();
+            mWakeLock = null;
         }
         data.close();
     }
@@ -536,13 +548,13 @@ public class UpdatingDatabaseService extends Service {
 
             Cursor data2 = databaseDB.retrieveParam(1);
             if (data2.getCount() == 0) {
-                databaseDB.addParam(1, "Last Update Time", date);
+                databaseDB.addParam(1, "Last Update Time", date,0,0);
             } else {
                 if (data2.getCount() >= 2) {
                     databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 1);
-                    databaseDB.addParam(1, "Last Update Time", date);
+                    databaseDB.addParam(1, "Last Update Time", date,0,0);
                 }
-                databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE, date, ID, "1");
+                databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, date, ID, "1");
 
             }
             updateDBtoCurrentValues(System.currentTimeMillis());
@@ -561,21 +573,21 @@ public class UpdatingDatabaseService extends Service {
             String date2 = df.format(new Date(stamp2.getTime()));
 
             //if more than 2 minutes passed since last closeTimeOfKline --> UpdateDB
-            long oneMinute = 60000;
-            long time = (tempKline.gettCloseTime() - oneMinute - System.currentTimeMillis());
+            long oneAndHalfMin = 90000;
+            Log.e(TAG, "A: " + tempKline.gettCloseTime() + " - B: " + oneAndHalfMin + " - C: " + System.currentTimeMillis());
+            long time = (tempKline.gettCloseTime() - oneAndHalfMin - System.currentTimeMillis());
 
 
             if (time < 0) {
-
                 Cursor data2 = databaseDB.retrieveParam(1);
                 if (data2.getCount() == 0) {
-                    databaseDB.addParam(1, "Last Update Time", date);
+                    databaseDB.addParam(1, "Last Update Time", date,0,0);
                 } else {
                     if (data2.getCount() >= 2) {
                         databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 1);
-                        databaseDB.addParam(1, "Last Update Time", date);
+                        databaseDB.addParam(1, "Last Update Time", date,0,0);
                     }
-                    databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE, date, ID, "1");
+                    databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, date, ID, "1");
 
                 }
                 data2.close();
@@ -587,7 +599,7 @@ public class UpdatingDatabaseService extends Service {
                 Cursor data3 = databaseDB.retrieveAllFromTable(TABLE_NAME_KLINES_DATA);
                 if (data3.getCount() > 10) {
                     Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is not empty. [onStartCommand]");
-                    startCountingAndReturnResult();
+                    startCountingAndReturnResult(true);
 
                 }
                 data3.close();
@@ -600,8 +612,8 @@ public class UpdatingDatabaseService extends Service {
     // Function checks what crypto is going to run in green
     private void countBestCryptoToBuy(String symbol) {
 
-        int acceptableVolume = 100000;
-        int acceptablePercentOfVolumeRise = 25;
+        int acceptableVolume = 250000;
+        int acceptablePercentOfVolumeRise = 35;
 
         List<Kline> coinKlines3m = new ArrayList<>();
         List<Kline> coinKlines15m = new ArrayList<>();
@@ -653,8 +665,8 @@ public class UpdatingDatabaseService extends Service {
 
                 if (!symbol.contains("BUSDUSDT")) {
 
-                    statusOf15mKlines = statusOf15mKlines.subList(0, 2);
-                    statusOf3mKlines = statusOf3mKlines.subList(0, 6);
+                    statusOf15mKlines = statusOf15mKlines.subList(0, 3);
+                    statusOf3mKlines = statusOf3mKlines.subList(0, 8);
                     int nrOfTradesLast15mKlinesSum = countNrOfTradesAtInterval(coinKlines15m, 0, 2);
 
                     if (isKlineApprovedForLongOrShort(statusOf3mKlines, statusOf15mKlines, 1)) {
@@ -754,8 +766,8 @@ public class UpdatingDatabaseService extends Service {
     // Function checks if provided status list function countBestCryptoToBuy matches required criteria / shortOrLong --> Long = 1, Short = 0
     public boolean isKlineApprovedForLongOrShort(List<Integer> sumOf3m, List<Integer> sumOf15m, int shortOrLong) {
 
-        int nrOfGreenKlines3m = 4; //5
-        int nrOfGreenKlines15m = 0; //4
+        int nrOfGreenKlines3m = 5; //5
+        int nrOfGreenKlines15m = 2; //4
         boolean accepted3m = false;
         boolean accepted15m = false;
         int temp = 0;
