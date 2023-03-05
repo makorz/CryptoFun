@@ -261,7 +261,7 @@ public class UpdatingDatabaseService extends Service {
                 data2 = databaseDB.nrOfKlinesForSymbolInInterval(symbol, intervalInSwitch);
                 if (data.getCount() == 0 || data2.getCount() == 0) {
                     Log.e("UpdatingExistingDB", "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB 3m]");
-                    model = new ObservableModel(symbol, 10, intervalInSwitch, 0, 0);
+                    model = new ObservableModel(symbol, 15, intervalInSwitch, 0, 0);
                 } else {
                     data.moveToFirst();
                     data2.moveToFirst();
@@ -303,7 +303,7 @@ public class UpdatingDatabaseService extends Service {
                 data2 = databaseDB.nrOfKlinesForSymbolInInterval(symbol, intervalInSwitch);
                 if (data.getCount() == 0 || data2.getCount() == 0) {
                     Log.e("UpdatingExistingDB", "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB 15m]");
-                    model = new ObservableModel(symbol, 10, intervalInSwitch, 0, 0);
+                    model = new ObservableModel(symbol, 15, intervalInSwitch, 0, 0);
                 } else {
                     data.moveToFirst();
                     data2.moveToFirst();
@@ -312,7 +312,7 @@ public class UpdatingDatabaseService extends Service {
                     nrOfKlinesFromLastDBUpdate = (int) (-(closeTime - timeCurrent) / minutes15) + 2;
 
                     if (nrOfKlines >= maxNrOfKlines || nrOfKlines < 1 || nrOfKlinesFromLastDBUpdate > maxNrOfKlines) {
-                        model = new ObservableModel(symbol, 10, intervalInSwitch, 1, 0);
+                        model = new ObservableModel(symbol, 15, intervalInSwitch, 1, 0);
                     } else {
                         if (nrOfKlinesFromLastDBUpdate > 2 && (nrOfKlines - 1 + nrOfKlinesFromLastDBUpdate) > maxNrOfKlines) {
                             int howManyOldOnes = (nrOfKlines - 1) + nrOfKlinesFromLastDBUpdate - maxNrOfKlines;

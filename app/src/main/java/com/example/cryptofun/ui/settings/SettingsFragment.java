@@ -8,6 +8,7 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager.widget.ViewPager;
 import androidx.viewpager2.widget.ViewPager2;
@@ -43,6 +44,7 @@ public class SettingsFragment extends Fragment {
     private EditText apikeyET, secretET;
     private FloatingActionButton infoButton;
     private DBHandler databaseDB;
+    private SwitchCompat switchTest, switchReal;
 
 
     @Override
@@ -61,6 +63,8 @@ public class SettingsFragment extends Fragment {
         updateKeysButton = binding.btSetKeys;
         apikeyET = binding.etApiKey;
         secretET = binding.etSecret;
+        switchReal = binding.switchReal;
+        switchTest = binding.switchTest;
 
         Cursor data = databaseDB.retrieveParam(4);
         if (data.getCount() == 0) {

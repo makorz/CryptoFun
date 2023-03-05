@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="MySwitch" parent="Theme.CryptoFun">
+        <item name="colorControlActivated">@color/dark_green</item>
+        <item name="colorSwitchThumbNormal">@android:color/white</item>
+        <item name="colorSurface">@android:color/darker_gray</item>
+    </style>
+
+
+</resources>

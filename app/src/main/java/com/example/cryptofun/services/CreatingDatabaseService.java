@@ -112,9 +112,9 @@ public class CreatingDatabaseService extends Service {
         Log.e("CRT", "LIST OF SYMBOLS -> " + listOfSymbols);
 
         int LIMIT3m = 12;
-        int LIMIT15m = 8;
+        int LIMIT15m = 16;
         //int LIMIT1d = 4;
-        int LIMIT4h = 10;
+        int LIMIT4h = 6;
         for (int i = 0; i < listOfSymbols.size(); i++) {
             // Make a collection of all requests you need to call at once, there can be any number of requests, not only 3. You can have 2 or 5, or 100.
             request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT15m, "15m"),

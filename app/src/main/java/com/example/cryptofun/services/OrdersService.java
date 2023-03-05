@@ -170,7 +170,7 @@ public class OrdersService extends Service {
                 long oneHour = 3600000;
                 long minutes45 = 2700000;
                 long halfHour = 1800000;
-                long minutes20 = 1200000;
+                long minutes10 = 600000;
 
                 if (returnList.get(i).getIsItShort() == 1) {
 
@@ -193,26 +193,26 @@ public class OrdersService extends Service {
                     }
                 }
 
-                if ((orderTime + oneHour) < currentTime) {
+                if ((orderTime + minutes10) < currentTime) {
 
                     if (percentNow > 2 && returnList.get(i).getIsItShort() == 0) {
                         float stopLimitPrice = returnList.get(i).getCurrentPrice()  * (1 - (float) 2  / 100);
                         float takeProfitPrice = returnList.get(i).getCurrentPrice()  * (1 + (float) 10 / 100);
                         returnList.get(i).setStopLimitPrice(stopLimitPrice);
                         returnList.get(i).setTakeProfitPrice(takeProfitPrice);
-                    }
-
-                    if (percentNow < -2 && returnList.get(i).getIsItShort() == 1) {
+                    } else if (percentNow < -2 && returnList.get(i).getIsItShort() == 1) {
                         float stopLimitPrice = returnList.get(i).getCurrentPrice()  * (1 + (float) 2  / 100);
                         float takeProfitPrice = returnList.get(i).getCurrentPrice()  * (1 - (float) 10 / 100);
                         returnList.get(i).setStopLimitPrice(stopLimitPrice);
                         returnList.get(i).setTakeProfitPrice(takeProfitPrice);
+                    } else if (((orderTime + oneHour) < currentTime)) {
+
+                        closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
+                                returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
                     }
 
-                    closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
-                            returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
-
                 }
+
 
             }
             data2.close();

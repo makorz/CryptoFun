@@ -6,7 +6,7 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 public class PagerAdapter extends FragmentStateAdapter {
-    private static final int NUM_PAGES = 3;
+    private static final int NUM_PAGES = 4;
 
     public PagerAdapter(FragmentActivity fa) {
         super(fa);
@@ -21,6 +21,8 @@ public class PagerAdapter extends FragmentStateAdapter {
                 return new SecondPageFragment();
             case 2:
                 return new ThirdPageFragment();
+            case 3:
+                return new FourthPageFragment();
             default:
                 return null;
         }

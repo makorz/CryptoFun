@@ -293,12 +293,19 @@ public class ApprovingService extends Service {
 
         ArrayList<GridViewElement> cryptoPercentageList = new ArrayList<>();
 
-        float percentU15 = 0;
-        float percentU5 = 0;
+//        float percentU15 = 0;
+//        float percentU5 = 0;
+//        float percentU0 = 0;
+//        float percentO0 = 0;
+//        float percentO5 = 0;
+//        float percentO15 = 0;
+
+        float percentU8 = 0;
+        float percentU3 = 0;
         float percentU0 = 0;
         float percentO0 = 0;
-        float percentO5 = 0;
-        float percentO15 = 0;
+        float percentO3 = 0;
+        float percentO8 = 0;
 
         Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
         if (data.getCount() == 0) {
@@ -312,52 +319,95 @@ public class ApprovingService extends Service {
             List<String> biggestNrOfTradesSymbols = getBiggestNrOfTradesSymbols("4h", nrOfGridElements);
 
             for (int i = 0; i < listOfSymbols.size(); i++) {
-                cryptoPercentageList.add(get24hPercentChangeForCrypto(listOfSymbols.get(i)));
+                cryptoPercentageList.add(getTimePercentChangeForCrypto(listOfSymbols.get(i), 3));
                 //Log.e("HomeFragments", "Crypto percentage: " + cryptoPercentageList.get(i).getSymbol() + " " + cryptoPercentageList.get(i).getPercent());
                 if (cryptoPercentageList.get(i) == null) {
                     cryptoPercentageList.remove(i);
                 }
             }
-            int under15 = 0;
-            int under5 = 0;
+//            int under15 = 0;
+//            int under5 = 0;
+//            int under0 = 0;
+//            int over0 = 0;
+//            int over5 = 0;
+//            int over15 = 0;
+//
+//            for (int i = 0; i < cryptoPercentageList.size(); i++) {
+//
+//                if (cryptoPercentageList.get(i).getPercent() < -15) {
+//                    under15++;
+//                } else if (cryptoPercentageList.get(i).getPercent() >= -15 && cryptoPercentageList.get(i).getPercent() < -5) {
+//                    under5++;
+//                } else if (cryptoPercentageList.get(i).getPercent() >= -5 && cryptoPercentageList.get(i).getPercent() < 0) {
+//                    under0++;
+//                } else if (cryptoPercentageList.get(i).getPercent() >= 0 && cryptoPercentageList.get(i).getPercent() < 5) {
+//                    over0++;
+//                } else if (cryptoPercentageList.get(i).getPercent() >= 5 && cryptoPercentageList.get(i).getPercent() <= 15) {
+//                    over5++;
+//                } else if (cryptoPercentageList.get(i).getPercent() > 15) {
+//                    over15++;
+//                }
+//            }
+//
+//            percentU15 = (float) under15 / cryptoPercentageList.size() * 100;
+//            percentU5 = (float) under5 / cryptoPercentageList.size() * 100;
+//            percentU0 = (float) under0 / cryptoPercentageList.size() * 100;
+//            percentO0 = (float) over0 / cryptoPercentageList.size() * 100;
+//            percentO5 = (float) over5 / cryptoPercentageList.size() * 100;
+//            percentO15 = (float) over15 / cryptoPercentageList.size() * 100;
+//
+//            if (biggestNrOfTradesSymbols.size() > 1) {
+//                cryptoGridViewList.add(new GridViewElement("< -15%", percentU15, under15));
+//                cryptoGridViewList.add(new GridViewElement("-15% - -5%", percentU5, under5));
+//                cryptoGridViewList.add(new GridViewElement("-5% - 0%", percentU0, under0));
+//                cryptoGridViewList.add(new GridViewElement("0% - 5%", percentO0, over0));
+//                cryptoGridViewList.add(new GridViewElement("5% - 15%", percentO5, over5));
+//                cryptoGridViewList.add(new GridViewElement("> 15%", percentO15, over15));
+//                for (int i = 0; i < nrOfGridElements; i++) {
+//                    cryptoGridViewList.add(getTimePercentChangeForCrypto(biggestNrOfTradesSymbols.get(i),3));
+//                }
+//            }
+
+            int under8 = 0;
+            int under3 = 0;
             int under0 = 0;
             int over0 = 0;
-            int over5 = 0;
-            int over15 = 0;
+            int over3 = 0;
+            int over8 = 0;
 
             for (int i = 0; i < cryptoPercentageList.size(); i++) {
 
-                if (cryptoPercentageList.get(i).getPercent() < -15) {
-                    under15++;
-                } else if (cryptoPercentageList.get(i).getPercent() >= -15 && cryptoPercentageList.get(i).getPercent() < -5) {
-                    under5++;
-                } else if (cryptoPercentageList.get(i).getPercent() >= -5 && cryptoPercentageList.get(i).getPercent() < 0) {
+                if (cryptoPercentageList.get(i).getPercent() < -8) {
+                    under8++;
+                } else if (cryptoPercentageList.get(i).getPercent() >= -8 && cryptoPercentageList.get(i).getPercent() < -3) {
+                    under3++;
+                } else if (cryptoPercentageList.get(i).getPercent() >= -3 && cryptoPercentageList.get(i).getPercent() < 0) {
                     under0++;
-                } else if (cryptoPercentageList.get(i).getPercent() >= 0 && cryptoPercentageList.get(i).getPercent() < 5) {
+                } else if (cryptoPercentageList.get(i).getPercent() >= 0 && cryptoPercentageList.get(i).getPercent() < 3) {
                     over0++;
-                } else if (cryptoPercentageList.get(i).getPercent() >= 5 && cryptoPercentageList.get(i).getPercent() <= 15) {
-                    over5++;
-                } else if (cryptoPercentageList.get(i).getPercent() > 15) {
-                    over15++;
+                } else if (cryptoPercentageList.get(i).getPercent() >= 3 && cryptoPercentageList.get(i).getPercent() <= 8) {
+                    over3++;
+                } else if (cryptoPercentageList.get(i).getPercent() > 8) {
+                    over8++;
                 }
             }
 
-            percentU15 = (float) under15 / cryptoPercentageList.size() * 100;
-            percentU5 = (float) under5 / cryptoPercentageList.size() * 100;
+            percentU8 = (float) under8 / cryptoPercentageList.size() * 100;
+            percentU3 = (float) under3 / cryptoPercentageList.size() * 100;
             percentU0 = (float) under0 / cryptoPercentageList.size() * 100;
             percentO0 = (float) over0 / cryptoPercentageList.size() * 100;
-            percentO5 = (float) over5 / cryptoPercentageList.size() * 100;
-            percentO15 = (float) over15 / cryptoPercentageList.size() * 100;
+            percentO3 = (float) over3 / cryptoPercentageList.size() * 100;
+            percentO8 = (float) over8 / cryptoPercentageList.size() * 100;
 
             if (biggestNrOfTradesSymbols.size() > 1) {
-                cryptoGridViewList.add(new GridViewElement("< -15%", percentU15, under15));
-                cryptoGridViewList.add(new GridViewElement("-15% - -5%", percentU5, under5));
-                cryptoGridViewList.add(new GridViewElement("-5% - 0%", percentU0, under0));
-                cryptoGridViewList.add(new GridViewElement("0% - 5%", percentO0, over0));
-                cryptoGridViewList.add(new GridViewElement("5% - 15%", percentO5, over5));
-                cryptoGridViewList.add(new GridViewElement("> 15%", percentO15, over15));
+                cryptoGridViewList.add(new GridViewElement("< -8%", percentU8, under8));
+                cryptoGridViewList.add(new GridViewElement("-8% - -3%", percentU3, under3));
+                cryptoGridViewList.add(new GridViewElement("-3% - 0%", percentU0, under0));
+                cryptoGridViewList.add(new GridViewElement("0% - 3%", percentO0, over0));
+                cryptoGridViewList.add(new GridViewElement("3% - 8%", percentO3, over3));
+                cryptoGridViewList.add(new GridViewElement("> 8%", percentO8, over8));
                 for (int i = 0; i < nrOfGridElements; i++) {
-                    cryptoGridViewList.add(get24hPercentChangeForCrypto(biggestNrOfTradesSymbols.get(i)));
+                    cryptoGridViewList.add(getTimePercentChangeForCrypto(biggestNrOfTradesSymbols.get(i),3));
                 }
             }
 
@@ -365,8 +415,8 @@ public class ApprovingService extends Service {
         }
         data.close();
 
-        float underPercentage = percentU0 + percentU5 + percentU15;
-        float overPercentage = percentO0 + percentO5 + percentO15;
+        float underPercentage = percentU0 + percentU3 + percentU8;
+        float overPercentage = percentO0 + percentO3 + percentO8;
 
         if (overPercentage > 85) {
             serviceFinishedEverything = 6;
@@ -374,7 +424,7 @@ public class ApprovingService extends Service {
         } else if (underPercentage > 85) {
             serviceFinishedEverything = 6;
             sendMessageToActivity();
-        } else if (underPercentage > 60 && (percentU15 + percentU5) < 8) {
+        } else if (underPercentage > 60 && (percentU3 + percentU8) < 15) {
             if (cryptoForLONGOrders.size() > 0) {
                 serviceFinishedEverything++;
                 automaticOrdersFunction(cryptoForLONGOrders);
@@ -382,7 +432,7 @@ public class ApprovingService extends Service {
                 serviceFinishedEverything = 6;
                 sendMessageToActivity();
             }
-        } else if (overPercentage > 60 && (percentO15 + percentO5) < 8) {
+        } else if (overPercentage > 60 && (percentO3 + percentO8) < 15) {
             if (cryptoForSHORTOrders.size() > 0) {
                 serviceFinishedEverything++;
                 automaticOrdersFunction(cryptoForSHORTOrders);
@@ -395,27 +445,31 @@ public class ApprovingService extends Service {
             sendMessageToActivity();
         }
 
-//        if ((percentU15 + percentU5) > 5 && percentU0 > 60) {
+//        float underPercentage = percentU0 + percentU5 + percentU15;
+//        float overPercentage = percentO0 + percentO5 + percentO15;
+
+//        if (overPercentage > 85) {
+//            serviceFinishedEverything = 6;
+//            sendMessageToActivity();
+//        } else if (underPercentage > 85) {
+//            serviceFinishedEverything = 6;
+//            sendMessageToActivity();
+//        } else if (underPercentage > 60 && (percentU15 + percentU5) < 8) {
 //            if (cryptoForLONGOrders.size() > 0) {
 //                serviceFinishedEverything++;
 //                automaticOrdersFunction(cryptoForLONGOrders);
+//            } else {
+//                serviceFinishedEverything = 6;
+//                sendMessageToActivity();
 //            }
-//        } else if ((percentO15 + percentO5) > 5 && percentO0 > 60) {
+//        } else if (overPercentage > 60 && (percentO15 + percentO5) < 8) {
 //            if (cryptoForSHORTOrders.size() > 0) {
 //                serviceFinishedEverything++;
 //                automaticOrdersFunction(cryptoForSHORTOrders);
+//            } else {
+//                serviceFinishedEverything = 6;
+//                sendMessageToActivity();
 //            }
-//        } else {
-//            serviceFinishedEverything = 6;
-//            sendMessageToActivity();
-//        }
-//
-
-
-//
-//        if (last30MinTokensStat.size() > 0) {
-//            serviceFinishedEverything++;
-//            automaticOrdersFunction(last30MinTokensStat);
 //        } else {
 //            serviceFinishedEverything = 6;
 //            sendMessageToActivity();
@@ -590,10 +644,10 @@ public class ApprovingService extends Service {
 
 
 
-    // Calculate 24h change of price in %
-    public GridViewElement get24hPercentChangeForCrypto(String symbol) {
+    // Calculate 3h change of price in %
+    public GridViewElement getTimePercentChangeForCrypto(String symbol, int nrOfHoursBack) {
 
-        List<Kline> coinKlines4h = new ArrayList<>();
+        List<Kline> coinKlines15m = new ArrayList<>();
         Cursor data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol);
 
         if (data.getCount() == 0) {
@@ -603,39 +657,19 @@ public class ApprovingService extends Service {
             data.moveToFirst();
             while (data.moveToNext()) {
 
-                if (data.getString(10).equals("4h")) {
+                if (data.getString(10).equals("15m")) {
 
-                    coinKlines4h.add(new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10)));
+                    coinKlines15m.add(new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10)));
 
                 }
             }
 
-            if (coinKlines4h.size() >= 3) { //7 for 24h
-                //For 8h change
-                long openTime = coinKlines4h.get(2).gettOpenTime();
-                float closePriceYesterday = coinKlines4h.get(2).gettClosePrice();
+            if (coinKlines15m.size() >= nrOfHoursBack * 4) {
+
+                float closePriceYesterday = coinKlines15m.get(11).gettClosePrice();
                 float percentOfChange = 0;
-                long openTime2 = coinKlines4h.get(0).gettOpenTime();
-                float closePriceToday = coinKlines4h.get(0).gettClosePrice();
-
-                // if (openTime + 28800000 == openTime2)
+                float closePriceToday = coinKlines15m.get(0).gettClosePrice();
                 percentOfChange = ((closePriceToday / closePriceYesterday) * 100) - 100;
-                //}
-
-                // For 24h change:
-//                long openTime = coinKlines4h.get(6).gettOpenTime();
-//                float closePriceYesterday = coinKlines4h.get(6).gettClosePrice();
-//                float percentOfChange = 0;
-//                long openTime2 = coinKlines4h.get(0).gettOpenTime();
-//                float closePriceToday = coinKlines4h.get(0).gettClosePrice();
-//
-//                if (openTime + 86400000 == openTime2) {
-//                    percentOfChange = ((closePriceToday / closePriceYesterday) * 100) - 100;
-//                }
-
-//                Log.e(TAG, "24hPercentCount-yesterday " + openTime + ", " + closePriceYesterday);
-//                Log.e(TAG, "24hPercentCount-today " + openTime2 + ", " + closePriceToday);
-//                Log.e(TAG, "percent " + percentOfChange);
 
                 data.close();
                 return new GridViewElement(symbol, percentOfChange, closePriceToday);
