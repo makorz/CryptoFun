@@ -30,9 +30,11 @@
         <LinearLayout
             android:id="@+id/linear_space_2"
             android:layout_width="match_parent"
-            android:layout_height="3dp"
+            android:layout_height="4dp"
             android:layout_marginStart="10dp"
             android:layout_marginEnd="10dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
             android:background="@color/orange_700"
             android:orientation="horizontal" />
 
@@ -52,6 +54,7 @@
                     android:layout_height="wrap_content"
                     android:layout_margin="5dp"
                     android:text="Interesting LONGs:"
+                    android:textColor="@color/black"
                     android:textAlignment="center" />
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -73,6 +76,7 @@
                     android:layout_height="wrap_content"
                     android:layout_margin="5dp"
                     android:text="Interesting SHORTs:"
+                    android:textColor="@color/black"
                     android:textAlignment="center" />
 
 
@@ -87,6 +91,17 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/linear_space_1"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
+            android:background="@color/orange_700"
+            android:orientation="horizontal" />
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="165dp"
             android:orientation="vertical">
@@ -96,6 +111,7 @@
                 android:layout_height="wrap_content"
                 android:layout_margin="2dp"
                 android:text="Approved in last 30 minutes:"
+                android:textColor="@color/black"
                 android:textAlignment="center" />
 
             <androidx.recyclerview.widget.RecyclerView
@@ -105,6 +121,17 @@
                 android:layout_margin="5dp" />
 
         </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/linear_space_3"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
+            android:background="@color/orange_700"
+            android:orientation="horizontal" />
 
 
         <LinearLayout
@@ -117,6 +144,7 @@
                 android:layout_height="wrap_content"
                 android:layout_margin="2dp"
                 android:text="Approved in last 2 hours:"
+                android:textColor="@color/black"
                 android:textAlignment="center" />
 
             <androidx.recyclerview.widget.RecyclerView
@@ -128,6 +156,17 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/linear_space_4"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp"
+            android:background="@color/orange_700"
+            android:orientation="horizontal" />
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="165dp"
             android:orientation="vertical">
@@ -137,6 +176,7 @@
                 android:layout_height="wrap_content"
                 android:layout_margin="2dp"
                 android:text="Approved in last 6 hours:"
+                android:textColor="@color/black"
                 android:textAlignment="center" />
 
             <androidx.recyclerview.widget.RecyclerView

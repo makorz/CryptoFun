@@ -48,7 +48,9 @@ public class SignatureInterceptor implements Interceptor {
         String message = "recvWindow=" + recvWindow + "&timestamp=" + timestamp;
 
         Log.e("Retrofit", message);
-        String signature = hmacSha256(secretKey, message);
+
+      // String signature = hmacSha256(secretKey, message);
+        String signature = "";
 
         Log.e("Retrofit", signature + " " + urlBuilder.build());
 

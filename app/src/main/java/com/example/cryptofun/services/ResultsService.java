@@ -118,7 +118,7 @@ public class ResultsService extends Service {
     }
 
     private void getRealAccountBalance(String testBalance, ArrayList<String> automaticBalance) {
-        Call<List<AccountBalance>> call = RetrofitClientSecret.getInstance().getMyApi().getAccountBalance();
+        Call<List<AccountBalance>> call = RetrofitClientSecret.getInstance(getApplicationContext()).getMyApi().getAccountBalance();
         Log.e(TAG, call.toString());
         call.enqueue(new Callback<List<AccountBalance>>() {
             @Override
@@ -192,8 +192,8 @@ public class ResultsService extends Service {
         // Create a notification to indicate that the service is running.
         // You can customize the notification to display the information you want.
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("RESULTS")
-                .setContentText("Checking Your results!")
+                .setContentTitle("CryptoFun")
+                .setContentText("Results check.")
                 .setContentIntent(pendingIntent)
                 .setChannelId(CHANNEL_ID)
                 .setSmallIcon(R.drawable.crypto_fun_logo);

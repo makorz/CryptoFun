@@ -112,7 +112,7 @@ public class CreatingDatabaseService extends Service {
         Log.e("CRT", "LIST OF SYMBOLS -> " + listOfSymbols);
 
         int LIMIT3m = 12;
-        int LIMIT15m = 16;
+        int LIMIT15m = 26;
         //int LIMIT1d = 4;
         int LIMIT4h = 6;
         for (int i = 0; i < listOfSymbols.size(); i++) {

@@ -27,6 +27,7 @@
             android:layout_width="match_parent"
             android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
+            android:textSize="14sp"
             android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
             android:textAlignment="textEnd" />
@@ -45,7 +46,7 @@
             android:layout_marginStart="14dp"
             android:layout_marginTop="14dp"
             android:layout_marginEnd="14dp"
-            android:text="User test account balance (USDT):"
+            android:text="User test account balance:"
             android:textSize="14sp" />
 
         <TextView
@@ -53,6 +54,7 @@
             android:layout_width="match_parent"
             android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
+            android:textSize="14sp"
             android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
             android:textAlignment="textEnd" />
@@ -69,6 +71,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="14dp"
+
             android:layout_marginTop="14dp"
             android:layout_marginEnd="14dp"
             android:text="Auto test account nr 1 balance:"
@@ -79,6 +82,7 @@
             android:layout_width="match_parent"
             android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
+            android:textSize="14sp"
             android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
             android:textAlignment="textEnd" />
@@ -105,6 +109,7 @@
             android:layout_width="match_parent"
             android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
+            android:textSize="14sp"
             android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
             android:textAlignment="textEnd" />
@@ -132,6 +137,7 @@
             android:layout_width="match_parent"
             android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
+            android:textSize="14sp"
             android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
             android:textAlignment="textEnd" />
@@ -159,6 +165,7 @@
             android:layout_width="match_parent"
             android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
+            android:textSize="14sp"
             android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
             android:textAlignment="textEnd" />
@@ -186,6 +193,7 @@
             android:layout_width="match_parent"
             android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
+            android:textSize="14sp"
             android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
             android:textAlignment="textEnd" />

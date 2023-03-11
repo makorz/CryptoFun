@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.example.cryptofun.MainActivity;
 import com.example.cryptofun.R;
 import com.example.cryptofun.data.AccountBalance;
 import com.example.cryptofun.database.DBHandler;
@@ -42,6 +43,18 @@ public class OrdersService extends Service {
     private static final String TABLE_NAME_CONFIG = "config";
     private static final String VALUE_REAL = "value_real";
     private static final String ID = "id";
+    private static final String IS_IT_REAL = "isReal";
+    private static final String ENTRY_AMOUNT = "entry_amount";
+    private static final String ENTRY_PRICE = "entry_price";
+    private static final String CURRENT_PRICE = "current_price";
+    private static final String STOP_LIMIT = "stop_limit_price";
+    private static final String TAKE_PROFIT = "take_profit_price";
+    private static final String MARGIN = "margin";
+    private static final String TIME_WHEN_PLACED = "time_when_placed";
+    private static final String IS_IT_CROSSED = "isCrossed";
+    private static final String IS_IT_SHORT = "isShort";
+    private static final String WHAT_ACCOUNT = "account_nr";
+
     ArrayList<OrderListViewElement> returnList = new ArrayList<>();
 
     @Override
@@ -88,8 +101,8 @@ public class OrdersService extends Service {
         // Create a notification to indicate that the service is running.
         // You can customize the notification to display the information you want.
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("ORDERS")
-                .setContentText("Checking Your decisions!")
+                .setContentTitle("CryptoFun")
+                .setContentText("Orders verification.")
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setSmallIcon(R.drawable.crypto_fun_logo);
 
@@ -155,22 +168,25 @@ public class OrdersService extends Service {
                 data2.moveToFirst();
                 price = data2.getFloat(6);
 
-                float percentPrevious = returnList.get(i).getPercentOfAmountChange();
-                databaseDB.updateCurrentPriceOfCryptoInOrders(returnList.get(i).getSymbol(), price);
+                Log.e(TAG, "Is it close time? SYMBOL: " + returnList.get(i).getSymbol() + " CP: " + price + " PP: " + returnList.get(i).getCurrentPrice());
+
+                float percentPrevious = returnList.get(i).getPercentOfPriceChange();
+                databaseDB.updateCurrentPriceOfCryptoInOrders(returnList.get(i).getSymbol(), CURRENT_PRICE, price, returnList.get(i).getTimeWhenPlaced());
                 returnList.get(i).setCurrentPrice(price);
-                float percentNow = returnList.get(i).getPercentOfAmountChange();
-
-                Log.e(TAG, "Is it close time? SYMBOL: " + returnList.get(i).getSymbol() + " CP: " + price + " SL: " + returnList.get(i).getStopLimitPrice() + " TP: " + returnList.get(i).getTakeProfitPrice()
-                        + " SHORT?: " + returnList.get(i).getIsItShort() + " CA: " + returnList.get(i).getCurrentAmount());
+                float percentNow = returnList.get(i).getPercentOfPriceChange();
 
 
+                Log.e(TAG, "Is it close time? SYMBOL: " + returnList.get(i).getSymbol() + " SL: " + returnList.get(i).getStopLimitPrice() + " TP: "
+                        + returnList.get(i).getTakeProfitPrice() + " SHORT?: " + returnList.get(i).getIsItShort() + " CA: " + returnList.get(i).getCurrentAmount() + " Percent Now: "
+                        + percentNow + " Percent previous: " + percentPrevious);
 
                 long currentTime = System.currentTimeMillis();
                 long orderTime = returnList.get(i).getTimeWhenPlaced();
                 long oneHour = 3600000;
+                long twoHours = 7200000;
                 long minutes45 = 2700000;
                 long halfHour = 1800000;
-                long minutes10 = 600000;
+                long minutes3 = 180000;
 
                 if (returnList.get(i).getIsItShort() == 1) {
 
@@ -193,26 +209,27 @@ public class OrdersService extends Service {
                     }
                 }
 
-                if ((orderTime + minutes10) < currentTime) {
+                if (percentNow > 1 && percentNow > percentPrevious && returnList.get(i).getIsItShort() == 0) {
+                    Log.e(TAG, "Previous SL: " + returnList.get(i).getStopLimitPrice());
+                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * 0.99f;
+                    returnList.get(i).setStopLimitPrice(stopLimitPrice);
+                    databaseDB.updateCurrentPriceOfCryptoInOrders(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
+                    Log.e(TAG, "New SL: " + returnList.get(i).getStopLimitPrice());
+                } else if (percentNow < -1 && percentPrevious > percentNow && returnList.get(i).getIsItShort() == 1) {
+                    Log.e(TAG, "Previous SL: " + returnList.get(i).getStopLimitPrice());
+                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * 1.01f;
+                    returnList.get(i).setStopLimitPrice(stopLimitPrice);
+                    databaseDB.updateCurrentPriceOfCryptoInOrders(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
+                    Log.e(TAG, "New SL: " + returnList.get(i).getStopLimitPrice());
+                } else if (((orderTime + halfHour) < currentTime) && returnList.get(i).getIsItShort() == 0 && returnList.get(i).getEntryPrice() * 0.995 > returnList.get(i).getCurrentPrice()) {
 
-                    if (percentNow > 2 && returnList.get(i).getIsItShort() == 0) {
-                        float stopLimitPrice = returnList.get(i).getCurrentPrice()  * (1 - (float) 2  / 100);
-                        float takeProfitPrice = returnList.get(i).getCurrentPrice()  * (1 + (float) 10 / 100);
-                        returnList.get(i).setStopLimitPrice(stopLimitPrice);
-                        returnList.get(i).setTakeProfitPrice(takeProfitPrice);
-                    } else if (percentNow < -2 && returnList.get(i).getIsItShort() == 1) {
-                        float stopLimitPrice = returnList.get(i).getCurrentPrice()  * (1 + (float) 2  / 100);
-                        float takeProfitPrice = returnList.get(i).getCurrentPrice()  * (1 - (float) 10 / 100);
-                        returnList.get(i).setStopLimitPrice(stopLimitPrice);
-                        returnList.get(i).setTakeProfitPrice(takeProfitPrice);
-                    } else if (((orderTime + oneHour) < currentTime)) {
+                    closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
+                            returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
+                } else if (((orderTime + halfHour) < currentTime) && returnList.get(i).getIsItShort() == 1 && returnList.get(i).getEntryPrice() * 1.005 < returnList.get(i).getCurrentPrice()) {
 
-                        closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
-                                returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
-                    }
-
+                    closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
+                            returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
                 }
-
 
             }
             data2.close();
@@ -221,8 +238,9 @@ public class OrdersService extends Service {
 
     }
 
+    public void closeOrder(String symbol, long time, float currentAmount, int isItReal, int isItShort, int margin, int accountNumber) {
 
-    public void closeOrder(String symbol, long time,  float currentAmount, int isItReal, int isItShort, int margin, int accountNumber) {
+        Log.e(TAG, "Order was closed for: " + symbol + " on account nr" + accountNumber + ". Is it short: " + isItShort + ", margin: " + margin + ", amount of USDT from order:" + currentAmount);
 
         databaseDB.deleteOrder(symbol, time, isItReal, isItShort, margin);
         float balance = 0;
@@ -269,12 +287,12 @@ public class OrdersService extends Service {
         for (int i = 6; i < 11; i++) {
             Cursor data = databaseDB.retrieveParam(i);
             if (data.getCount() == 0) {
-                Log.e(TAG, "There is no param for test account " + (i - 5) );
-                databaseDB.addParam(i, "Test account nr " + (i-5) + " balance", "", 0, 100);
+                Log.e(TAG, "There is no param for test account " + (i - 5));
+                databaseDB.addParam(i, "Test account nr " + (i - 5) + " balance", "", 0, 100);
                 automaticBalance.add("100.00");
             } else if (data.getCount() >= 2) {
                 databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, i);
-                databaseDB.addParam(i, "Test account nr " + (i-5) + " balance", "", 0, 100);
+                databaseDB.addParam(i, "Test account nr " + (i - 5) + " balance", "", 0, 100);
                 automaticBalance.add("100.00");
             } else {
                 data.moveToFirst();
@@ -289,7 +307,7 @@ public class OrdersService extends Service {
     }
 
     private void getRealAccountBalance(String testBalance, ArrayList<String> automaticBalance) {
-        Call<List<AccountBalance>> call = RetrofitClientSecret.getInstance().getMyApi().getAccountBalance();
+        Call<List<AccountBalance>> call = RetrofitClientSecret.getInstance(getApplicationContext()).getMyApi().getAccountBalance();
         Log.e(TAG, call.toString());
         call.enqueue(new Callback<List<AccountBalance>>() {
             @Override

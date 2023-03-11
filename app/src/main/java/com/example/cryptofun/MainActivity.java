@@ -57,7 +57,6 @@ public class MainActivity extends AppCompatActivity {
     Fragment active = fragment0;
     final FragmentManager fm = getSupportFragmentManager();
     BottomNavigationView bottomNavigationView;
-    private Handler mHandler = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

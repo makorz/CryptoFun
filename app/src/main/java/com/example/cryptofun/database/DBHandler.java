@@ -10,8 +10,10 @@ import android.util.Log;
 
 
 import com.example.cryptofun.data.ApprovedToken;
+import com.example.cryptofun.data.PercentagesOfChanges;
 import com.example.cryptofun.ui.view.OrderListViewElement;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class DBHandler extends SQLiteOpenHelper {
@@ -66,6 +68,15 @@ public class DBHandler extends SQLiteOpenHelper {
     private static final String IS_IT_SHORT = "isShort";
     private static final String WHAT_ACCOUNT = "account_nr";
 
+    private static final String TABLE_HISTORIC_PERCENTAGES = "history_percentages";
+    private static final String UNDER1 = "under1";
+    private static final String UNDER2 = "under2";
+    private static final String UNDER3 = "under3";
+    private static final String OVER1 = "over1";
+    private static final String OVER2 = "over2";
+    private static final String OVER3 = "over3";
+
+
     private DBHandler(Context context) {
         super(context, DB_NAME, null, DB_VERSION);
         mContext = context;
@@ -105,6 +116,10 @@ public class DBHandler extends SQLiteOpenHelper {
 
         sqLiteDatabase.execSQL(query);
 
+        query = "CREATE TABLE " + TABLE_HISTORIC_PERCENTAGES + " (" + ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " + UNDER3 + " REAL, " + UNDER2 + " REAL, " + UNDER1 + " REAL, " + OVER1 + " REAL, " + OVER2 + " REAL, " + OVER3 + " REAL, " + TIME_WHEN_PLACED + " INT)";
+
+        sqLiteDatabase.execSQL(query);
+
 
     }
 
@@ -131,11 +146,11 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
 
     public void addApprovedNewCrypto(ApprovedToken symbol, String tableName) {
-        SQLiteDatabase db =  getInstance(mContext).getWritableDatabase();
+        SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
         ContentValues values = new ContentValues();
 
         try {
@@ -160,12 +175,12 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
 
     // id:1 -> Time of last update
     public void addParam(int id, String descr, String value, int valueInt, float valueFloat) {
-        SQLiteDatabase db =  getInstance(mContext).getWritableDatabase();
+        SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
         ContentValues values = new ContentValues();
 
         try {
@@ -189,7 +204,37 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
+    }
+
+    public void addPercentages(PercentagesOfChanges percents) {
+        SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
+        ContentValues values = new ContentValues();
+
+        try {
+            // Begin a database transaction
+            db.beginTransaction();
+
+            values.put(UNDER3, percents.getUnder3());
+            values.put(UNDER2, percents.getUnder2());
+            values.put(UNDER1, percents.getUnder1());
+            values.put(OVER1, percents.getOver1());
+            values.put(OVER2, percents.getOver2());
+            values.put(OVER3, percents.getOver3());
+            values.put(TIME_WHEN_PLACED, percents.getTime());
+            db.insert(TABLE_HISTORIC_PERCENTAGES, null, values);
+
+            // Commit the transaction
+            db.setTransactionSuccessful();
+        } catch (Exception e) {
+            // Handle any exceptions that occur during the transaction
+            Log.e(TAG, "Error updating table " + e);
+        } finally {
+            // End the transaction
+            db.endTransaction();
+        }
+
+
     }
 
 
@@ -197,7 +242,7 @@ public class DBHandler extends SQLiteOpenHelper {
     public int addNewKlineData(List<rawTable_Kline> object) {
 
         Log.e(TAG, "klinesAreInsertedToDB");
-        SQLiteDatabase db =  getInstance(mContext).getWritableDatabase();
+        SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
         ContentValues values = new ContentValues();
         int i = 0;
 
@@ -231,7 +276,7 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
         return i;
     }
 
@@ -254,7 +299,7 @@ public class DBHandler extends SQLiteOpenHelper {
             values.put(IS_IT_REAL, element.getIsItReal());
             values.put(IS_IT_CROSSED, element.getIsItCrossed());
             values.put(IS_IT_SHORT, element.getIsItShort());
-            values.put(WHAT_ACCOUNT,element.getAccountNumber());
+            values.put(WHAT_ACCOUNT, element.getAccountNumber());
             db.insert(TABLE_NAME_ORDERS, null, values);
 
             // Commit the transaction
@@ -267,7 +312,7 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
 
     public Cursor retrieveCryptoSymbolsToListView() {
@@ -342,11 +387,13 @@ public class DBHandler extends SQLiteOpenHelper {
         return data;
     }
 
-
-
-
-
-
+    public Cursor retrievePercentages(long time1, long time2) {
+        SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
+        String query = "SELECT * FROM " + TABLE_HISTORIC_PERCENTAGES + " WHERE " + TIME_WHEN_PLACED + " BETWEEN '" + time1 + "' AND '" + time2 + "' ORDER BY " + TIME_WHEN_PLACED + " DESC";
+        @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
+        Log.e(TAG, query);
+        return data;
+    }
 
     public void deleteWithWhereClause(String tableName, String columnName, int idParam) {
         SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
@@ -367,7 +414,7 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
 
     public void deleteOldApproved(String tableName, String columnName, long time) {
@@ -389,7 +436,7 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
 
 
@@ -402,7 +449,7 @@ public class DBHandler extends SQLiteOpenHelper {
 
             String query = "UPDATE " + tableName + " SET " + updatedColumnName + " = '" + value + "' WHERE " + whereColumnName + " = '" + whereSymbol + "'";
             db.execSQL(query);
-              // Commit the transaction
+            // Commit the transaction
             db.setTransactionSuccessful();
         } catch (Exception e) {
             // Handle any exceptions that occur during the transaction
@@ -413,7 +460,6 @@ public class DBHandler extends SQLiteOpenHelper {
         }
 
 
-        // db.close();
     }
 
     public void updateWithWhereClauseREAL(String tableName, String updatedColumnName, float value, String whereColumnName, String whereSymbol) {
@@ -434,7 +480,7 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
 
     public void updateWithWhereClauseINT(String tableName, String updatedColumnName, int value, String whereColumnName, String whereSymbol) {
@@ -457,17 +503,18 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
 
-    public void updateCurrentPriceOfCryptoInOrders(String symbol, float price) {
+    public void updateCurrentPriceOfCryptoInOrders(String symbol, String column, float amount, long time) {
         SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
 
         try {
             // Begin a database transaction
             db.beginTransaction();
 
-            String query = "UPDATE " + TABLE_NAME_ORDERS + " SET " + CURRENT_PRICE + " = " + price + " WHERE " + SYMBOL_CRYPTO + " = '" + symbol + "'";
+            String query = "UPDATE " + TABLE_NAME_ORDERS + " SET " + CURRENT_PRICE + " = " + amount + " WHERE " + SYMBOL_CRYPTO + " = '" + symbol + "' AND " + TIME_WHEN_PLACED + " = " + time;
+            Log.e(TAG, query);
             db.execSQL(query);
 
             // Commit the transaction
@@ -480,10 +527,8 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
-
-
 
 
     public void deleteMostNewKlineForSymbolInterval(String interval, String symbol, int limit) {
@@ -506,7 +551,6 @@ public class DBHandler extends SQLiteOpenHelper {
         }
 
 
-        // db.close();
     }
 
     public void deleteOldestKlinesForSymbolInterval(String interval, String symbol, int limit) {
@@ -527,12 +571,11 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
 
     public void deleteOrder(String symbol, long time, int isItReal, int isItShort, int margin) {
         SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
-        Log.e(TAG, "DELETE Order");
 
         try {
             // Begin a database transaction
@@ -551,7 +594,7 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
 
 
@@ -574,17 +617,17 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
     }
 
 
-    public void clearHistoric(long time) {
+    public void clearHistoricApproved(long time) {
         SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
 
         try {
             // Begin a database transaction
             db.beginTransaction();
-            Log.e(TAG, "CLEARED HISTORY");
+            Log.e(TAG, "CLEARED APPROVED HISTORY");
             String query = "DELETE FROM " + TABLE_NAME_APPROVED_HISTORIC + " WHERE " + TIME_APPROVED + " <= " + time;
             db.execSQL(query);
             // Commit the transaction
@@ -597,7 +640,28 @@ public class DBHandler extends SQLiteOpenHelper {
             db.endTransaction();
         }
 
-        // db.close();
+
+    }
+
+    public void clearHistoricPercentages(long time) {
+        SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
+
+        try {
+            // Begin a database transaction
+            db.beginTransaction();
+            Log.e(TAG, "CLEARED PERCENTAGES HISTORY");
+            String query = "DELETE FROM " + TABLE_HISTORIC_PERCENTAGES + " WHERE " + TIME_WHEN_PLACED + " <= " + time;
+            db.execSQL(query);
+            // Commit the transaction
+            db.setTransactionSuccessful();
+        } catch (Exception e) {
+            // Handle any exceptions that occur during the transaction
+            Log.e(TAG, "Error updating table " + e);
+        } finally {
+            // End the transaction
+            db.endTransaction();
+        }
+
 
     }
 
@@ -621,7 +685,6 @@ public class DBHandler extends SQLiteOpenHelper {
         }
 
 
-        // db.close();
     }
 
     @Override
@@ -634,7 +697,7 @@ public class DBHandler extends SQLiteOpenHelper {
     public void close() {
         SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
         if (db != null && db.isOpen()) {
-            // db.close();
+
         }
     }
 

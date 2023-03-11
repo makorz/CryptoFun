@@ -19,12 +19,16 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.cryptofun.MainActivity;
 import com.example.cryptofun.R;
 import com.example.cryptofun.database.DBHandler;
 import com.example.cryptofun.databinding.FragmentSettingsBinding;
+import com.example.cryptofun.retrofit.RetrofitClientSecret;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
@@ -40,11 +44,12 @@ public class SettingsFragment extends Fragment {
     private static final String ID = "id";
 
     private FragmentSettingsBinding binding;
-    private Button resetTestBalanceButton, resetAutomaticTestBalanceButton, showKeysButton, updateKeysButton;
-    private EditText apikeyET, secretET;
+    private Button resetTestBalanceButton, resetAutomaticTestBalanceButton, showKeysButton, updateKeysButton, updateParamsButton, updateWindowButton;
+    private EditText apikeyET, secretET, marginET, takeProfitET, stopLossET, windowET;
     private FloatingActionButton infoButton;
     private DBHandler databaseDB;
     private SwitchCompat switchTest, switchReal;
+    View root;
 
 
     @Override
@@ -54,7 +59,7 @@ public class SettingsFragment extends Fragment {
 
         databaseDB = DBHandler.getInstance(getContext());
         binding = FragmentSettingsBinding.inflate(inflater, container, false);
-        View root = binding.getRoot();
+        root = binding.getRoot();
 
         resetTestBalanceButton = binding.btResetTestBalance;
         resetAutomaticTestBalanceButton = binding.btResetAutomaticBalance;
@@ -65,7 +70,19 @@ public class SettingsFragment extends Fragment {
         secretET = binding.etSecret;
         switchReal = binding.switchReal;
         switchTest = binding.switchTest;
+        updateParamsButton = binding.btSetParams;
+        updateWindowButton = binding.btSetWindow;
+        marginET = binding.etMargin;
+        stopLossET = binding.etStopLoss;
+        takeProfitET = binding.etTakeProfit;
+        windowET = binding.etRecvWindow;
 
+        checkIfParamsArePresent();
+        buttonsJob();
+        return root;
+    }
+
+    private void checkIfParamsArePresent() {
         Cursor data = databaseDB.retrieveParam(4);
         if (data.getCount() == 0) {
             Log.e(TAG, "There is no param nr 4");
@@ -86,9 +103,67 @@ public class SettingsFragment extends Fragment {
         }
         data2.close();
 
+        data = databaseDB.retrieveParam(11);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 11");
+            databaseDB.addParam(11, "Automatic margin", "", 1, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 11);
+            databaseDB.addParam(11, "Automatic margin", "", 1, 0);
+        }
+        data.close();
 
-        buttonsJob();
-        return root;
+        data2 = databaseDB.retrieveParam(12);
+        if (data2.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 12");
+            databaseDB.addParam(12, "Automatic SL", "", 1, 0);
+        } else if (data2.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 12);
+            databaseDB.addParam(12, "Automatic SL", "", 1, 0);
+        }
+        data2.close();
+
+        data = databaseDB.retrieveParam(13);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 13");
+            databaseDB.addParam(13, "Automatic TP", "", 1, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 13);
+            databaseDB.addParam(13, "Automatic TP", "", 1, 0);
+        }
+        data.close();
+
+        data2 = databaseDB.retrieveParam(14);
+        if (data2.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 14");
+            databaseDB.addParam(14, "recvWindow", "", 1000, 0);
+        } else if (data2.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 14);
+            databaseDB.addParam(14, "recvWindow", "", 1000, 0);
+        }
+        data2.close();
+
+        data = databaseDB.retrieveParam(15);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 15");
+            databaseDB.addParam(15, "Stop automatic for REAL", "", 0, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 15);
+            databaseDB.addParam(15, "Stop automatic for REAL", "", 0, 0);
+        }
+        data.close();
+
+
+        data2 = databaseDB.retrieveParam(16);
+        if (data2.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 16");
+            databaseDB.addParam(16, "Stop automatic for TEST", "", 0, 0);
+        } else if (data2.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 16);
+            databaseDB.addParam(16, "Stop automatic for TEST", "", 0, 0);
+        }
+        data2.close();
+
     }
 
     private void buttonsJob() {
@@ -138,7 +213,7 @@ public class SettingsFragment extends Fragment {
             String api = apikeyET.getText().toString();
             String secret = secretET.getText().toString();
 
-            String finalMessage = "Are You sure You want update keys to following values:\n\n" + "API-KEY: " + api + "\n" + "SECRET: " + secret;
+            String finalMessage = "Are You sure You want update keys to following values:\n\n" + "API-KEY: " + api + "\n\n" + "SECRET: " + secret;
             AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
             builder.setTitle("UPDATE KEYS");
             builder.setMessage(finalMessage);
@@ -160,6 +235,61 @@ public class SettingsFragment extends Fragment {
 
         });
 
+        updateParamsButton.setOnClickListener(view -> {
+
+            String margin = marginET.getText().toString();
+            String stopL = stopLossET.getText().toString();
+            String takeP = takeProfitET.getText().toString();
+
+            String finalMessage = "Are You sure You want update params of automatic to following values:\n\n" + "MARGIN: " + margin + "\n\n" + "SL: " + stopL + "\n\n" + "TP: " + takeP;
+            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+            builder.setTitle("UPDATE PARAMS");
+            builder.setMessage(finalMessage);
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(margin), ID, "11");
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(stopL), ID, "12");
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(takeP), ID, "13");
+                    marginET.setText("");
+                    stopLossET.setText("");
+                    takeProfitET.setText("");
+                }
+            });
+            builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                }
+            });
+            AlertDialog dialog = builder.create();
+            dialog.show();
+
+        });
+
+        updateWindowButton.setOnClickListener(view -> {
+
+            String recvWindow = windowET.getText().toString();
+
+            String finalMessage = "Are You sure You want update recWindow to following values:\n\n" + "recvWindow: " + recvWindow;
+            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+            builder.setTitle("UPDATE recWindow");
+            builder.setMessage(finalMessage);
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(recvWindow), ID, "14");
+                    windowET.setText("");
+                }
+            });
+            builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                }
+            });
+            AlertDialog dialog = builder.create();
+            dialog.show();
+
+        });
+
+
         infoButton.setOnClickListener(view -> {
             showPagerCustomDialog();
         });
@@ -168,6 +298,11 @@ public class SettingsFragment extends Fragment {
 
             String apikey = "";
             String secret = "";
+            String margin = "";
+            String stopL = "";
+            String takeP = "";
+            String window = "";
+
             Cursor data = databaseDB.retrieveParam(4);
             if (data.getCount() == 0) {
                 Log.e(TAG, "There is no param nr 4");
@@ -178,15 +313,72 @@ public class SettingsFragment extends Fragment {
             data.close();
             Cursor data2 = databaseDB.retrieveParam(5);
             if (data2.getCount() == 0) {
-                Log.e(TAG, "There is no param nr 4");
+                Log.e(TAG, "There is no param nr 5");
             } else {
                 data2.moveToFirst();
                 secret = data2.getString(2);
             }
             data2.close();
 
-            String toastMessage = "API-KEY: " + apikey + "\n" + "SECRET: " + secret;
-            Toast.makeText(getContext(), toastMessage, Toast.LENGTH_SHORT).show();
+            data = databaseDB.retrieveParam(11);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 11");
+            } else {
+                data.moveToFirst();
+                margin = String.valueOf(data.getInt(3));
+            }
+            data.close();
+
+            data2 = databaseDB.retrieveParam(12);
+            if (data2.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 12");
+            } else {
+                data2.moveToFirst();
+                stopL = String.valueOf(data2.getInt(3));
+            }
+            data2.close();
+
+            data = databaseDB.retrieveParam(13);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 13");
+            } else {
+                data.moveToFirst();
+                takeP = String.valueOf(data.getInt(3));
+            }
+            data.close();
+
+            data2 = databaseDB.retrieveParam(14);
+            if (data2.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 14");
+            } else {
+                data2.moveToFirst();
+                window = String.valueOf(data2.getInt(3));
+            }
+            data2.close();
+
+            String toastMessage = "API-KEY: " + apikey + "\n\n" + "SECRET: " + secret + "\n\n" + "MARGIN: " + margin + "\n\n" + "SL: " + stopL + "\n\n" + "TP: " + takeP + "\n\n" + "recvWindow: " + window;
+
+            View customLayout = getLayoutInflater().inflate(R.layout.custom_snackbar, null);
+            Snackbar snackbar = Snackbar.make(root, "", Snackbar.LENGTH_SHORT);
+            Snackbar.SnackbarLayout snackbarLayout = (Snackbar.SnackbarLayout) snackbar.getView();
+            snackbarLayout.addView(customLayout, 0);
+
+            TextView textView = customLayout.findViewById(R.id.message_for_snack);
+            textView.setText(toastMessage);
+            snackbar.show();
+
+
+//            Snackbar snackbar = Snackbar
+//                    .make(snackBarView, toastMessage, Snackbar.LENGTH_LONG)
+//                    .setAction("UNDO", new View.OnClickListener() {
+//                        @Override
+//                        public void onClick(View view) {
+//                            Snackbar snackbar1 = Snackbar.make(snackBarView, "Message is restored!", Snackbar.LENGTH_LONG);
+//                            snackbar1.show();
+//                        }
+//                    });
+//
+//            snackbar.show();
 
         });
 

@@ -53,7 +53,7 @@ public class UpdatingDatabaseService extends Service {
     private static final String VALUE_STRING = "value_string";
     private static final String ID = "id";
     private DBHandler databaseDB;
-    private PowerManager.WakeLock mWakeLock;
+//    private PowerManager.WakeLock mWakeLock;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -64,9 +64,9 @@ public class UpdatingDatabaseService extends Service {
                     public void run() {
                         databaseDB = DBHandler.getInstance(getApplicationContext());
                         Log.e(TAG, "Service is running...");
-                        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
-                        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyService:WakeLockTag");
-                        mWakeLock.acquire(5*60*1000L );
+//                        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+//                        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyService:WakeLockTag");
+//                        mWakeLock.acquire(5*60*1000L );
 
                         // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
                         Notification notification = createNotification();
@@ -96,8 +96,8 @@ public class UpdatingDatabaseService extends Service {
         // Create a notification to indicate that the service is running.
         // You can customize the notification to display the information you want.
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("UPDating")
-                .setContentText("Searching for money, buddy!")
+                .setContentTitle("CryptoFun")
+                .setContentText("Updating crypto data.")
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setSmallIcon(R.drawable.crypto_fun_logo);
 
@@ -211,7 +211,7 @@ public class UpdatingDatabaseService extends Service {
     private void updateDBtoCurrentValues(long timeOfUpdate) {
         sendInfoToActivity();
         Log.e(TAG, "UpdateDB START " + Thread.currentThread() + " " + Thread.activeCount());
-        int maxNrOfKlines = 15;
+        int maxNrOfKlines = 26;
         List<String> listOfSymbols = new ArrayList<>();
         List<ObservableModel> observableList = new ArrayList<>();
 
@@ -303,7 +303,7 @@ public class UpdatingDatabaseService extends Service {
                 data2 = databaseDB.nrOfKlinesForSymbolInInterval(symbol, intervalInSwitch);
                 if (data.getCount() == 0 || data2.getCount() == 0) {
                     Log.e("UpdatingExistingDB", "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB 15m]");
-                    model = new ObservableModel(symbol, 15, intervalInSwitch, 0, 0);
+                    model = new ObservableModel(symbol, 26, intervalInSwitch, 0, 0);
                 } else {
                     data.moveToFirst();
                     data2.moveToFirst();
@@ -312,7 +312,7 @@ public class UpdatingDatabaseService extends Service {
                     nrOfKlinesFromLastDBUpdate = (int) (-(closeTime - timeCurrent) / minutes15) + 2;
 
                     if (nrOfKlines >= maxNrOfKlines || nrOfKlines < 1 || nrOfKlinesFromLastDBUpdate > maxNrOfKlines) {
-                        model = new ObservableModel(symbol, 15, intervalInSwitch, 1, 0);
+                        model = new ObservableModel(symbol, 26, intervalInSwitch, 1, 0);
                     } else {
                         if (nrOfKlinesFromLastDBUpdate > 2 && (nrOfKlines - 1 + nrOfKlinesFromLastDBUpdate) > maxNrOfKlines) {
                             int howManyOldOnes = (nrOfKlines - 1) + nrOfKlinesFromLastDBUpdate - maxNrOfKlines;
@@ -526,13 +526,13 @@ public class UpdatingDatabaseService extends Service {
             } else {
                 date = "Update time:  " + df.format(new Date(stamp.getTime()));
             }
-            databaseDB.clearHistoric(olderThan);
+            databaseDB.clearHistoricApproved(olderThan);
             sendMessageToActivity(date, false);
         }
-        if (mWakeLock != null) {
-            mWakeLock.release();
-            mWakeLock = null;
-        }
+//        if (mWakeLock != null) {
+//            mWakeLock.release();
+//            mWakeLock = null;
+//        }
         data.close();
     }
 
