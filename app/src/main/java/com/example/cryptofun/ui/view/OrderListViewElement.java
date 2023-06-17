@@ -18,23 +18,11 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
     private int isItShort;
     private int isItCrossed;
     private int accountNumber;
+    private long orderID;
+    private String orderType;
+    private float qunatity;
 
-    public OrderListViewElement(String symbol, int isItReal, float entryAmount, float entryPrice, float currentPrice, float stopLimitPrice, float takeProfitPrice, long timeWhenPlaced, int margin, int isItShort, int isItCrossed) {
-        this.symbol = symbol;
-        this.isItReal = isItReal;
-        this.entryAmount = entryAmount;
-        this.entryPrice = entryPrice;
-        this.currentPrice = currentPrice;
-        this.stopLimitPrice = stopLimitPrice;
-        this.takeProfitPrice = takeProfitPrice;
-        this.timeWhenPlaced = timeWhenPlaced;
-        this.margin = margin;
-        this.isItShort = isItShort;
-        this.isItCrossed = isItCrossed;
-    }
-
-
-    public OrderListViewElement(String symbol, int isItReal, float entryAmount, float entryPrice, float currentPrice, float stopLimitPrice, float takeProfitPrice, long timeWhenPlaced, int margin, int isItShort, int isItCrossed, int accountNumber) {
+    public OrderListViewElement(String symbol, int isItReal, float entryAmount, float entryPrice, float currentPrice, float stopLimitPrice, float takeProfitPrice, long timeWhenPlaced, int margin, int isItShort, int isItCrossed, int accountNumber, long orderID, String orderType, float qunatity) {
         this.symbol = symbol;
         this.isItReal = isItReal;
         this.entryAmount = entryAmount;
@@ -47,6 +35,33 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
         this.isItShort = isItShort;
         this.isItCrossed = isItCrossed;
         this.accountNumber = accountNumber;
+        this.orderID = orderID;
+        this.orderType = orderType;
+        this.qunatity = qunatity;
+    }
+
+    public float getQunatity() {
+        return qunatity;
+    }
+
+    public void setQunatity(float qunatity) {
+        this.qunatity = qunatity;
+    }
+
+    public String getOrderType() {
+        return orderType;
+    }
+
+    public void setOrderType(String orderType) {
+        this.orderType = orderType;
+    }
+
+    public long getOrderID() {
+        return orderID;
+    }
+
+    public void setOrderID(long orderID) {
+        this.orderID = orderID;
     }
 
     public int getAccountNumber() {

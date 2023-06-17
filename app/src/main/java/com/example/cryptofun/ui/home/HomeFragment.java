@@ -18,9 +18,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.cryptofun.databinding.FragmentHomeBinding;
-import com.example.cryptofun.database.DBHandler;
 import com.example.cryptofun.services.ApprovingService;
-import com.example.cryptofun.services.UpdatingDatabaseService;
 import com.example.cryptofun.ui.view.CryptoGridAdapter;
 import com.example.cryptofun.ui.view.CryptoListAdapter;
 import com.example.cryptofun.ui.view.GridViewElement;
@@ -34,7 +32,6 @@ public class HomeFragment extends Fragment {
     private static final String TAG = "HomeFrag";
 
     private FragmentHomeBinding binding;
-    private DBHandler databaseDB;
     CryptoListAdapter myAdapter6, myAdapter2, myAdapter30;
     SimpleListAdapter myAdapterLONG, myAdapterSHORT;
     CryptoGridAdapter gridAdapter;
@@ -46,10 +43,10 @@ public class HomeFragment extends Fragment {
 
         binding.cryptoRecyclerView.setLayoutManager(new GridLayoutManager(getContext(), 6, GridLayoutManager.HORIZONTAL, false));
         binding.cryptoList6RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
-        binding.cryptoList2RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
         binding.cryptoList30RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
-        binding.cryptoListLONGRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
-        binding.cryptoListSHORTRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
+//        binding.cryptoList2RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
+//        binding.cryptoListLONGRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
+//        binding.cryptoListSHORTRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
         ArrayList<ListViewElement> initialList = new ArrayList<>();
         ArrayList<GridViewElement> initialGrid = new ArrayList<>();
         gridAdapter = new CryptoGridAdapter(initialGrid);
@@ -60,26 +57,14 @@ public class HomeFragment extends Fragment {
         myAdapterSHORT = new SimpleListAdapter(initialList);
         binding.cryptoRecyclerView.setAdapter(gridAdapter);
         binding.cryptoList6RecyclerView.setAdapter(myAdapter6);
-        binding.cryptoList2RecyclerView.setAdapter(myAdapter2);
+
         binding.cryptoList30RecyclerView.setAdapter(myAdapter30);
-        binding.cryptoListLONGRecyclerView.setAdapter(myAdapterLONG);
-        binding.cryptoListSHORTRecyclerView.setAdapter(myAdapterSHORT);
+//        binding.cryptoList2RecyclerView.setAdapter(myAdapter2);
+//        binding.cryptoListLONGRecyclerView.setAdapter(myAdapterLONG);
+//        binding.cryptoListSHORTRecyclerView.setAdapter(myAdapterSHORT);
 
         View root = binding.getRoot();
-        databaseDB = DBHandler.getInstance(getContext());
         Log.e(TAG, "CreateView");
-
-
-
-//        Log.e(TAG, "isServiceRunning APRV: " + isMyServiceRunning(ApprovingService.class, getContext()) + " UPDT: "
-//                + isMyServiceRunning(UpdatingDatabaseService.class, getContext()));
-//
-//        if (!isMyServiceRunning(ApprovingService.class, getContext())) {
-//            Intent serviceIntent = new Intent(getContext(),
-//                    ApprovingService.class);
-//            Log.e(TAG, "APRVServiceBegin");
-//            getContext().startForegroundService(serviceIntent);
-//        }
 
         LocalBroadcastManager.getInstance(getActivity()).registerReceiver(
                 mMessageReceiver, new IntentFilter("ApprovedService"));
@@ -98,11 +83,11 @@ public class HomeFragment extends Fragment {
                 Log.e(TAG, "APRVServiceReceived " + Thread.currentThread());
 
                 onReceiveNewGridList(gridAdapter, (ArrayList<GridViewElement>) bundle.getSerializable("cryptoGridViewList"));
-                onReceiveNewList(myAdapter2, (ArrayList<ListViewElement>) bundle.getSerializable("list2"));
+//                onReceiveNewList(myAdapter2, (ArrayList<ListViewElement>) bundle.getSerializable("list2"));
                 onReceiveNewList(myAdapter6, (ArrayList<ListViewElement>) bundle.getSerializable("list3"));
                 onReceiveNewList(myAdapter30, (ArrayList<ListViewElement>) bundle.getSerializable("list1"));
-                onReceiveNewSimpleList(myAdapterLONG, (ArrayList<ListViewElement>) bundle.getSerializable("list4"));
-                onReceiveNewSimpleList(myAdapterSHORT, (ArrayList<ListViewElement>) bundle.getSerializable("list5"));
+//                onReceiveNewSimpleList(myAdapterLONG, (ArrayList<ListViewElement>) bundle.getSerializable("list4"));
+//                onReceiveNewSimpleList(myAdapterSHORT, (ArrayList<ListViewElement>) bundle.getSerializable("list5"));
 
             } else if (intent.getAction().equals("DB_updated")) {
                 Log.e(TAG, "SendUPDMessageReceived");
@@ -147,14 +132,12 @@ public class HomeFragment extends Fragment {
     public void onDestroy() {
         Log.e(TAG, "Destroy");
         LocalBroadcastManager.getInstance(getContext()).unregisterReceiver(mMessageReceiver);
-       // databaseDB.close();
         super.onDestroy();
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-      //  databaseDB.close();
         binding = null;
     }
 

@@ -13,24 +13,32 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.cryptofun.R;
-import com.example.cryptofun.database.DBHandler;
+import com.example.cryptofun.data.RealOrder;
+import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.CardViewOrderBinding;
+import com.example.cryptofun.ui.retrofit.RetrofitClientSecretTestnet;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
-import org.w3c.dom.Text;
-
+import java.io.IOException;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.ViewHolder> {
 
     private ArrayList<OrderListViewElement> items;
+    private DBHandler databaseDB;
 
     private static final String TAG = "OrderListAdapter";
 
@@ -99,6 +107,7 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
     public void onBindViewHolder(@NonNull OrderListAdapter.ViewHolder holder, int position) {
 
         Context context = holder.itemView.getContext();
+        databaseDB = DBHandler.getInstance(context);
         holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
@@ -126,6 +135,7 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
         float percentOfAmountChange = items.get(position).getPercentOfAmountChange();
         float entryAmount = items.get(position).getEntryAmount();
         float currentAmount = items.get(position).getCurrentAmount();
+        String type = items.get(position).getOrderType();
         int margin = items.get(position).getMargin();
         long time = items.get(position).getTimeWhenPlaced();
 
@@ -206,6 +216,34 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
             holder.percentOfAmountChange.setTextColor(testBlue);
         }
 
+        if (type.equals("STOP_MARKET")) {
+            holder.testOrReal.setText("REAL-STOP");
+            holder.symbol.setTextColor(darkRedColor);
+            holder.entryAmount.setText("");
+            holder.currentAmount.setText("");
+            holder.entryPrice.setText("");
+            holder.currentPrice.setText("");
+            holder.percentOfPriceChange.setText("");
+            holder.percentOfAmountChange.setText("");
+            holder.takeProfitPrice.setText("");
+            holder.stopLimitPrice.setText("");
+            holder.margin.setText("");
+            holder.stopLimitPrice.setTextColor(darkRedColor);
+        } else if (type.equals("TAKE_PROFIT_MARKET")) {
+            holder.testOrReal.setText("REAL-TAKE");
+            holder.symbol.setTextColor(darkGreenColor);
+            holder.entryAmount.setText("");
+            holder.currentAmount.setText("");
+            holder.entryPrice.setText("");
+            holder.takeProfitPrice.setText("");
+            holder.stopLimitPrice.setText("");
+            holder.currentPrice.setText("");
+            holder.percentOfPriceChange.setText("");
+            holder.percentOfAmountChange.setText("");
+            holder.margin.setText("");
+            holder.stopLimitPrice.setTextColor(darkRedColor);
+        }
+
     }
 
     @Override
@@ -224,7 +262,25 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
 
                 float balance = 0;
                 if (items.get(position).getIsItReal() == 1) {
-                    Log.e(TAG, "Real not yet");
+
+                    if(items.get(position).getOrderType().equals("TAKE_PROFIT_MARKET") || items.get(position).getOrderType().equals("STOP_MARKET")) {
+                        getAllOrders(System.currentTimeMillis(),15000, context);
+                        long orderId = items.get(position).getOrderID();
+                        Log.e(TAG, String.valueOf(orderId));
+                        deleteOrder(items.get(position).getSymbol(), orderId, System.currentTimeMillis(), 15000, context);
+                    } else if (items.get(position).getOrderType().equals("MARKET")) {
+                        //TO CANCEL ORDER IN REAL MARKET WE NEED TO DO OPPOSITE ACTION WITH SAME AMOUNT OF CRYPTO
+                        String side = items.get(position).getIsItShort() == 1 ? "BUY" : "SELL";
+
+                        //Opposite side when closing
+                        boolean isItShortCancelOrder = items.get(position).getIsItShort() != 1;
+
+                        setMarketOrderToCancelCurrentOrder(items.get(position).getSymbol(),side,"MARKET", "RESULT", items.get(position).getQunatity(), System.currentTimeMillis(),
+                                10000, 0,0,0,0,0, isItShortCancelOrder,false, builder.getContext());
+
+                    }
+
+//                    deleteAllOrders(items.get(position).getSymbol(), System.currentTimeMillis(),15000, context);
                 } else {
                     Cursor data = databaseDB.retrieveParam(items.get(position).getAccountNumber());
                     if (data.getCount() == 0) {
@@ -245,6 +301,248 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
         builder.setNegativeButton("NO", null);
         builder.show();
     }
+
+    private void deleteOrder(String symbol, long orderId, long timestamp, long recvWindow, Context context) {
+
+        Call<RealOrder> call = RetrofitClientSecretTestnet.getInstance(context, 5, symbol, 0, "", "", "", "", "0", "0", "",
+                        orderId, "", "0", recvWindow, timestamp)
+                .getMyApi().deleteOrder(symbol, orderId, timestamp);
+
+        Log.e(TAG, call.toString());
+        call.enqueue(new Callback<RealOrder>() {
+            @Override
+            public void onResponse(@NonNull Call<RealOrder> call, @NonNull Response<RealOrder> response) {
+
+                if (response.body() != null) {
+                    if (response.isSuccessful()) {
+                        RealOrder realOrder = response.body();
+                        Log.e(TAG, "ORDER HAS BEEN CANCELED: " + realOrder.getClientOrderId() + " " + realOrder.getSymbol() + " " + realOrder.getStatus());
+                    } else {
+                        System.out.println(response.code() + " " + response.message());
+                    }
+                } else if (response.errorBody() != null) {
+                    String errorBody = "";
+                    try {
+                        errorBody = response.errorBody().string();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    Log.e(TAG, "Error response: " + errorBody);
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<RealOrder> call, @NonNull Throwable t) {
+                System.out.println("An error has occurred" + t);
+                Log.e(TAG, String.valueOf(t));
+            }
+
+        });
+
+    }
+
+    private void getAllOrders(long timestamp, long recvWindow, Context context) {
+
+        Call<List<JsonObject>> call = RetrofitClientSecretTestnet.getInstance(context, 8, "", 0, "", "", "", "", "0", "0", "",
+                        0, "", "0", recvWindow, timestamp)
+                .getMyApi().getAllOrders(timestamp);
+
+        Log.e(TAG, call.toString());
+        call.enqueue(new Callback<List<JsonObject>>() {
+            @Override
+            public void onResponse(@NonNull Call<List<JsonObject>> call, @NonNull Response<List<JsonObject>> response) {
+
+                if (response.body() != null) {
+                    if (response.isSuccessful()) {
+                        List<JsonObject> responseBody = response.body();
+
+                        Gson gson = new Gson();
+                        List<RealOrder> allOrders = new ArrayList<>();
+
+                        for (JsonObject jsonObject : responseBody) {
+                            RealOrder order = gson.fromJson(jsonObject, RealOrder.class);
+                            allOrders.add(order);
+                        }
+//                        // parse the response body to get the list of orders
+//                        List<RealOrder> orders = new Gson().fromJson(responseBody, new TypeToken<List<RealOrder>>() {}.getType());
+
+                        // print the order IDs
+                        for (RealOrder order : allOrders) {
+                            Log.e(TAG, "Order ID: " + order.getOrderId());
+                            Log.e(TAG, "Client Order ID: " + order.getClientOrderId());
+                        }
+
+//                        RealOrders orders = response.body();
+//                        List<RealOrder> orderList = orders.getOrders();
+//
+//                        for (int i = 0; i < orderList.size(); i++) {
+//                            Log.e(TAG, orderList.get(i).getClientOrderId());
+//                        }
+
+                    } else {
+                        System.out.println(response.code() + " " + response.message());
+                    }
+                } else if (response.errorBody() != null) {
+                    String errorBody = "";
+                    try {
+                        errorBody = response.errorBody().string();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    Log.e(TAG, "Error response: " + errorBody);
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<List<JsonObject>> call, @NonNull Throwable t) {
+                System.out.println("An error has occurred" + t);
+                Log.e(TAG, String.valueOf(t));
+            }
+
+        });
+
+    }
+
+    private void setMarketOrderToCancelCurrentOrder(String symbol, String side, String type, String newOrderRespType, float quantity, long timestamp, long recvWindow, float stopLimitPrice, float takeProfitPrice, float entryAmount, float currentPrice, int margin, boolean isItShort, boolean isItCrossed, Context context) {
+
+        Log.e(TAG, "Start of setMarketOrderToCancelCurrentOrder " + symbol + " quantiity before: " + quantity );
+        String quantityPrepared = formatFloatForSymbol(symbol,quantity,1);
+        Log.e(TAG, "Start of setMarketOrderToCancelCurrentOrder " + symbol + " quantiity after: " + quantityPrepared );
+
+        Call<RealOrder> call = RetrofitClientSecretTestnet.getInstance(context, 3, symbol, 0, "", side, type, newOrderRespType, quantityPrepared,"0", "", 0, "", "0", recvWindow, timestamp)
+                .getMyApi().setMarketOrder(symbol, side, type, newOrderRespType, quantityPrepared, timestamp);
+
+        Log.e(TAG, call.toString());
+        call.enqueue(new Callback<RealOrder>() {
+            @Override
+            public void onResponse(@NonNull Call<RealOrder> call, @NonNull Response<RealOrder> response) {
+
+                if (response.body() != null) {
+                    if (response.isSuccessful()) {
+                        RealOrder realOrder = response.body();
+                        Log.e(TAG, realOrder.getClientOrderId() + " " + realOrder.getSymbol() + " " + realOrder.getStatus() + " " + realOrder.getOrderId());
+
+//                        int isShort = 0;
+//                        int isCrossed = 0;
+//
+//                        if (isItShort) {
+//                            isShort = 1;
+//                        }
+//
+//                        if (isItCrossed) {
+//                            isCrossed = 1;
+//                        }
+//
+//                        OrderListViewElement toDB = new OrderListViewElement(symbol, 1, (float) entryAmount, currentPrice, currentPrice, stopLimitPrice, takeProfitPrice, timestamp, margin, isShort, isCrossed, 1, realOrder.getOrderId(), "MARKET",quantity);
+//                        databaseDB.addNewOrder(toDB);
+
+                    } else {
+                        System.out.println(response.code() + " " + response.message());
+                    }
+                } else if (response.errorBody() != null) {
+                    String errorBody = "";
+                    try {
+                        errorBody = response.errorBody().string();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    Log.e(TAG, "Error response: " + errorBody);
+                }
+
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<RealOrder> call, @NonNull Throwable t) {
+                System.out.println("An error has occurred" + t);
+                Log.e(TAG, String.valueOf(t));
+            }
+
+        });
+
+    }
+
+    private void deleteAllOrders(String symbol, long timestamp, long recvWindow, Context context) {
+
+        Call<RealOrder> call = RetrofitClientSecretTestnet.getInstance(context, 7, symbol, 0, "", "", "", "", "0", "0", "",
+                        0, "", "0", recvWindow, timestamp)
+                .getMyApi().deleteAllOrders(symbol, timestamp);
+
+        Log.e(TAG, call.toString());
+        call.enqueue(new Callback<RealOrder>() {
+            @Override
+            public void onResponse(@NonNull Call<RealOrder> call, @NonNull Response<RealOrder> response) {
+
+                if (response.body() != null) {
+                    if (response.isSuccessful()) {
+                        RealOrder realOrder = response.body();
+                        Log.e(TAG, "ORDER HAS BEEN CANCELED: " + realOrder.getClientOrderId() + " " + realOrder.getSymbol() + " " + realOrder.getStatus());
+                    } else {
+                        System.out.println(response.code() + " " + response.message());
+                    }
+                } else if (response.errorBody() != null) {
+                    String errorBody = "";
+                    try {
+                        errorBody = response.errorBody().string();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    Log.e(TAG, "Error response: " + errorBody);
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<RealOrder> call, @NonNull Throwable t) {
+                System.out.println("An error has occurred" + t);
+                Log.e(TAG, String.valueOf(t));
+            }
+
+        });
+
+    }
+
+    //1 - for step, 0 for tick
+    public String formatFloatForSymbol(String symbol, float value, int stepOrTick) {
+
+        DecimalFormat format = null;
+
+        // Find the symbol in the list of symbols
+        Cursor data = databaseDB.retrieveSymbolInfo(symbol);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no symbol info for " + symbol);
+        } else {
+            data.moveToFirst();
+
+            int decimalPlaces;
+            if (stepOrTick == 1) {
+                decimalPlaces = getDecimalPlaces(data.getString(4));
+            } else {
+                decimalPlaces = getDecimalPlaces(data.getString(3));
+            }
+            // Create a decimal format pattern that matches the tick and step sizes
+            String pattern = "0.";
+            for (int i = 0; i < decimalPlaces; i++) {
+                pattern += "0";
+            }
+
+            if (!pattern.contains(".0")) {
+                pattern = "#";
+            }
+
+            Log.e(TAG, "Decimal places: " + decimalPlaces + " pattern: " + pattern);
+            // Create the decimal format using the pattern
+            format = new DecimalFormat(pattern);
+
+        }
+
+        // Format the value using the decimal format
+        return format != null ? format.format(value) : String.valueOf(value);
+    }
+
+    private int getDecimalPlaces(String value) {
+        int index = value.indexOf(".");
+        return index < 0 ? 0 : value.length() - index - 1;
+    }
+
 
     private void deleteItem(int position) {
         items.remove(position);

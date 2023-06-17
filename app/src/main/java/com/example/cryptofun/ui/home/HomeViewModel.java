@@ -1,12 +1,10 @@
 package com.example.cryptofun.ui.home;
 
-import android.widget.ListView;
-
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.example.cryptofun.database.DBHandler;
+import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.FragmentHomeBinding;
 
 import java.util.ArrayList;

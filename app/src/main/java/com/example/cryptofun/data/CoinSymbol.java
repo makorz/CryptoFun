@@ -12,6 +12,15 @@ public class CoinSymbol {
     private String status;
     private ArrayList<String> permissions;
     private boolean isMarginTradingAllowed;
+    private ArrayList<FilterInfo> filters;
+
+    public ArrayList<FilterInfo> getFilters() {
+        return filters;
+    }
+
+    public void setFilters(ArrayList<FilterInfo> filters) {
+        this.filters = filters;
+    }
 
     public void setSymbol(String symbol) {
         this.symbol = symbol;

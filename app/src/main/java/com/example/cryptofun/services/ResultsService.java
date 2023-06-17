@@ -18,16 +18,12 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.example.cryptofun.R;
 import com.example.cryptofun.data.AccountBalance;
-import com.example.cryptofun.database.DBHandler;
-import com.example.cryptofun.retrofit.RetrofitClientSecret;
-import com.example.cryptofun.ui.view.OrderListViewElement;
+import com.example.cryptofun.data.database.DBHandler;
+import com.example.cryptofun.ui.retrofit.RetrofitClientSecretTestnet;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 import retrofit2.Call;
@@ -114,11 +110,23 @@ public class ResultsService extends Service {
             data.close();
         }
 
-        getRealAccountBalance(testBalance, automaticBalance);
+        ServiceFunctions.getRealAccountBalance(getApplicationContext(),null);
+
+       // sendMessageToActivity(testBalance, automaticBalance);
+
+    //    getRealAccountBalance(testBalance, automaticBalance);
     }
 
     private void getRealAccountBalance(String testBalance, ArrayList<String> automaticBalance) {
-        Call<List<AccountBalance>> call = RetrofitClientSecret.getInstance(getApplicationContext()).getMyApi().getAccountBalance();
+
+
+        Call<List<AccountBalance>> call = RetrofitClientSecretTestnet.getInstance(getApplicationContext(), 0,  "", 0, "", "", "", "", "0", "0", "",
+                        0,"", "0", 0, 0)
+                .getMyApi().getAccountBalance();
+
+
+        // For real account
+       // Call<List<AccountBalance>> call = RetrofitClientSecret.getInstance(getApplicationContext()).getMyApi().getAccountBalance();
         Log.e(TAG, call.toString());
         call.enqueue(new Callback<List<AccountBalance>>() {
             @Override
@@ -131,7 +139,7 @@ public class ResultsService extends Service {
                             Log.e(TAG, balanceList.get(i).getAsset());
                             if (balanceList.get(i).getAsset().contains("USDT")) {
                                 DecimalFormat dfNr = new DecimalFormat("0.00");
-                                String realBalance = dfNr.format(balanceList.get(i).getBalance());
+                                String realBalance = dfNr.format(balanceList.get(i).getAvailableBalance());
                                 Cursor data2 = databaseDB.retrieveParam(3);
                                 if (data2.getCount() == 0) {
                                     Log.e(TAG, "There is no param nr 3");

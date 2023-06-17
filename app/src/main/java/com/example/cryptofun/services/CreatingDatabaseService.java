@@ -20,10 +20,11 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.example.cryptofun.R;
 import com.example.cryptofun.data.CoinSymbol;
 import com.example.cryptofun.data.CoinSymbols;
+import com.example.cryptofun.data.FilterInfo;
 import com.example.cryptofun.data.KlineRequest;
-import com.example.cryptofun.database.DBHandler;
-import com.example.cryptofun.database.rawTable_Kline;
-import com.example.cryptofun.retrofit.RetrofitClientFutures;
+import com.example.cryptofun.data.database.DBHandler;
+import com.example.cryptofun.data.database.rawTable_Kline;
+import com.example.cryptofun.ui.retrofit.RetrofitClientFutures;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +47,6 @@ public class CreatingDatabaseService extends Service {
     private List<String> listOfSymbols = new ArrayList<>();
     private DBHandler databaseDB;
 
-
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         databaseDB = DBHandler.getInstance(getApplicationContext());
@@ -54,7 +54,7 @@ public class CreatingDatabaseService extends Service {
                 new Runnable() {
                     @Override
                     public void run() {
-                        Log.e("CRTStart", "SIZE ON START -> " + listOfSymbols.size() );
+                        Log.e(TAG, "SIZE ON START -> " + listOfSymbols.size() );
 
                         // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
                         Notification notification = createNotification();
@@ -100,6 +100,15 @@ public class CreatingDatabaseService extends Service {
         return null;
     }
 
+    private void sendMessageToActivity( ) {
+        Intent intent = new Intent("DB_created");
+        Log.e(TAG, "Finished Creating DB");
+        intent.putExtra("finishedCRTDB", true);
+        LocalBroadcastManager.getInstance(CreatingDatabaseService.this).sendBroadcast(intent);
+        stopForeground(true);
+        stopSelf();
+    }
+
     @SuppressLint("CheckResult")
     private void getDataOfCryptoKlines() {
 
@@ -109,28 +118,25 @@ public class CreatingDatabaseService extends Service {
 
         List<rawTable_Kline> klinesDataList = new ArrayList<>();
         List<KlineRequest> request = new ArrayList<>();
-        Log.e("CRT", "LIST OF SYMBOLS -> " + listOfSymbols);
+        Log.e(TAG, "LIST OF SYMBOLS -> " + listOfSymbols);
 
-        int LIMIT3m = 12;
-        int LIMIT15m = 26;
-        //int LIMIT1d = 4;
-        int LIMIT4h = 6;
+        int LIMIT3m = 20;
+        int LIMIT15m = 20;
+        int LIMIT4h = 20;
         for (int i = 0; i < listOfSymbols.size(); i++) {
             // Make a collection of all requests you need to call at once, there can be any number of requests, not only 3. You can have 2 or 5, or 100.
             request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT15m, "15m"),
                     listOfSymbols.get(i), "15m"));
             request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT3m, "3m"),
                     listOfSymbols.get(i), "3m"));
-//            request.add(new KlineRequest(RetrofitClient.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT1d, "1d"),
-//                    listOfSymbols.get(i), "1d"));
             request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT4h, "4h"),
                     listOfSymbols.get(i), "4h"));
 
         }
 
         List<Observable<?>> observableRequestList = new ArrayList<>();
-        Log.e("OBSERVABLE", "request size: " + request.size());
-        Log.e("OBSERVABLE", "listOfCrypto size: " + listOfSymbols.size());
+        Log.e(TAG, "Observable request size: " + request.size());
+        Log.e(TAG, "Observable listOfCrypto size: " + listOfSymbols.size());
         for (int i = 0; i < request.size(); i++) {
             observableRequestList.add(request.get(i).getRequest());
 
@@ -142,7 +148,7 @@ public class CreatingDatabaseService extends Service {
                             @Override
                             public Object apply(Object[] objects) throws Exception {
                                 // Objects[] is an array of combined results of completed requests
-                                Log.e("OBSERVABLE", " HOW MANY? --> " + objects.length);
+                                Log.e(TAG, " Observable ZIP size: " + objects.length);
                                 for (int i = 0; i < objects.length; i++) {
                                     request.get(i).setDataOfSymbolInterval((String[][]) objects[i]);
                                 }
@@ -159,7 +165,7 @@ public class CreatingDatabaseService extends Service {
                             @Override
                             public void accept(Object o) throws Exception {
                                 //Do something on successful completion of all requests
-                                Log.e("OBSERVABLE", " PERFECT");
+                                Log.e(TAG, "Observable PERFECT");
                                 Toast.makeText(getApplicationContext(), "Writing into DB", Toast.LENGTH_SHORT).show();
 
                                 for (int i = 0; i < request.size(); i++) {
@@ -203,7 +209,7 @@ public class CreatingDatabaseService extends Service {
                                 //x zibit
                                 // Toast.makeText(CreatingDatabaseService.this, "ERROR WHILE COLLECTING DATA " +  e.toString(), Toast.LENGTH_SHORT).show();
                                 Toast.makeText(getApplicationContext(), "Error: " + e, Toast.LENGTH_LONG).show();
-                                Log.e("OBSERVABLE", " IS FUCKED " + e.toString());
+                                Log.e(TAG, "Observable FUCKED " + e.toString());
                             }
                         }
                 );
@@ -215,6 +221,7 @@ public class CreatingDatabaseService extends Service {
         if (data.getCount() == 0) {
             Call<CoinSymbols> call = RetrofitClientFutures.getInstance().getMyApi().getFuturesSymbols();
             call.enqueue(new Callback<CoinSymbols>() {
+
                 @Override
                 public void onResponse(@NonNull Call<CoinSymbols> call, @NonNull Response<CoinSymbols> response) {
                     assert response.body() != null;
@@ -224,15 +231,16 @@ public class CreatingDatabaseService extends Service {
                     if (listOfSymbols.size() > 0) {
                         listOfSymbols.clear();
                     }
+
                     List<String> arrayUSDTtemp = new ArrayList<>();
                     List<String> arrayBUSDtemp = new ArrayList<>();
-                      for (int i = 0; i < tokenList.size(); i++) {
+
+                    for (int i = 0; i < tokenList.size(); i++) {
 
                         if (tokenList.get(i).getSymbol().contains("USDT")
-
                                 && tokenList.get(i).getStatus().equals("TRADING")
                                 && !tokenList.get(i).getSymbol().contains("BUSD")
-                                && !tokenList.get(i).getSymbol().contains("230331")
+                                && !tokenList.get(i).getSymbol().contains("_")
 //                                && !tokenList.get(i).getSymbol().contains("EUR")
 //                                && !tokenList.get(i).getSymbol().contains("PLN")
 //                                && !tokenList.get(i).getSymbol().contains("UP")
@@ -256,7 +264,7 @@ public class CreatingDatabaseService extends Service {
                         if (tokenList.get(i).getSymbol().contains("BUSD")
                                 && tokenList.get(i).getStatus().equals("TRADING")
                                 && !tokenList.get(i).getSymbol().contains("USDT")
-                                && !tokenList.get(i).getSymbol().contains("230331")
+                                && !tokenList.get(i).getSymbol().contains("_")
 //                                && !tokenList.get(i).getSymbol().contains("UP")
 //                                && !tokenList.get(i).getSymbol().contains("DOWN")
 //                                && !tokenList.get(i).getSymbol().contains("EUR")
@@ -282,15 +290,44 @@ public class CreatingDatabaseService extends Service {
 
                     listOfSymbols.addAll(arrayBUSDtemp);
 
-                    Log.e("CRTDB", listOfSymbols.toString());
+                    Log.e(TAG, listOfSymbols.toString());
 
-                    databaseDB.addNewCrypto(listOfSymbols);
+                    List<String> tickSizes = new ArrayList<>();
+                    List<String> stepSizes = new ArrayList<>();
+
+                    // Assuming you have a List<Symbol> symbols with all symbol data, and a List<String> listOfSymbols with the symbols you're interested in - tickSize and StepSize are important for making orders
+                    for (CoinSymbol symbol : tokenList) {
+                        String symbolName = symbol.getSymbol();
+
+                        // Check if the symbol is in the list of symbols you're interested in
+                        if (listOfSymbols.contains(symbolName)) {
+                            List<FilterInfo> filters = symbol.getFilters();
+
+                            // Iterate through the filters for each symbol
+                            for (FilterInfo filter : filters) {
+                                String filterType = filter.getFilterType();
+
+                                // Check if the filter type is what you're interested in
+                                if (filterType.equals("PRICE_FILTER")) {
+                                    String tickSize = filter.getTickSize();
+                                    tickSizes.add(tickSize);
+                                } else if (filterType.equals("LOT_SIZE")) {
+                                    String stepSize = filter.getStepSize();
+                                    stepSizes.add(stepSize);
+                                    // Do something with the stepSize, minQty, and maxQty data for this symbol
+                                }
+                            }
+                        }
+                    }
+
+
+                    databaseDB.addNewCrypto(listOfSymbols, tickSizes, stepSizes);
                     getDataOfCryptoFromAPI();
                 }
 
                 @Override
                 public void onFailure(@NonNull Call<CoinSymbols> call, @NonNull Throwable t) {
-                    System.out.println("An error has occurred" + t);
+                    Log.e(TAG, "An error has occurred: " + t);
                 }
 
             });
@@ -326,26 +363,17 @@ public class CreatingDatabaseService extends Service {
                 if (data3.getCount() != 0 && listOfSymbols.size() == 0) {
                     data3.moveToFirst();
                     while (data3.moveToNext()) {
-                        //Log.e("SYMBOLS", data3.getString(1));
                         listOfSymbols.add(data3.getString(1));
                     }
                 }
                 data3.close();
                 sendMessageToActivity();
-                //databaseDB.close();
             }
 
         }
     }
 
-    private void sendMessageToActivity( ) {
-        Intent intent = new Intent("DB_created");
-        Log.e(TAG, "SendMessage1");
-        intent.putExtra("finishedCRTDB", true);
-        LocalBroadcastManager.getInstance(CreatingDatabaseService.this).sendBroadcast(intent);
-        stopForeground(true);
-        stopSelf();
-    }
+
 
 
 }

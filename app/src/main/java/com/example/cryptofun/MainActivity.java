@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -22,8 +21,9 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.room.Index;
 
-import com.example.cryptofun.database.DBHandler;
+import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.ActivityMainBinding;
 import com.example.cryptofun.services.AlarmReceiverLoopingService;
 import com.example.cryptofun.services.ApprovingService;
@@ -107,8 +107,6 @@ public class MainActivity extends AppCompatActivity {
                 mMessageReceiver, new IntentFilter("DB_update_start"));
         LocalBroadcastManager.getInstance(this).registerReceiver(
                 mMessageReceiver, new IntentFilter("ApprovedService"));
-        LocalBroadcastManager.getInstance(this).registerReceiver(
-                mMessageReceiver, new IntentFilter("OrdersStatus"));
 
         Log.e(TAG, "CreateView2");
 
@@ -133,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "isServiceRunning APRV: " + isMyServiceRunning(ApprovingService.class) + " UPDT: "
                     + isMyServiceRunning(UpdatingDatabaseService.class) + " ORD: "
                     + isMyServiceRunning(OrdersService.class) + " RES: "
-                    + isMyServiceRunning(ResultsService.class) );
+                     ); //+ isMyServiceRunning(ResultsService.class)
 
             if (intent.getAction().equals("DB_updated") && DBCreated) {
 
@@ -149,20 +147,6 @@ public class MainActivity extends AppCompatActivity {
                 AlarmReceiverLoopingService alarm = new AlarmReceiverLoopingService();
                 alarm.setAlarm(getApplicationContext(),1);
 
-//                if (intent.getExtras().getBoolean("updateStarted")) {
-//                    Log.e(TAG, "SendUPDMessageReceivedA");
-//
-//                    AlarmReceiverLoopingService alarm = new AlarmReceiverLoopingService();
-//                    alarm.stopAlarm(getApplicationContext());
-//
-//                } else {
-//                    Log.e(TAG, "SendUPDMessageReceivedB");
-//                    TextView timeView = binding.textMain;
-//                    timeView.setText(intent.getStringExtra("updateDate"));
-//
-//                    AlarmReceiverLoopingService alarm = new AlarmReceiverLoopingService();
-//                    alarm.setAlarm(getApplicationContext(),1);
-//                }
             }
 
             if (intent.getAction().equals("DB_created")) {
@@ -228,6 +212,11 @@ public class MainActivity extends AppCompatActivity {
                                 active = fragment2;
                                 return true;
                             case R.id.navigation_notifications:
+//                                if (!isMyServiceRunning(ResultsService.class)) {
+//                                    Intent serviceIntent = new Intent(getApplicationContext(), ResultsService.class);
+//                                    getApplicationContext().startForegroundService(serviceIntent);
+//
+//                                }
                                 if (!isMyServiceRunning(OrdersService.class)) {
                                     Intent serviceIntent = new Intent(getApplicationContext(), OrdersService.class);
                                     getApplicationContext().startForegroundService(serviceIntent);

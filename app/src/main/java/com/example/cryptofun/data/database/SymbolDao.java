@@ -1,4 +1,4 @@
-package com.example.cryptofun.database;
+package com.example.cryptofun.data.database;
 
 import androidx.room.Dao;
 import androidx.room.Insert;

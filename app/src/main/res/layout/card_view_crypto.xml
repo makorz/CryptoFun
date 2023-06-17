@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?><!-- XML implementation of Card Layout -->
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="100dp"
+    android:layout_width="115dp"
     android:layout_height="wrap_content"
     android:layout_gravity="center"
-    android:layout_margin="4dp"
+    android:layout_margin="3dp"
     app:cardCornerRadius="5dp"
-    app:cardElevation="5dp">
+    app:cardElevation="3dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -28,7 +28,7 @@
                 android:layout_weight="2"
                 android:textAlignment="center"
                 android:textAllCaps="true"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
         </LinearLayout>
@@ -49,7 +49,7 @@
                 android:layout_weight="1"
                 android:textAlignment="textStart"
                 android:textAllCaps="true"
-                android:textSize="10sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -59,7 +59,7 @@
                 android:layout_weight="1"
                 android:textAlignment="textEnd"
                 android:textAllCaps="true"
-                android:textSize="11sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
 
         </LinearLayout>

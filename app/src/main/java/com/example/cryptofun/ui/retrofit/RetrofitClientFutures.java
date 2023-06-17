@@ -1,4 +1,4 @@
-package com.example.cryptofun.retrofit;
+package com.example.cryptofun.ui.retrofit;
 
 import java.util.concurrent.TimeUnit;
 

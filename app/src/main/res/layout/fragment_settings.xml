@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     tools:context=".ui.orders.OrdersFragment">
 
     <ScrollView
@@ -12,7 +12,8 @@
         android:layout_height="match_parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -101,42 +102,6 @@
                 app:layout_constraintTop_toBottomOf="@id/secondLinear">
 
                 <TextView
-                    android:id="@+id/tv_set_keys"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="2"
-                    android:text="Update Your API and SECRET:"
-                    android:textSize="14sp" />
-
-                <Button
-                    android:id="@+id/bt_set_keys"
-                    style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="1"
-                    android:text="UPDATE"
-                    android:textSize="14sp" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/thirteenthLinear"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/thirdLinear">
-
-                <TextView
                     android:id="@+id/tv_recvWindow"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -164,30 +129,16 @@
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/fourteenthLinear"
+                android:id="@+id/fourthLinear"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/thirteenthLinear">
+                app:layout_constraintTop_toBottomOf="@id/thirdLinear">
 
                 <TextView
-                    android:id="@+id/tv_set_recvWindow"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="2"
-                    android:text="Update recvWindow:"
-                    android:textSize="14sp" />
-
-
-                <Button
-                    android:id="@+id/bt_set_window"
-                    style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                    android:id="@+id/tv_margin"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="20dp"
@@ -195,11 +146,24 @@
                     android:layout_marginEnd="20dp"
                     android:layout_marginBottom="0dp"
                     android:layout_weight="1"
-                    android:text="UPDATE"
+                    android:text="Margin for automatic:"
                     android:textSize="14sp" />
 
-            </LinearLayout>
+                <EditText
+                    android:id="@+id/et_margin"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="Enter margin (e.g. 12)"
+                    android:inputType="number"
+                    android:textSize="14sp" />
 
+
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/fifthLinear"
@@ -208,23 +172,11 @@
                 android:orientation="horizontal"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/fourteenthLinear">
+                app:layout_constraintTop_toBottomOf="@id/fourthLinear">
+
 
                 <TextView
-                    android:id="@+id/tv_reset_test_balance"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="2"
-                    android:text="Reset test balance:"
-                    android:textSize="14sp" />
-
-                <Button
-                    android:id="@+id/bt_reset_test_balance"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:id="@+id/tv_stop_loss"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="20dp"
@@ -232,11 +184,25 @@
                     android:layout_marginEnd="20dp"
                     android:layout_marginBottom="0dp"
                     android:layout_weight="1"
-                    android:text="RESET"
-                    android:textColor="@color/red"
+                    android:text="SL for automatic:"
                     android:textSize="14sp" />
 
+                <EditText
+                    android:id="@+id/et_stop_loss"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="Enter SL (%)"
+                    android:inputType="numberDecimal"
+                    android:textSize="14sp" />
+
+
             </LinearLayout>
+
 
             <LinearLayout
                 android:id="@+id/sixthLinear"
@@ -248,20 +214,7 @@
                 app:layout_constraintTop_toBottomOf="@id/fifthLinear">
 
                 <TextView
-                    android:id="@+id/tv_reset_automatic_test_balance"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="2"
-                    android:text="Reset automatic test balance:"
-                    android:textSize="14sp" />
-
-                <Button
-                    android:id="@+id/bt_reset_automatic_balance"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:id="@+id/tv_take_profit"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="20dp"
@@ -269,8 +222,20 @@
                     android:layout_marginEnd="20dp"
                     android:layout_marginBottom="0dp"
                     android:layout_weight="1"
-                    android:text="RESET"
-                    android:textColor="@color/red"
+                    android:text="TP for automatic:"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_take_profit"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="Enter TP (%)"
+                    android:inputType="numberDecimal"
                     android:textSize="14sp" />
 
             </LinearLayout>
@@ -283,6 +248,18 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/sixthLinear">
+
+<!--                <TextView-->
+<!--                    android:id="@+id/tv_set_params"-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_marginStart="20dp"-->
+<!--                    android:layout_marginTop="0dp"-->
+<!--                    android:layout_marginEnd="20dp"-->
+<!--                    android:layout_marginBottom="0dp"-->
+<!--                    android:layout_weight="2"-->
+<!--                    android:text="Update params:"-->
+<!--                    android:textSize="14sp" />-->
 
                 <TextView
                     android:id="@+id/tv_switch_for_automatic_test"
@@ -309,6 +286,7 @@
                     android:thumbTint="@color/dark_green"
                     android:trackTint="@color/dark_green" />
 
+
             </LinearLayout>
 
             <LinearLayout
@@ -320,6 +298,17 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/seventhLinear">
 
+<!--                <TextView-->
+<!--                    android:id="@+id/tv_show_keys_to_user"-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_marginStart="20dp"-->
+<!--                    android:layout_marginTop="0dp"-->
+<!--                    android:layout_marginEnd="20dp"-->
+<!--                    android:layout_marginBottom="0dp"-->
+<!--                    android:layout_weight="2"-->
+<!--                    android:text="Current configuration:"-->
+<!--                    android:textSize="14sp" />-->
                 <TextView
                     android:id="@+id/tv_switch_for_automatic_real"
                     android:layout_width="0dp"
@@ -345,6 +334,8 @@
                     android:thumbTint="@color/dark_green"
                     android:trackTint="@color/dark_green" />
 
+
+
             </LinearLayout>
 
             <LinearLayout
@@ -356,30 +347,45 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/eightLinear">
 
-                <TextView
-                    android:id="@+id/tv_margin"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="1"
-                    android:text="Margin for automatic:"
-                    android:textSize="14sp" />
+<!--                <TextView-->
+<!--                    android:id="@+id/tv_reset_test_balance"-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_marginStart="20dp"-->
+<!--                    android:layout_marginTop="0dp"-->
+<!--                    android:layout_marginEnd="20dp"-->
+<!--                    android:layout_marginBottom="0dp"-->
+<!--                    android:layout_weight="2"-->
+<!--                    android:text="Reset test balance:"-->
+<!--                    android:textSize="14sp" />-->
 
-                <EditText
-                    android:id="@+id/et_margin"
+                <Button
+                    android:id="@+id/bt_show_keys"
+                    style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
+                    android:layout_marginTop="4dp"
                     android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
+                    android:layout_marginBottom="4dp"
                     android:layout_weight="1"
-                    android:hint="Enter margin"
-                    android:inputType="number"
-                    android:textSize="14sp" />
+                    android:text="SHOW PARAMS"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/bt_set_params"
+                    style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="4dp"
+                    android:layout_weight="1"
+                    android:text="UPDATE PARAMS"
+                    android:textSize="13sp" />
+
+
 
             </LinearLayout>
 
@@ -392,8 +398,20 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/ninthLinear">
 
-                <TextView
-                    android:id="@+id/tv_stop_loss"
+<!--                <TextView-->
+<!--                    android:id="@+id/tv_reset_automatic_test_balance"-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_marginStart="20dp"-->
+<!--                    android:layout_marginTop="0dp"-->
+<!--                    android:layout_marginEnd="20dp"-->
+<!--                    android:layout_marginBottom="0dp"-->
+<!--                    android:layout_weight="2"-->
+<!--                    android:text="Reset automatic test balance:"-->
+<!--                    android:textSize="14sp" />-->
+                <Button
+                    android:id="@+id/bt_reset_test_balance"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="20dp"
@@ -401,11 +419,13 @@
                     android:layout_marginEnd="20dp"
                     android:layout_marginBottom="0dp"
                     android:layout_weight="1"
-                    android:text="Stop Loss for automatic:"
-                    android:textSize="14sp" />
+                    android:text="RESET MANUAL TEST"
+                    android:textColor="@color/red"
+                    android:textSize="13sp" />
 
-                <EditText
-                    android:id="@+id/et_stop_loss"
+                <Button
+                    android:id="@+id/bt_reset_automatic_balance"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="20dp"
@@ -413,9 +433,12 @@
                     android:layout_marginEnd="20dp"
                     android:layout_marginBottom="0dp"
                     android:layout_weight="1"
-                    android:hint="Enter SL"
-                    android:inputType="number"
-                    android:textSize="14sp" />
+                    android:text="RESET AUTOMAT TEST"
+                    android:textColor="@color/red"
+                    android:textSize="13sp" />
+
+
+
 
             </LinearLayout>
 
@@ -428,139 +451,54 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tenthLinear">
 
-                <TextView
-                    android:id="@+id/tv_take_profit"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="1"
-                    android:text="Take profit for automatic:"
-                    android:textSize="14sp" />
-
-                <EditText
-                    android:id="@+id/et_take_profit"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="1"
-                    android:hint="Enter TP"
-                    android:inputType="number"
-                    android:textSize="14sp" />
 
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/twelfthLinear"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="200dp"
                 android:orientation="horizontal"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/eleventhLinear">
-
-                <TextView
-                    android:id="@+id/tv_set_params"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="2"
-                    android:text="Update params:"
-                    android:textSize="14sp" />
-
-                <Button
-                    android:id="@+id/bt_set_params"
-                    style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="1"
-                    android:text="UPDATE"
-                    android:textSize="14sp" />
+                app:layout_constraintTop_toBottomOf="@id/eleventhLinear"
+                app:layout_constraintBottom_toTopOf="@id/lastLinear">
 
             </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/fourthLinear"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/lastLinear">
 
-                <TextView
-                    android:id="@+id/tv_show_keys_to_user"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="2"
-                    android:text="Current configuration:"
-                    android:textSize="14sp" />
-
-                <Button
-                    android:id="@+id/bt_show_keys"
-                    style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
-                    android:layout_marginTop="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="0dp"
-                    android:layout_weight="1"
-                    android:text="SHOW"
-                    android:textSize="14sp" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/lastLinear"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/scrollView">
-
-
-                <com.google.android.material.floatingactionbutton.FloatingActionButton
-                    android:id="@+id/infoFloating"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:layout_marginBottom="10dp"
-                    android:clickable="true"
-                    android:contentDescription="@string/info"
-                    android:foreground="@drawable/info4"
-                    android:tint="@null"
-                    app:backgroundTint="@color/dark_green"
-                    app:elevation="5dp"
-                    app:fabSize="mini" />
-
-            </LinearLayout>
 
 
         </LinearLayout>
 
     </ScrollView>
 
+    <LinearLayout
+        android:id="@+id/lastLinear"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
 
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/infoFloating"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:layout_marginBottom="20dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="20dp"
+            android:clickable="true"
+            android:contentDescription="@string/info"
+            android:foreground="@drawable/info4"
+            android:tint="@null"
+            app:backgroundTint="@color/dark_green"
+            app:elevation="5dp"
+            app:fabSize="mini" />
 
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

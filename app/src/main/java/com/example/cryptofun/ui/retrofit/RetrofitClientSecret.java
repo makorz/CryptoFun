@@ -1,10 +1,10 @@
-package com.example.cryptofun.retrofit;
+package com.example.cryptofun.ui.retrofit;
 
 
 import android.content.Context;
 import android.database.Cursor;
 import android.util.Log;
-import com.example.cryptofun.database.DBHandler;
+import com.example.cryptofun.data.database.DBHandler;
 import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
@@ -13,7 +13,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RetrofitClientSecret {
 
-    private static final String TAG = "RetrofitSecret";
+    private static final String TAG = "RetrofitClientSecret";
 
     private static final String ID = "id";
     private static final String TABLE_NAME_CONFIG = "config";
@@ -44,7 +44,7 @@ public class RetrofitClientSecret {
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)
-                    .addInterceptor(new SignatureInterceptor(apikey,secret,recvWindow))
+                    .addInterceptor(new SignatureInterceptor(apikey,secret,0, recvWindow))
                     .build();
 
         }
@@ -97,6 +97,21 @@ public class RetrofitClientSecret {
             secret = data2.getString(2);
         }
         data2.close();
+
+        data = databaseDB.retrieveParam(14);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 14");
+            databaseDB.addParam(14, "recvWindow", "", 1000, 0);
+            recvWindow = 1000;
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 14);
+            databaseDB.addParam(14, "recvWindow", "", 1000, 0);
+            recvWindow = 1000;
+        } else {
+            data.moveToFirst();
+            recvWindow = data.getInt(3);
+        }
+        data.close();
 
     }
 

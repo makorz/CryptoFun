@@ -1,5 +1,7 @@
 package com.example.cryptofun.ui.settings;
 
+import static android.content.Context.INPUT_METHOD_SERVICE;
+
 import androidx.appcompat.app.AlertDialog;
 
 import android.content.DialogInterface;
@@ -10,23 +12,22 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
-import androidx.viewpager.widget.ViewPager;
 import androidx.viewpager2.widget.ViewPager2;
 
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.cryptofun.MainActivity;
 import com.example.cryptofun.R;
-import com.example.cryptofun.database.DBHandler;
+import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.FragmentSettingsBinding;
-import com.example.cryptofun.retrofit.RetrofitClientSecret;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayout;
@@ -44,18 +45,21 @@ public class SettingsFragment extends Fragment {
     private static final String ID = "id";
 
     private FragmentSettingsBinding binding;
-    private Button resetTestBalanceButton, resetAutomaticTestBalanceButton, showKeysButton, updateKeysButton, updateParamsButton, updateWindowButton;
+    private Button resetTestBalanceButton, resetAutomaticTestBalanceButton, showKeysButton, updateParamsButton;
     private EditText apikeyET, secretET, marginET, takeProfitET, stopLossET, windowET;
     private FloatingActionButton infoButton;
     private DBHandler databaseDB;
     private SwitchCompat switchTest, switchReal;
     View root;
+    InputMethodManager imm;
 
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
 
         Log.e(TAG, "CreateView");
+
+        imm = (InputMethodManager) getActivity().getSystemService(INPUT_METHOD_SERVICE);
 
         databaseDB = DBHandler.getInstance(getContext());
         binding = FragmentSettingsBinding.inflate(inflater, container, false);
@@ -65,13 +69,11 @@ public class SettingsFragment extends Fragment {
         resetAutomaticTestBalanceButton = binding.btResetAutomaticBalance;
         infoButton = binding.infoFloating;
         showKeysButton = binding.btShowKeys;
-        updateKeysButton = binding.btSetKeys;
         apikeyET = binding.etApiKey;
         secretET = binding.etSecret;
         switchReal = binding.switchReal;
         switchTest = binding.switchTest;
         updateParamsButton = binding.btSetParams;
-        updateWindowButton = binding.btSetWindow;
         marginET = binding.etMargin;
         stopLossET = binding.etStopLoss;
         takeProfitET = binding.etTakeProfit;
@@ -86,20 +88,20 @@ public class SettingsFragment extends Fragment {
         Cursor data = databaseDB.retrieveParam(4);
         if (data.getCount() == 0) {
             Log.e(TAG, "There is no param nr 4");
-            databaseDB.addParam(4, "API-KEY", "", 0, 0);
+            databaseDB.addParam(4, "API-KEY", "null", 0, 0);
         } else if (data.getCount() >= 2) {
             databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 4);
-            databaseDB.addParam(4, "API-KEY", "", 0, 0);
+            databaseDB.addParam(4, "API-KEY", "null", 0, 0);
         }
         data.close();
 
         Cursor data2 = databaseDB.retrieveParam(5);
         if (data2.getCount() == 0) {
             Log.e(TAG, "There is no param nr 5");
-            databaseDB.addParam(5, "SECRET", "", 0, 0);
+            databaseDB.addParam(5, "SECRET", "null", 0, 0);
         } else if (data2.getCount() >= 2) {
             databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 5);
-            databaseDB.addParam(5, "SECRET", "", 0, 0);
+            databaseDB.addParam(5, "SECRET", "null", 0, 0);
         }
         data2.close();
 
@@ -116,20 +118,20 @@ public class SettingsFragment extends Fragment {
         data2 = databaseDB.retrieveParam(12);
         if (data2.getCount() == 0) {
             Log.e(TAG, "There is no param nr 12");
-            databaseDB.addParam(12, "Automatic SL", "", 1, 0);
+            databaseDB.addParam(12, "Automatic SL", "", 0, 1);
         } else if (data2.getCount() >= 2) {
             databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 12);
-            databaseDB.addParam(12, "Automatic SL", "", 1, 0);
+            databaseDB.addParam(12, "Automatic SL", "", 0, 1);
         }
         data2.close();
 
         data = databaseDB.retrieveParam(13);
         if (data.getCount() == 0) {
             Log.e(TAG, "There is no param nr 13");
-            databaseDB.addParam(13, "Automatic TP", "", 1, 0);
+            databaseDB.addParam(13, "Automatic TP", "", 0, 2);
         } else if (data.getCount() >= 2) {
             databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 13);
-            databaseDB.addParam(13, "Automatic TP", "", 1, 0);
+            databaseDB.addParam(13, "Automatic TP", "", 0, 2);
         }
         data.close();
 
@@ -150,9 +152,12 @@ public class SettingsFragment extends Fragment {
         } else if (data.getCount() >= 2) {
             databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 15);
             databaseDB.addParam(15, "Stop automatic for REAL", "", 0, 0);
+        } else {
+            data.moveToFirst();
+            int value = data.getInt(3);
+            switchReal.setChecked(value == 1);
         }
         data.close();
-
 
         data2 = databaseDB.retrieveParam(16);
         if (data2.getCount() == 0) {
@@ -161,6 +166,10 @@ public class SettingsFragment extends Fragment {
         } else if (data2.getCount() >= 2) {
             databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 16);
             databaseDB.addParam(16, "Stop automatic for TEST", "", 0, 0);
+        } else {
+            data2.moveToFirst();
+            int value = data2.getInt(3);
+            switchTest.setChecked(value == 1);
         }
         data2.close();
 
@@ -169,6 +178,9 @@ public class SettingsFragment extends Fragment {
     private void buttonsJob() {
 
         resetTestBalanceButton.setOnClickListener(v -> {
+
+            // Hide the keyboard
+            imm.hideSoftInputFromWindow(root.getWindowToken(), 0);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
             builder.setTitle("RESET TEST BALANCE");
@@ -190,6 +202,9 @@ public class SettingsFragment extends Fragment {
 
         resetAutomaticTestBalanceButton.setOnClickListener(v -> {
 
+            // Hide the keyboard
+            imm.hideSoftInputFromWindow(root.getWindowToken(), 0);
+
             AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
             builder.setTitle("RESET AUTOMATIC TEST BALANCE");
             builder.setMessage("Are You sure You want reset balance of automatic test accounts to 100?");
@@ -208,74 +223,103 @@ public class SettingsFragment extends Fragment {
 
         });
 
-        updateKeysButton.setOnClickListener(view -> {
-
-            String api = apikeyET.getText().toString();
-            String secret = secretET.getText().toString();
-
-            String finalMessage = "Are You sure You want update keys to following values:\n\n" + "API-KEY: " + api + "\n\n" + "SECRET: " + secret;
-            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-            builder.setTitle("UPDATE KEYS");
-            builder.setMessage(finalMessage);
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int which) {
-                    databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, api, ID, "4");
-                    databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, secret, ID, "5");
-                    apikeyET.setText("");
-                    secretET.setText("");
-                }
-            });
-            builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int which) {
-                    dialog.dismiss();
-                }
-            });
-            AlertDialog dialog = builder.create();
-            dialog.show();
-
-        });
-
         updateParamsButton.setOnClickListener(view -> {
+
+            // Hide the keyboard
+            imm.hideSoftInputFromWindow(root.getWindowToken(), 0);
 
             String margin = marginET.getText().toString();
             String stopL = stopLossET.getText().toString();
             String takeP = takeProfitET.getText().toString();
+            String api = apikeyET.getText().toString();
+            String secret = secretET.getText().toString();
+            String recvWindow = windowET.getText().toString();
 
-            String finalMessage = "Are You sure You want update params of automatic to following values:\n\n" + "MARGIN: " + margin + "\n\n" + "SL: " + stopL + "\n\n" + "TP: " + takeP;
+            String finalMessage = "Are You sure You want update params of automatic to following values:\n\n";
+            int nrOfParams = 0;
+
+            if (!margin.equals("") && margin.matches("\\d+")) {
+                if (Integer.parseInt(margin) > 100 || Integer.parseInt(margin) < 0) {
+                    Toast.makeText(getContext(), "Margin should be between 0 and 100", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "Margin: " + margin + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+            if (!stopL.equals("")) {
+                if (Float.parseFloat(stopL) > 50 || Float.parseFloat(stopL) < 0) {
+                    Toast.makeText(getContext(), "StopLimit should be between 0 and 50", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "StopLimit: " + stopL + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+            if (!takeP.equals("")) {
+                if (Float.parseFloat(takeP) > 50 || Float.parseFloat(takeP) < 0) {
+                    Toast.makeText(getContext(), "TakeProfit should be between 0 and 100", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "TakeProfit: " + takeP + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+            if (!api.equals("")) {
+                String add = "API-KEY: " + api + "\n\n";
+                finalMessage += add;
+                nrOfParams++;
+            }
+            if (!secret.equals("")) {
+                String add = "Secret: " + secret + "\n\n";
+                finalMessage += add;
+                nrOfParams++;
+            }
+            if (!recvWindow.equals("") && recvWindow.matches("\\d+")) {
+                if (Integer.parseInt(recvWindow) > 60000 || Integer.parseInt(recvWindow) < 5000) {
+                    Toast.makeText(getContext(), "RecvWindow should be between 5000 and 60000", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "RecvWindow: " + recvWindow + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+            if (nrOfParams == 0) {
+                finalMessage = "None of the parameters were (correctly) completed.";
+            }
+
+
             AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
             builder.setTitle("UPDATE PARAMS");
             builder.setMessage(finalMessage);
+            String finalMessage1 = finalMessage;
             builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int which) {
-                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(margin), ID, "11");
-                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(stopL), ID, "12");
-                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(takeP), ID, "13");
+
+                    if (finalMessage1.contains("Margin:")) {
+                        databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(margin), ID, "11");
+                    }
+                    if (finalMessage1.contains("StopLimit:")) {
+                        databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_REAL, Float.parseFloat(stopL), ID, "12");
+                    }
+                    if (finalMessage1.contains("TakeProfit:")) {
+                        databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_REAL, Float.parseFloat(takeP), ID, "13");
+                    }
+                    if (finalMessage1.contains("API-KEY:")) {
+                        databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, api, ID, "4");
+                    }
+                    if (finalMessage1.contains("Secret:")) {
+                        databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, secret, ID, "5");
+                    }
+                    if (finalMessage1.contains("RecvWindow:")) {
+                        databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(recvWindow), ID, "14");
+                    }
+
                     marginET.setText("");
                     stopLossET.setText("");
                     takeProfitET.setText("");
-                }
-            });
-            builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int which) {
-                    dialog.dismiss();
-                }
-            });
-            AlertDialog dialog = builder.create();
-            dialog.show();
-
-        });
-
-        updateWindowButton.setOnClickListener(view -> {
-
-            String recvWindow = windowET.getText().toString();
-
-            String finalMessage = "Are You sure You want update recWindow to following values:\n\n" + "recvWindow: " + recvWindow;
-            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-            builder.setTitle("UPDATE recWindow");
-            builder.setMessage(finalMessage);
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int which) {
-                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(recvWindow), ID, "14");
+                    apikeyET.setText("");
+                    secretET.setText("");
                     windowET.setText("");
                 }
             });
@@ -289,12 +333,18 @@ public class SettingsFragment extends Fragment {
 
         });
 
-
         infoButton.setOnClickListener(view -> {
+
+            // Hide the keyboard
+            imm.hideSoftInputFromWindow(root.getWindowToken(), 0);
+
             showPagerCustomDialog();
         });
 
         showKeysButton.setOnClickListener(view -> {
+
+            // Hide the keyboard
+            imm.hideSoftInputFromWindow(root.getWindowToken(), 0);
 
             String apikey = "";
             String secret = "";
@@ -334,7 +384,7 @@ public class SettingsFragment extends Fragment {
                 Log.e(TAG, "There is no param nr 12");
             } else {
                 data2.moveToFirst();
-                stopL = String.valueOf(data2.getInt(3));
+                stopL = String.valueOf(data2.getFloat(4));
             }
             data2.close();
 
@@ -343,7 +393,7 @@ public class SettingsFragment extends Fragment {
                 Log.e(TAG, "There is no param nr 13");
             } else {
                 data.moveToFirst();
-                takeP = String.valueOf(data.getInt(3));
+                takeP = String.valueOf(data.getFloat(4));
             }
             data.close();
 
@@ -367,19 +417,28 @@ public class SettingsFragment extends Fragment {
             textView.setText(toastMessage);
             snackbar.show();
 
+        });
 
-//            Snackbar snackbar = Snackbar
-//                    .make(snackBarView, toastMessage, Snackbar.LENGTH_LONG)
-//                    .setAction("UNDO", new View.OnClickListener() {
-//                        @Override
-//                        public void onClick(View view) {
-//                            Snackbar snackbar1 = Snackbar.make(snackBarView, "Message is restored!", Snackbar.LENGTH_LONG);
-//                            snackbar1.show();
-//                        }
-//                    });
-//
-//            snackbar.show();
+        switchTest.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if (b) {
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, 1, ID, "16");
+                } else {
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, 0, ID, "16");
+                }
+            }
+        });
 
+        switchReal.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if (b) {
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, 1, ID, "15");
+                } else {
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, 0, ID, "15");
+                }
+            }
         });
 
     }

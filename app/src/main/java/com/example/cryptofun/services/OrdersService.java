@@ -15,11 +15,10 @@ import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import com.example.cryptofun.MainActivity;
 import com.example.cryptofun.R;
 import com.example.cryptofun.data.AccountBalance;
-import com.example.cryptofun.database.DBHandler;
-import com.example.cryptofun.retrofit.RetrofitClientSecret;
+import com.example.cryptofun.data.database.DBHandler;
+import com.example.cryptofun.ui.retrofit.RetrofitClientSecretTestnet;
 import com.example.cryptofun.ui.view.OrderListViewElement;
 
 import java.io.IOException;
@@ -34,7 +33,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class OrdersService extends Service {
+public class OrdersService extends Service implements CallbackButton {
 
     private static final String TAG = "ORDService";
 
@@ -56,12 +55,6 @@ public class OrdersService extends Service {
     private static final String WHAT_ACCOUNT = "account_nr";
 
     ArrayList<OrderListViewElement> returnList = new ArrayList<>();
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Log.i(TAG, "destroy");
-    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -115,7 +108,7 @@ public class OrdersService extends Service {
     }
 
 
-    private void sendMessageToActivity(ArrayList<OrderListViewElement> listOrders, String test, String real, ArrayList<String> automatic) {
+    private void sendMessageToActivity(ArrayList<OrderListViewElement> listOrders, String test,  ArrayList<String> automatic) { //String real,
 
         Intent intent = new Intent("OrdersStatus");
         Log.e(TAG, "SendMessage " + Thread.currentThread() + " " + Thread.activeCount());
@@ -123,7 +116,7 @@ public class OrdersService extends Service {
         // 1 - 30min, 2 - 2h, 3 - 6h
         bundle.putSerializable("ordersList", (Serializable) listOrders);
         bundle.putString("testBalance", test);
-        bundle.putString("realBalance", real);
+//        bundle.putString("realBalance", real);
         bundle.putString("autoBalance1", automatic.get(0));
         bundle.putString("autoBalance2", automatic.get(1));
         bundle.putString("autoBalance3", automatic.get(2));
@@ -135,6 +128,11 @@ public class OrdersService extends Service {
         stopSelf();
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.i(TAG, "destroy");
+    }
 
     private void updatingCurrentOrders() {
 
@@ -145,7 +143,7 @@ public class OrdersService extends Service {
         } else {
             while (data.moveToNext()) {
 
-                OrderListViewElement tempToken = new OrderListViewElement(data.getString(1), data.getInt(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(9), data.getInt(8), data.getInt(11), data.getInt(10), data.getInt(12));
+                OrderListViewElement tempToken = new OrderListViewElement(data.getString(1), data.getInt(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(9), data.getInt(8), data.getInt(11), data.getInt(10), data.getInt(12), data.getInt(13), data.getString(14), data.getFloat(15));
                 returnList.add(tempToken);
 
             }
@@ -168,68 +166,128 @@ public class OrdersService extends Service {
                 data2.moveToFirst();
                 price = data2.getFloat(6);
 
-                Log.e(TAG, "Is it close time? SYMBOL: " + returnList.get(i).getSymbol() + " CP: " + price + " PP: " + returnList.get(i).getCurrentPrice());
-
                 float percentPrevious = returnList.get(i).getPercentOfPriceChange();
-                databaseDB.updateCurrentPriceOfCryptoInOrders(returnList.get(i).getSymbol(), CURRENT_PRICE, price, returnList.get(i).getTimeWhenPlaced());
+                databaseDB.updatePricesOfCryptoInOrder(returnList.get(i).getSymbol(), CURRENT_PRICE, price, returnList.get(i).getTimeWhenPlaced());
                 returnList.get(i).setCurrentPrice(price);
                 float percentNow = returnList.get(i).getPercentOfPriceChange();
-
-
-                Log.e(TAG, "Is it close time? SYMBOL: " + returnList.get(i).getSymbol() + " SL: " + returnList.get(i).getStopLimitPrice() + " TP: "
-                        + returnList.get(i).getTakeProfitPrice() + " SHORT?: " + returnList.get(i).getIsItShort() + " CA: " + returnList.get(i).getCurrentAmount() + " Percent Now: "
-                        + percentNow + " Percent previous: " + percentPrevious);
 
                 long currentTime = System.currentTimeMillis();
                 long orderTime = returnList.get(i).getTimeWhenPlaced();
                 long oneHour = 3600000;
+                long sixHours = 21600000;
                 long twoHours = 7200000;
+                long threeAndHalfHours = 12600000;
+                long fourHours = 14400000;
+                long eightHours = 25200000;
+                long tenHours = 36000000;
                 long minutes45 = 2700000;
+                long minutes15 = 900000;
                 long halfHour = 1800000;
                 long minutes3 = 180000;
+                long minutes8 = 480000;
+
+                String infoOfOrder = " SYMBOL: " + returnList.get(i).getSymbol() + " Exit$# " + returnList.get(i).getCurrentAmount() + " CP# " + price + " PP# " + returnList.get(i).getCurrentPrice() + " SL# " + returnList.get(i).getStopLimitPrice() + " TP# " + returnList.get(i).getTakeProfitPrice() + " isItSHORT# " + returnList.get(i).getIsItShort()  + " Percent Now# "
+                        + percentNow + " Percent previous# " + percentPrevious + " Time when placed# " + orderTime + " Time + 10h#  " + (orderTime + tenHours) + "current time# " + currentTime;
+
+
 
                 if (returnList.get(i).getIsItShort() == 1) {
 
+                    //We don't take stop limit price when closing test order - we take amount when we check prices, so it can be lower if big move was made, stpo limit would prevent of that
                     if (price > returnList.get(i).getStopLimitPrice()) {
+                        returnList.get(i).setCurrentPrice(returnList.get(i).getStopLimitPrice());
+
+                        Log.e(TAG,  "LEVEL6 STOP (SHORT) " + infoOfOrder);
+                        ServiceFunctions.writeToFile("LEVEL6 STOP (SHORT) " + infoOfOrder, getApplicationContext(), "result");
+                        ServiceFunctions.writeToFile("LEVEL6 STOP (SHORT) " + infoOfOrder, getApplicationContext(), "orders");
                         closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
                                 returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
+
                     }
                     if (price < returnList.get(i).getTakeProfitPrice()) {
+                        returnList.get(i).setCurrentPrice(returnList.get(i).getTakeProfitPrice());
+
+                        Log.e(TAG,  "LEVEL6 TAKE (SHORT) " + infoOfOrder);
+                        ServiceFunctions.writeToFile("LEVEL6 TAKE (SHORT) " + infoOfOrder, getApplicationContext(),"result");
+                        ServiceFunctions.writeToFile("LEVEL6 TAKE (SHORT) " + infoOfOrder, getApplicationContext(),"orders");
                         closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
                                 returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
+
                     }
                 } else {
                     if (price < returnList.get(i).getStopLimitPrice()) {
+                        returnList.get(i).setCurrentPrice(returnList.get(i).getStopLimitPrice());
+
+                        Log.e(TAG,  "LEVEL6 STOP (LONG) " + infoOfOrder);
+                        ServiceFunctions.writeToFile("LEVEL6 STOP (LONG) " + infoOfOrder, getApplicationContext(), "result");
+                        ServiceFunctions.writeToFile("LEVEL6 STOP (LONG)" + infoOfOrder, getApplicationContext(), "orders");
                         closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
                                 returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
+
                     }
                     if (price > returnList.get(i).getTakeProfitPrice()) {
+                        returnList.get(i).setCurrentPrice(returnList.get(i).getTakeProfitPrice());
+
+                        Log.e(TAG,  "LEVEL6 TAKE (LONG)" + infoOfOrder);
+                        ServiceFunctions.writeToFile("LEVEL6 TAKE (LONG) " + infoOfOrder, getApplicationContext(),"result");
+                        ServiceFunctions.writeToFile("LEVEL6 TAKE (LONG) " + infoOfOrder, getApplicationContext(),"orders");
                         closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
                                 returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
+
+
                     }
                 }
 
-                if (percentNow > 1 && percentNow > percentPrevious && returnList.get(i).getIsItShort() == 0) {
+                if (percentNow > 0.75 && percentNow > percentPrevious && returnList.get(i).getIsItShort() == 0) {
+                    Log.e(TAG, "LEVEL6(Previous SL): " + returnList.get(i).getStopLimitPrice());
+                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * 0.995f;
+                    if (stopLimitPrice > returnList.get(i).getStopLimitPrice()) {
+                        returnList.get(i).setStopLimitPrice(stopLimitPrice);
+                        databaseDB.updatePricesOfCryptoInOrder(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
+                        Log.e(TAG, "LEVEL6(New SL): " + returnList.get(i).getStopLimitPrice());
+                    }
+                } else if (percentNow < -0.75 && percentPrevious > percentNow && returnList.get(i).getIsItShort() == 1) {
                     Log.e(TAG, "Previous SL: " + returnList.get(i).getStopLimitPrice());
-                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * 0.99f;
-                    returnList.get(i).setStopLimitPrice(stopLimitPrice);
-                    databaseDB.updateCurrentPriceOfCryptoInOrders(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
-                    Log.e(TAG, "New SL: " + returnList.get(i).getStopLimitPrice());
-                } else if (percentNow < -1 && percentPrevious > percentNow && returnList.get(i).getIsItShort() == 1) {
-                    Log.e(TAG, "Previous SL: " + returnList.get(i).getStopLimitPrice());
-                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * 1.01f;
-                    returnList.get(i).setStopLimitPrice(stopLimitPrice);
-                    databaseDB.updateCurrentPriceOfCryptoInOrders(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
-                    Log.e(TAG, "New SL: " + returnList.get(i).getStopLimitPrice());
-                } else if (((orderTime + halfHour) < currentTime) && returnList.get(i).getIsItShort() == 0 && returnList.get(i).getEntryPrice() * 0.995 > returnList.get(i).getCurrentPrice()) {
+                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * 1.005f;
+                    if (stopLimitPrice < returnList.get(i).getStopLimitPrice()) {
+                        returnList.get(i).setStopLimitPrice(stopLimitPrice);
+                        databaseDB.updatePricesOfCryptoInOrder(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
+                        Log.e(TAG, "New SL: " + returnList.get(i).getStopLimitPrice());
+                    }
+                }
+//                else if (((orderTime + twoHours) < currentTime) && returnList.get(i).getIsItShort() == 0 && returnList.get(i).getEntryPrice() * 1.005 > returnList.get(i).getCurrentPrice()) {
+//                    closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
+//                            returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
+//                } else if (((orderTime + twoHours) < currentTime) && returnList.get(i).getIsItShort() == 1 && returnList.get(i).getEntryPrice() * 0.995 < returnList.get(i).getCurrentPrice()) {
+//                    closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
+//                            returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
+//                }
 
+                else if (((orderTime + eightHours) < currentTime)
+                        && returnList.get(i).getIsItShort() == 0
+                        && returnList.get(i).getEntryPrice() * 0.995  > returnList.get(i).getCurrentPrice()
+                ) {
+                    Log.e(TAG,  "TIME PASSED(LONG) " +  infoOfOrder);
+                    ServiceFunctions.writeToFile("TIME PASSED(LONG) " +  infoOfOrder, getApplicationContext(),"result");
+                    ServiceFunctions.writeToFile("TIME PASSED(LONG) " +  infoOfOrder, getApplicationContext(),"orders");
                     closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
                             returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
-                } else if (((orderTime + halfHour) < currentTime) && returnList.get(i).getIsItShort() == 1 && returnList.get(i).getEntryPrice() * 1.005 < returnList.get(i).getCurrentPrice()) {
-
+                } else if (((orderTime + eightHours) < currentTime)
+                        && returnList.get(i).getIsItShort() == 1
+                        && returnList.get(i).getEntryPrice() * 1.005 < returnList.get(i).getCurrentPrice()
+                ) {
+                    Log.e(TAG,  "TIME PASSED(SHORT) " +  infoOfOrder);
+                    ServiceFunctions.writeToFile("TIME PASSED(SHORT) " +  infoOfOrder, getApplicationContext(),"result");
+                    ServiceFunctions.writeToFile("TIME PASSED(SHORT) " +  infoOfOrder, getApplicationContext(),"orders");
                     closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
                             returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
                 }
+
+//                else if (((orderTime + tenHours) < currentTime)) {
+//                    closeOrder(returnList.get(i).getSymbol(), returnList.get(i).getTimeWhenPlaced(), returnList.get(i).getCurrentAmount(), returnList.get(i).getIsItReal(), returnList.get(i).getIsItShort(),
+//                            returnList.get(i).getMargin(), returnList.get(i).getAccountNumber());
+//                }
+
 
             }
             data2.close();
@@ -302,64 +360,81 @@ public class OrdersService extends Service {
             }
             data.close();
         }
+        sendMessageToActivity(returnList, testBalance, automaticBalance);
 
-        getRealAccountBalance(testBalance, automaticBalance);
+        ServiceFunctions.getRealAccountBalance(getApplicationContext(),null);
+
+        //getRealAccountBalance(testBalance, automaticBalance);
     }
 
-    private void getRealAccountBalance(String testBalance, ArrayList<String> automaticBalance) {
-        Call<List<AccountBalance>> call = RetrofitClientSecret.getInstance(getApplicationContext()).getMyApi().getAccountBalance();
-        Log.e(TAG, call.toString());
-        call.enqueue(new Callback<List<AccountBalance>>() {
-            @Override
-            public void onResponse(@NonNull Call<List<AccountBalance>> call, @NonNull Response<List<AccountBalance>> response) {
+//    private void getRealAccountBalance(String testBalance, ArrayList<String> automaticBalance) {
+//
+//        Call<List<AccountBalance>> call = RetrofitClientSecretTestnet.getInstance(getApplicationContext(), 0,  "", 0, "", "", "", "", "0", "0", "",
+//                        0,"", "0", 0, 0)
+//                .getMyApi().getAccountBalance();
+//
+//        // For RealAccount
+//        // Call<List<AccountBalance>> call = RetrofitClientSecret.getInstance(getApplicationContext()).getMyApi().getAccountBalance();
+//        call.enqueue(new Callback<List<AccountBalance>>() {
+//            @Override
+//            public void onResponse(@NonNull Call<List<AccountBalance>> call, @NonNull Response<List<AccountBalance>> response) {
+//
+//                if (response.body() != null) {
+//                    if (response.isSuccessful()) {
+//                        List<AccountBalance> balanceList = response.body();
+//                        for (int i = 0; i < balanceList.size(); i++) {
+//                            Log.e(TAG, balanceList.get(i).getAsset());
+//                            if (balanceList.get(i).getAsset().contains("USDT")) {
+//                                DecimalFormat dfNr = new DecimalFormat("0.00");
+//                                String realBalance = dfNr.format(balanceList.get(i).getAvailableBalance());
+//                                Cursor data2 = databaseDB.retrieveParam(3);
+//                                if (data2.getCount() == 0) {
+//                                    Log.e(TAG, "There is no param nr 3");
+//                                    databaseDB.addParam(3, "Real account balance", "", 0, balanceList.get(i).getBalance());
+//                                } else if (data2.getCount() >= 2) {
+//                                    databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 3);
+//                                    databaseDB.addParam(3, "Real Update Time", "", 0, balanceList.get(i).getBalance());
+//                                } else {
+//                                    databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_REAL, balanceList.get(i).getBalance(), ID, "3");
+//                                }
+//                                data2.close();
+//                                sendMessageToActivity(returnList, testBalance, realBalance, automaticBalance);
+//                            }
+//                        }
+//                    } else {
+//                        System.out.println(response.code() + " " + response.message());
+//                    }
+//                } else if (response.errorBody() != null) {
+//                    String errorBody = "";
+//                    try {
+//                        errorBody = response.errorBody().string();
+//                    } catch (IOException e) {
+//                        throw new RuntimeException(e);
+//                    }
+//                    Log.e(TAG, "Error response: " + errorBody);
+//                    sendMessageToActivity(returnList, testBalance, "No data.", automaticBalance);
+//                }
+//            }
+//
+//            @Override
+//            public void onFailure(@NonNull Call<List<AccountBalance>> call, @NonNull Throwable t) {
+//                System.out.println("An error has occurred" + t);
+//                Log.e(TAG, String.valueOf(t));
+//                sendMessageToActivity(returnList, testBalance, "No data.", automaticBalance);
+//            }
+//
+//        });
+//
+//    }
 
-                if (response.body() != null) {
-                    if (response.isSuccessful()) {
-                        List<AccountBalance> balanceList = response.body();
-                        for (int i = 0; i < balanceList.size(); i++) {
-                            Log.e(TAG, balanceList.get(i).getAsset());
-                            if (balanceList.get(i).getAsset().contains("USDT")) {
-                                DecimalFormat dfNr = new DecimalFormat("0.00");
-                                String realBalance = dfNr.format(balanceList.get(i).getBalance());
-                                Cursor data2 = databaseDB.retrieveParam(3);
-                                if (data2.getCount() == 0) {
-                                    Log.e(TAG, "There is no param nr 3");
-                                    databaseDB.addParam(3, "Real account balance", "", 0, balanceList.get(i).getBalance());
-                                } else if (data2.getCount() >= 2) {
-                                    databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 3);
-                                    databaseDB.addParam(3, "Real Update Time", "", 0, balanceList.get(i).getBalance());
-                                } else {
-                                    databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_REAL, balanceList.get(i).getBalance(), ID, "3");
-                                }
-                                data2.close();
-                                sendMessageToActivity(returnList, testBalance, realBalance, automaticBalance);
-                            }
-                        }
-                    } else {
-                        System.out.println(response.code() + " " + response.message());
-                    }
-                } else if (response.errorBody() != null) {
-                    String errorBody = "";
-                    try {
-                        errorBody = response.errorBody().string();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    Log.e(TAG, "Error response: " + errorBody);
-                    sendMessageToActivity(returnList, testBalance, "No data.", automaticBalance);
-                }
-            }
 
-            @Override
-            public void onFailure(@NonNull Call<List<AccountBalance>> call, @NonNull Throwable t) {
-                System.out.println("An error has occurred" + t);
-                Log.e(TAG, String.valueOf(t));
-                sendMessageToActivity(returnList, testBalance, "No data.", automaticBalance);
-            }
-
-        });
+    @Override
+    public void onSuccess() {
 
     }
 
+    @Override
+    public void onError() {
 
+    }
 }
