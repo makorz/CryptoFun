@@ -28,6 +28,8 @@ import android.widget.Toast;
 import com.example.cryptofun.R;
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.FragmentSettingsBinding;
+import com.example.cryptofun.services.ServiceFunctions;
+import com.example.cryptofun.ui.settings.infoBox.PagerAdapter;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayout;
@@ -45,7 +47,7 @@ public class SettingsFragment extends Fragment {
     private static final String ID = "id";
 
     private FragmentSettingsBinding binding;
-    private Button resetTestBalanceButton, resetAutomaticTestBalanceButton, showKeysButton, updateParamsButton;
+    private Button resetTestBalanceButton, resetAutomaticTestBalanceButton, showKeysButton, updateParamsButton, accountInfoButton;
     private EditText apikeyET, secretET, marginET, takeProfitET, stopLossET, windowET;
     private FloatingActionButton infoButton;
     private DBHandler databaseDB;
@@ -78,6 +80,7 @@ public class SettingsFragment extends Fragment {
         stopLossET = binding.etStopLoss;
         takeProfitET = binding.etTakeProfit;
         windowET = binding.etRecvWindow;
+        accountInfoButton = binding.btCheckAccountInfo;
 
         checkIfParamsArePresent();
         buttonsJob();

@@ -1,6 +1,4 @@
-package com.example.cryptofun.ui.view;
-
-import android.util.Log;
+package com.example.cryptofun.ui.orders;
 
 import java.io.Serializable;
 

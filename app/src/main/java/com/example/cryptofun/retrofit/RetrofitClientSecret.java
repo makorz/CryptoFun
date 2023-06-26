@@ -1,4 +1,4 @@
-package com.example.cryptofun.ui.retrofit;
+package com.example.cryptofun.retrofit;
 
 
 import android.content.Context;

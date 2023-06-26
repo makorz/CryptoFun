@@ -110,7 +110,7 @@
                 android:id="@+id/radio_group_real_test"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1.5"
                 android:layout_marginEnd="16dp"
                 android:orientation="horizontal">
 
@@ -119,6 +119,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="16dp"
+                    android:layout_marginStart="10dp"
                     android:text="Real" />
 
                 <RadioButton
@@ -150,7 +151,7 @@
                 android:id="@+id/radio_group_isolated_crossed"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1.5"
                 android:layout_marginEnd="16dp"
                 android:orientation="horizontal">
 
@@ -159,6 +160,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="16dp"
+                    android:layout_marginStart="10dp"
                     android:text="Isolated" />
 
                 <RadioButton
@@ -191,7 +193,7 @@
                 android:id="@+id/radio_group_long_short"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1.5"
                 android:layout_marginEnd="16dp"
                 android:orientation="horizontal">
 
@@ -200,12 +202,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="16dp"
+                    android:layout_marginStart="10dp"
                     android:text="Long" />
 
                 <RadioButton
                     android:id="@+id/rb_short"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+
                     android:text="Short" />
             </RadioGroup>
 
@@ -229,7 +233,7 @@
                 android:id="@+id/et_symbol"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1.5"
                 android:layout_marginEnd="16dp"
                 android:hint="Enter symbol (e.g. ETHUSDT)"
                 android:inputType="textCapWords"
@@ -257,7 +261,7 @@
                 android:inputType="number"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1.5"
                 android:layout_marginEnd="16dp"
                 android:textSize="14sp" />
 
@@ -283,7 +287,7 @@
                 android:inputType="number"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1.5"
                 android:layout_marginEnd="16dp"
                 android:textSize="14sp" />
 
@@ -309,7 +313,7 @@
                 android:inputType="number"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1.5"
                 android:layout_marginEnd="16dp"
                 android:textSize="14sp" />
 
@@ -335,7 +339,7 @@
                 android:inputType="number"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1.5"
                 android:layout_marginEnd="16dp"
                 android:textSize="14sp" />
 
@@ -349,12 +353,12 @@
             <Button
                 android:id="@+id/bt_order"
                 style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
-                android:layout_width="200dp"
+                android:layout_width="150dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:layout_margin="10dp"
                 android:text="Place Order"
-                android:textSize="16sp" />
+                android:textSize="12sp" />
 
             <ProgressBar
                 android:id="@+id/progress_bar_order"

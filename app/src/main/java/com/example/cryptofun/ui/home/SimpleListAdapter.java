@@ -1,7 +1,6 @@
-package com.example.cryptofun.ui.view;
+package com.example.cryptofun.ui.home;
 
 import android.annotation.SuppressLint;
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -11,7 +10,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.cryptofun.databinding.ListViewSimpleBinding;
 
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 
 public class SimpleListAdapter extends RecyclerView.Adapter<SimpleListAdapter.ViewHolder> {

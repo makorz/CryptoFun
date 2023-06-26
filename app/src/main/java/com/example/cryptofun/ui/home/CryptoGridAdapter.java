@@ -1,4 +1,4 @@
-package com.example.cryptofun.ui.view;
+package com.example.cryptofun.ui.home;
 
 import android.graphics.Color;
 import android.view.LayoutInflater;
@@ -12,7 +12,6 @@ import com.example.cryptofun.databinding.CardViewCryptoBinding;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.List;
 
 public class CryptoGridAdapter extends RecyclerView.Adapter<CryptoGridAdapter.ViewHolder>{
 

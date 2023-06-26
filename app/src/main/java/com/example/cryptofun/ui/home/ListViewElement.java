@@ -1,4 +1,4 @@
-package com.example.cryptofun.ui.view;
+package com.example.cryptofun.ui.home;
 
 import java.io.Serializable;
 

@@ -21,7 +21,6 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.room.Index;
 
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.ActivityMainBinding;
@@ -29,7 +28,6 @@ import com.example.cryptofun.services.AlarmReceiverLoopingService;
 import com.example.cryptofun.services.ApprovingService;
 import com.example.cryptofun.services.CreatingDatabaseService;
 import com.example.cryptofun.services.OrdersService;
-import com.example.cryptofun.services.ResultsService;
 import com.example.cryptofun.services.UpdatingDatabaseService;
 import com.example.cryptofun.ui.orders.OrdersFragment;
 import com.example.cryptofun.ui.home.HomeFragment;
@@ -131,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "isServiceRunning APRV: " + isMyServiceRunning(ApprovingService.class) + " UPDT: "
                     + isMyServiceRunning(UpdatingDatabaseService.class) + " ORD: "
                     + isMyServiceRunning(OrdersService.class) + " RES: "
-                     ); //+ isMyServiceRunning(ResultsService.class)
+                     );
 
             if (intent.getAction().equals("DB_updated") && DBCreated) {
 
@@ -203,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
                                 active = fragment1;
                                 return true;
                             case R.id.navigation_dashboard:
-                                if (!isMyServiceRunning(OrdersService.class)) {
+                                if (!isMyServiceRunning(OrdersService.class) && !isMyServiceRunning(ApprovingService.class) && !isMyServiceRunning(UpdatingDatabaseService.class)) {
                                     Intent serviceIntent = new Intent(getApplicationContext(), OrdersService.class);
                                     getApplicationContext().startForegroundService(serviceIntent);
 
@@ -212,12 +210,7 @@ public class MainActivity extends AppCompatActivity {
                                 active = fragment2;
                                 return true;
                             case R.id.navigation_notifications:
-//                                if (!isMyServiceRunning(ResultsService.class)) {
-//                                    Intent serviceIntent = new Intent(getApplicationContext(), ResultsService.class);
-//                                    getApplicationContext().startForegroundService(serviceIntent);
-//
-//                                }
-                                if (!isMyServiceRunning(OrdersService.class)) {
+                                if (!isMyServiceRunning(OrdersService.class) && !isMyServiceRunning(ApprovingService.class) && !isMyServiceRunning(UpdatingDatabaseService.class)) {
                                     Intent serviceIntent = new Intent(getApplicationContext(), OrdersService.class);
                                     getApplicationContext().startForegroundService(serviceIntent);
 

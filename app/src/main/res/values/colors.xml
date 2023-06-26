@@ -16,5 +16,8 @@
     <color name="light_brown">#efebe9</color>
     <color name="dark_green">#558B2F</color>
     <color name="dark_red">#C62828</color>
+    <color name="light_green">#8BC34A</color>
+    <color name="light_red">#FF5252</color>
     <color name="dark_blue_test">#1565C0</color>
+    <color name="cyan">#03A9F4</color>
 </resources>

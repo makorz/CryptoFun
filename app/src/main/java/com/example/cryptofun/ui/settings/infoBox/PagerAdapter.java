@@ -1,4 +1,4 @@
-package com.example.cryptofun.ui.settings;
+package com.example.cryptofun.ui.settings.infoBox;
 
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;

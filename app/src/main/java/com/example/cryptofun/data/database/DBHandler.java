@@ -10,9 +10,11 @@ import android.util.Log;
 
 
 import com.example.cryptofun.data.ApprovedToken;
+import com.example.cryptofun.data.CryptoSymbolTickStep;
 import com.example.cryptofun.data.PercentagesOfChanges;
-import com.example.cryptofun.ui.view.OrderListViewElement;
+import com.example.cryptofun.ui.orders.OrderListViewElement;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class DBHandler extends SQLiteOpenHelper {
@@ -131,7 +133,7 @@ public class DBHandler extends SQLiteOpenHelper {
     }
 
 
-    public void addNewCrypto(List<String> symbolList, List<String> tickSizes, List<String> stepSizes) {
+    public void addNewCrypto(List<CryptoSymbolTickStep> crypto) {
         Log.e(TAG, "addNewCrypto");
         SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -140,11 +142,12 @@ public class DBHandler extends SQLiteOpenHelper {
             // Begin a database transaction
             db.beginTransaction();
 
-            for (int i = 0; i < symbolList.size(); i++) {
-                values.put(SYMBOL_CRYPTO, symbolList.get(i));
-                values.put(TICK_SIZE, tickSizes.get(i));
-                values.put(STEP_SIZE, stepSizes.get(i));
+            for (int i = 0; i < crypto.size(); i++) {
+                values.put(SYMBOL_CRYPTO, crypto.get(i).getSymbol());
+                values.put(TICK_SIZE, crypto.get(i).getTickSize());
+                values.put(STEP_SIZE, crypto.get(i).getStepSize());
                 db.insert(TABLE_SYMBOL_AVG, null, values);
+               // Log.e(TAG, values.toString());
             }
             // Commit the transaction
             db.setTransactionSuccessful();
@@ -319,7 +322,7 @@ public class DBHandler extends SQLiteOpenHelper {
             values.put(ORDER_TYPE, element.getOrderType());
             values.put(QUANTITY, element.getQunatity());
             db.insert(TABLE_NAME_ORDERS, null, values);
-
+            Log.e(TAG, values.toString());
             // Commit the transaction
             db.setTransactionSuccessful();
         } catch (Exception e) {

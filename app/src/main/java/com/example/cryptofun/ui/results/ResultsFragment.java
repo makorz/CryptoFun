@@ -57,17 +57,7 @@ public class ResultsFragment extends Fragment implements CallbackButton {
         LocalBroadcastManager.getInstance(getActivity()).registerReceiver(
                 mMessageReceiver, new IntentFilter("OrdersStatus"));
 
-//        if (!isMyServiceRunning(ResultsService.class, getContext())) {
-//            Intent serviceIntent = new Intent(getContext(), ResultsService.class);
-//            requireContext().startForegroundService(serviceIntent);
-//
-//        }
-
-        if (!isMyServiceRunning(OrdersService.class, getContext())) {
-            Intent serviceIntent = new Intent(getContext(), OrdersService.class);
-            requireContext().startForegroundService(serviceIntent);
-
-        }
+        onReceiveBalance();
         return root;
     }
 
@@ -86,21 +76,10 @@ public class ResultsFragment extends Fragment implements CallbackButton {
                 automaticBalance4.setText(bundle.getString("autoBalance4"));
                 automaticBalance5.setText(bundle.getString("autoBalance5"));
                 displayLogFile();
-                ServiceFunctions.getRealAccountBalance(getContext(), callbackButton);
-
+                onReceiveBalance();
             }
         }
     };
-
-    private boolean isMyServiceRunning(Class<?> serviceClass, Context context) {
-        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     private void displayLogFile() {
         try {
@@ -138,9 +117,12 @@ public class ResultsFragment extends Fragment implements CallbackButton {
             realBalance.setText("No data");
         } else {
             data.moveToFirst();
-
             balance = dfNr.format(data.getFloat(4));
-            realBalance.setText(balance);
+
+            if (!realBalance.getText().toString().equals(balance)) {
+                realBalance.setText(balance);
+            }
+
         }
         data.close();
     }
@@ -148,8 +130,6 @@ public class ResultsFragment extends Fragment implements CallbackButton {
     @Override
     public void onResume() {
         Log.e(TAG, "Resume.");
-        displayLogFile();
-        ServiceFunctions.getRealAccountBalance(getContext(), callbackButton);
         super.onResume();
     }
 

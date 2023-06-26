@@ -19,11 +19,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.cryptofun.databinding.FragmentHomeBinding;
 import com.example.cryptofun.services.ApprovingService;
-import com.example.cryptofun.ui.view.CryptoGridAdapter;
-import com.example.cryptofun.ui.view.CryptoListAdapter;
-import com.example.cryptofun.ui.view.GridViewElement;
-import com.example.cryptofun.ui.view.ListViewElement;
-import com.example.cryptofun.ui.view.SimpleListAdapter;
 
 import java.util.ArrayList;
 

@@ -31,7 +31,7 @@ public class AccountBalance {
 //            "crossUnPnl": "0.00000000"  // unrealized profit of crossed positions
 //        "availableBalance": "23.72469206",       // available balance
 //            "maxWithdrawAmount": "23.72469206",     // maximum amount for transfer out
-//            "marginAvailable": true,    // whether the asset can be used as margin in Multi-Assets mode
+//            "marginAvailable": true,    // whether the asset can be used as margin in Multi-Asset mode
 //            "updateTime": 1617939110373
 //    }
 

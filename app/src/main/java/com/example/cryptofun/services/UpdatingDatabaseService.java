@@ -22,7 +22,7 @@ import com.example.cryptofun.data.ObservableModel;
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.data.database.Kline;
 import com.example.cryptofun.data.database.rawTable_Kline;
-import com.example.cryptofun.ui.retrofit.RetrofitClientFutures;
+import com.example.cryptofun.retrofit.RetrofitClientFutures;
 
 import java.sql.Timestamp;
 import java.text.DateFormat;
@@ -61,7 +61,7 @@ public class UpdatingDatabaseService extends Service {
                     @Override
                     public void run() {
                         databaseDB = DBHandler.getInstance(getApplicationContext());
-                        Log.e(TAG, "Service is running...");
+                        Log.e(TAG, "START of Service Thread");
 //                        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
 //                        mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyService:WakeLockTag");
 //                        mWakeLock.acquire(5*60*1000L );
@@ -76,6 +76,11 @@ public class UpdatingDatabaseService extends Service {
         ).start();
 
         return START_STICKY;
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
     }
 
     private Notification createNotification() {
@@ -102,37 +107,98 @@ public class UpdatingDatabaseService extends Service {
         return builder.build();
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Log.e(TAG, "destroy");
-    }
-
     private void sendMessageToActivity(String date, boolean updateStart) {
         Intent intent = new Intent("DB_updated");
         intent.putExtra("updateDate", date);
         intent.putExtra("updateStarted", updateStart);
-        Log.e(TAG, "Send Broadcast Message Update Started Background " + updateStart);
+        Log.e(TAG, "BROADCAST - UpdateDB Started in Background" + updateStart);
         LocalBroadcastManager.getInstance(UpdatingDatabaseService.this).sendBroadcast(intent);
-        // databaseDB.close();
         stopForeground(true);
         stopSelf();
     }
 
     private void sendInfoToActivity() {
         Intent intent = new Intent("DB_update_start");
-        Log.e(TAG, "Loading icon START");
+        Log.e(TAG, "BROADCAST - Loading icon START");
         LocalBroadcastManager.getInstance(UpdatingDatabaseService.this).sendBroadcast(intent);
+    }
+
+    private void checkDBLastTimeOfUpdate() {
+
+        Cursor data = databaseDB.retrieveLastCloseTime("3m");
+        if (data.getCount() == 0) {
+            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty. [checkDBLastTimeOfUpdate]");
+            Timestamp stamp = new Timestamp(System.currentTimeMillis());
+            @SuppressLint("SimpleDateFormat")
+            DateFormat df = new SimpleDateFormat("HH:mm - EEE, dd");
+            String date = "Update time:  " + df.format(new Date(stamp.getTime()));
+
+            Cursor data2 = databaseDB.retrieveParam(1);
+            if (data2.getCount() == 0) {
+                databaseDB.addParam(1, "Last Update Time", date, 0, 0);
+            } else {
+                if (data2.getCount() >= 2) {
+                    databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 1);
+                    databaseDB.addParam(1, "Last Update Time", date, 0, 0);
+                }
+                databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, date, ID, "1");
+
+            }
+            updateDBtoCurrentValues(System.currentTimeMillis());
+            sendMessageToActivity(date, true);
+            data2.close();
+
+        } else {
+            data.moveToFirst();
+            Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
+                    data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
+
+            Timestamp stamp = new Timestamp(System.currentTimeMillis());
+            Timestamp stamp2 = new Timestamp(tempKline.gettCloseTime());
+            @SuppressLint("SimpleDateFormat")
+            DateFormat df = new SimpleDateFormat("HH:mm - EEE, dd");
+            String date = "Update time:  " + df.format(new Date(stamp.getTime()));
+            String date2 = df.format(new Date(stamp2.getTime()));
+
+            //if more than 1 minute passed since last closeTimeOfKline --> UpdateDB
+            long oneAndHalfMin = 60000;
+            Log.e(TAG, "KlineCLoseTime: " + tempKline.gettCloseTime() + " - oneMin: " + oneAndHalfMin + " - currentTime: " + System.currentTimeMillis());
+            long time = (tempKline.gettCloseTime() - oneAndHalfMin - System.currentTimeMillis());
+
+            if (time < 0) {
+                Cursor data2 = databaseDB.retrieveParam(1);
+                if (data2.getCount() == 0) {
+                    databaseDB.addParam(1, "Last Update Time", date, 0, 0);
+                } else {
+                    if (data2.getCount() >= 2) {
+                        databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 1);
+                        databaseDB.addParam(1, "Last Update Time", date, 0, 0);
+                    }
+                    databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, date, ID, "1");
+
+                }
+                data2.close();
+                updateDBtoCurrentValues(System.currentTimeMillis());
+                Log.e(TAG, "DB is not actual " + tempKline.gettCloseTime() + " " + time + " " + System.currentTimeMillis() + " " + date + " " + date2);
+                sendMessageToActivity(date, true);
+            } else {
+                Log.e(TAG, "DB is actual " + tempKline.gettCloseTime() + " " + time + " " + System.currentTimeMillis() + " " + date + " " + date2);
+                Cursor data3 = databaseDB.retrieveAllFromTable(TABLE_NAME_KLINES_DATA);
+                if (data3.getCount() > 10) {
+                    Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is not empty. [onStartCommand]");
+                    startCountingAndReturnResult(true);
+
+                }
+                data3.close();
+                sendMessageToActivity(date, false);
+            }
+        }
+        data.close();
     }
 
     private void updateDBtoCurrentValues(long timeOfUpdate) {
         sendInfoToActivity();
-        Log.e(TAG, "UpdateDB START " + Thread.currentThread() + " " + Thread.activeCount());
+        Log.e(TAG, "StartOfUpdate " + Thread.currentThread() + " " + Thread.activeCount());
         int maxNrOfKlines = 20;
         List<String> listOfSymbols = new ArrayList<>();
         List<ObservableModel> observableList = new ArrayList<>();
@@ -146,7 +212,6 @@ public class UpdatingDatabaseService extends Service {
             }
         }
         data.close();
-        //Log.e("UpdatingExistingDB", "Observable size2: " + observableList.size());
 
         for (int i = 0; i < listOfSymbols.size(); i++) {
             observableList.add(updateIntervalOfDB(listOfSymbols.get(i), "3m", maxNrOfKlines, timeOfUpdate));
@@ -161,7 +226,7 @@ public class UpdatingDatabaseService extends Service {
                 it.remove();
             }
         }
-        Log.e(TAG, "Observable size: " + observableList.size());
+
         observableStart(observableList);
     }
 
@@ -308,6 +373,8 @@ public class UpdatingDatabaseService extends Service {
     @SuppressLint("CheckResult")
     private void observableStart(List<ObservableModel> list) {
 
+        Log.e(TAG, "Observable size: " + list.size());
+
         List<rawTable_Kline> klinesDataList = new ArrayList<>();
         List<KlineRequest> request = new ArrayList<>();
         List<Observable<?>> observableRequestList = new ArrayList<>();
@@ -321,7 +388,7 @@ public class UpdatingDatabaseService extends Service {
             observableRequestList.add(request.get(i).getRequest());
         }
 
-        Log.e(TAG, "request size: " + request.size());
+        Log.e(TAG, "Request size: " + request.size());
 
         Observable.zip(
                         observableRequestList,
@@ -329,7 +396,7 @@ public class UpdatingDatabaseService extends Service {
                             @Override
                             public Object apply(Object[] objects) throws Exception {
                                 // Objects[] is an array of combined results of completed requests
-                                Log.e(TAG, "OBSERVABLE  HOW MANY? --> " + objects.length);
+                                Log.e(TAG, "Observable ZIP size: " + objects.length);
                                 for (int i = 0; i < objects.length; i++) {
                                     request.get(i).setDataOfSymbolInterval((String[][]) objects[i]);
                                 }
@@ -346,59 +413,65 @@ public class UpdatingDatabaseService extends Service {
                             @Override
                             public void accept(Object o) throws Exception {
                                 //Do something on successful completion of all requests
-                                Log.e(TAG, "PERFECT");
+                                Log.e(TAG, "Observable UpdateDB - PERFECT");
+                                new Thread(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                databaseDB = DBHandler.getInstance(getApplicationContext());
+                                                for (int i = 0; i < request.size(); i++) {
+                                                    String[][] aaa = request.get(i).getDataOfSymbolInterval();
+                                                    String symbol = request.get(i).getSymbol();
+                                                    String interval = request.get(i).getInterval();
+                                                    int whatToDoInDB = request.get(i).getWhatToDoInDB();
+                                                    int howManyOldOnes = request.get(i).getHowManyOldOnesToDelete();
 
-                                for (int i = 0; i < request.size(); i++) {
-                                    String[][] aaa = request.get(i).getDataOfSymbolInterval();
-                                    String symbol = request.get(i).getSymbol();
-                                    String interval = request.get(i).getInterval();
-                                    int whatToDoInDB = request.get(i).getWhatToDoInDB();
-                                    int howManyOldOnes = request.get(i).getHowManyOldOnesToDelete();
+                                                    for (int j = 0; j < aaa.length; j++) {
+                                                        rawTable_Kline temp = new rawTable_Kline(symbol,
+                                                                Long.parseLong(aaa[j][0]),
+                                                                Float.parseFloat(aaa[j][1]),
+                                                                Float.parseFloat(aaa[j][2]),
+                                                                Float.parseFloat(aaa[j][3]),
+                                                                Float.parseFloat(aaa[j][4]),
+                                                                Float.parseFloat(aaa[j][5]),
+                                                                Long.parseLong(aaa[j][6]),
+                                                                Long.parseLong(aaa[j][8]),
+                                                                interval);
+                                                        klinesDataList.add(temp);
+                                                    }
 
-                                    for (int j = 0; j < aaa.length; j++) {
-                                        rawTable_Kline temp = new rawTable_Kline(symbol,
-                                                Long.parseLong(aaa[j][0]),
-                                                Float.parseFloat(aaa[j][1]),
-                                                Float.parseFloat(aaa[j][2]),
-                                                Float.parseFloat(aaa[j][3]),
-                                                Float.parseFloat(aaa[j][4]),
-                                                Float.parseFloat(aaa[j][5]),
-                                                Long.parseLong(aaa[j][6]),
-                                                Long.parseLong(aaa[j][8]),
-                                                interval);
-                                        klinesDataList.add(temp);
-                                    }
+                                                    switch (whatToDoInDB) {
+                                                        case 1:
+                                                            databaseDB.deleteAllKlinesForSymbolInterval(interval, symbol);
+                                                            break;
+                                                        case 2:
+                                                            databaseDB.deleteMostNewKlineForSymbolInterval(interval, symbol, 1);
+                                                            databaseDB.deleteOldestKlinesForSymbolInterval(interval, symbol, howManyOldOnes);
+                                                            break;
+                                                        case 3:
+                                                            databaseDB.deleteMostNewKlineForSymbolInterval(interval, symbol, 1);
+                                                            break;
+                                                        default:
+                                                            break;
+                                                    }
+                                                }
 
-                                    switch (whatToDoInDB) {
-                                        case 1:
-                                            databaseDB.deleteAllKlinesForSymbolInterval(interval, symbol);
-                                            break;
-                                        case 2:
-                                            databaseDB.deleteMostNewKlineForSymbolInterval(interval, symbol, 1);
-                                            databaseDB.deleteOldestKlinesForSymbolInterval(interval, symbol, howManyOldOnes);
-                                            break;
-                                        case 3:
-                                            databaseDB.deleteMostNewKlineForSymbolInterval(interval, symbol, 1);
-                                            break;
-                                        default:
-                                            break;
-                                    }
-                                }
+                                                Iterator<rawTable_Kline> it = klinesDataList.iterator();
+                                                while (it.hasNext()) {
+                                                    rawTable_Kline iteratorItem = it.next();
+                                                    if (iteratorItem.getTokenSymbol() == null) {
+                                                        it.remove();
+                                                    }
+                                                }
+                                                //Add everything to DB and refresh View
+                                                if (databaseDB.addNewKlineData(klinesDataList) > 50) {
+                                                    klinesDataList.clear();
+                                                    startCountingAndReturnResult(false);
+                                                }
+                                            }
+                                        }
+                                ).start();
 
-                                Iterator<rawTable_Kline> it = klinesDataList.iterator();
-                                while (it.hasNext()) {
-                                    rawTable_Kline iteratorItem = it.next();
-                                    if (iteratorItem.getTokenSymbol() == null) {
-                                        it.remove();
-                                    }
-                                }
-                                //Add everything to DB and refresh View
-                                if (databaseDB.addNewKlineData(klinesDataList) > 50) {
-                                    klinesDataList.clear();
-
-                                    startCountingAndReturnResult(false);
-
-                                }
                             }
                         },
 
@@ -406,7 +479,7 @@ public class UpdatingDatabaseService extends Service {
                         new Consumer<Throwable>() {
                             @Override
                             public void accept(Throwable e) throws Exception {
-                                Log.e(TAG, "FUCKED " + e);
+                                Log.e(TAG, "Observable UpdateDB - FUCKED " + e);
                                 Toast.makeText(getApplicationContext(), "Error: " + e, Toast.LENGTH_LONG).show();
                                 startCountingAndReturnResult(true);
                             }
@@ -416,6 +489,7 @@ public class UpdatingDatabaseService extends Service {
     }
 
     private void startCountingAndReturnResult(boolean wasThereError) {
+
         Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
         List<String> listOfSymbols = new ArrayList<>();
         if (data.getCount() == 0) {
@@ -455,79 +529,6 @@ public class UpdatingDatabaseService extends Service {
 //            mWakeLock.release();
 //            mWakeLock = null;
 //        }
-        data.close();
-    }
-
-    private void checkDBLastTimeOfUpdate() {
-
-        Cursor data = databaseDB.retrieveLastCloseTime("3m");
-        if (data.getCount() == 0) {
-            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty. [checkDBLastTimeOfUpdate]");
-            Timestamp stamp = new Timestamp(System.currentTimeMillis());
-            @SuppressLint("SimpleDateFormat")
-            DateFormat df = new SimpleDateFormat("HH:mm - EEE, dd");
-            String date = "Update time:  " + df.format(new Date(stamp.getTime()));
-
-            Cursor data2 = databaseDB.retrieveParam(1);
-            if (data2.getCount() == 0) {
-                databaseDB.addParam(1, "Last Update Time", date, 0, 0);
-            } else {
-                if (data2.getCount() >= 2) {
-                    databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 1);
-                    databaseDB.addParam(1, "Last Update Time", date, 0, 0);
-                }
-                databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, date, ID, "1");
-
-            }
-            updateDBtoCurrentValues(System.currentTimeMillis());
-            sendMessageToActivity(date, true);
-            data2.close();
-        } else {
-            data.moveToFirst();
-            Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
-                    data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
-
-            Timestamp stamp = new Timestamp(System.currentTimeMillis());
-            Timestamp stamp2 = new Timestamp(tempKline.gettCloseTime());
-            @SuppressLint("SimpleDateFormat")
-            DateFormat df = new SimpleDateFormat("HH:mm - EEE, dd");
-            String date = "Update time:  " + df.format(new Date(stamp.getTime()));
-            String date2 = df.format(new Date(stamp2.getTime()));
-
-            //if more than 2 minutes passed since last closeTimeOfKline --> UpdateDB
-            long oneAndHalfMin = 90000;
-            Log.e(TAG, "A: " + tempKline.gettCloseTime() + " - B: " + oneAndHalfMin + " - C: " + System.currentTimeMillis());
-            long time = (tempKline.gettCloseTime() - oneAndHalfMin - System.currentTimeMillis());
-
-
-            if (time < 0) {
-                Cursor data2 = databaseDB.retrieveParam(1);
-                if (data2.getCount() == 0) {
-                    databaseDB.addParam(1, "Last Update Time", date, 0, 0);
-                } else {
-                    if (data2.getCount() >= 2) {
-                        databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 1);
-                        databaseDB.addParam(1, "Last Update Time", date, 0, 0);
-                    }
-                    databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, date, ID, "1");
-
-                }
-                data2.close();
-                updateDBtoCurrentValues(System.currentTimeMillis());
-                Log.e(TAG, "DB is not actual " + tempKline.gettCloseTime() + " " + time + " " + System.currentTimeMillis() + " " + date + " " + date2);
-                sendMessageToActivity(date, true);
-            } else {
-                Log.e(TAG, "DB is actual " + tempKline.gettCloseTime() + " " + time + " " + System.currentTimeMillis() + " " + date + " " + date2);
-                Cursor data3 = databaseDB.retrieveAllFromTable(TABLE_NAME_KLINES_DATA);
-                if (data3.getCount() > 10) {
-                    Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is not empty. [onStartCommand]");
-                    startCountingAndReturnResult(true);
-
-                }
-                data3.close();
-                sendMessageToActivity(date, false);
-            }
-        }
         data.close();
     }
 
@@ -573,7 +574,7 @@ public class UpdatingDatabaseService extends Service {
         data.close();
 
         float volumeOfLast15mKlines;
-        int acceptableVolume = 1000000;
+        int acceptableVolume = 1000000; //100000
 
         if (coinKlines15m.size() > 2) {
             volumeOfLast15mKlines = countMoneyVolumeAtInterval(coinKlines15m, 0, 2);
@@ -625,9 +626,9 @@ public class UpdatingDatabaseService extends Service {
 
                 double last12mPriceChange = percentOfPriceChange(coinKlines3m.subList(0, 4));
 
-                waveTrendPredict3 = predictPriceChange2(coinKlines3m);
-                waveTrendPredict15 = predictPriceChange2(coinKlines15m);
-                waveTrendPredict4 = predictPriceChange2(coinKlines4h);
+                waveTrendPredict3 = predictWaveTrend(coinKlines3m);
+                waveTrendPredict15 = predictWaveTrend(coinKlines15m);
+                waveTrendPredict4 = predictWaveTrend(coinKlines4h);
 
                 info = "LEVEL2 (LONG): " + symbol + " is predicted to be (3m, 15m, 4h): " + predict3 + " " + predict15 + " " + predict4 + ". Arrays size: " + coinKlines15m.size() + " " + coinKlines3m.size() + " " + coinKlines4h.size() + " Price direction: " + priceDirection3 + " " + priceDirection15 + " " + priceDirection4 + " Wave Trend: " + waveTrendPredict3 + " " + waveTrendPredict15 + " " + waveTrendPredict4 + " Last12mPriceChange: " + last12mPriceChange;
                 Log.e(TAG, info);
@@ -664,6 +665,9 @@ public class UpdatingDatabaseService extends Service {
 
                 }
 
+                /* TODO:
+                        Przywrócić wartości jak wejdzie test na produkcji. Również wartości na kwoty zleceń i ilość zleceń w Approving service oraz w RetrfitClientSecrettEstnet pobieranie api z bazy dnaych
+                 */
 
             } else if (isKlineApprovedForLongOrShort(statusListOf3mToCheck, statusListOf15mToCheck, 0)) {
 
@@ -689,9 +693,9 @@ public class UpdatingDatabaseService extends Service {
 
                 double last12mPriceChange = percentOfPriceChange(coinKlines3m.subList(0, 4));
 
-                waveTrendPredict3 = predictPriceChange2(coinKlines3m);
-                waveTrendPredict15 = predictPriceChange2(coinKlines15m);
-                waveTrendPredict4 = predictPriceChange2(coinKlines4h);
+                waveTrendPredict3 = predictWaveTrend(coinKlines3m);
+                waveTrendPredict15 = predictWaveTrend(coinKlines15m);
+                waveTrendPredict4 = predictWaveTrend(coinKlines4h);
 
                 info = "LEVEL2 (SHORT): " + symbol + " is predicted to be (3m, 15m, 4h): " + predict3 + " " + predict15 + " " + predict4 + ". Arrays size: " + coinKlines15m.size() + " " + coinKlines3m.size() + " " + coinKlines4h.size() + " Price direction: " + priceDirection3 + " " + priceDirection15 + " " + priceDirection4 + " Wave Trend: " + waveTrendPredict3 + " " + waveTrendPredict15 + " " + waveTrendPredict4 + " Last12mPriceChange: " + last12mPriceChange;
                 Log.e(TAG, info);
@@ -823,7 +827,8 @@ public class UpdatingDatabaseService extends Service {
         }
     }
 
-    public static int predictPriceChange2(List<Kline> klines) {
+    // Functions economic to check trend of cryptos
+    public static int predictWaveTrend(List<Kline> klines) {
         int n1 = 10; // Channel Length
         int n2 = 21; // Average Length
         int obLevel1 = 45; // Over Bought Level 1
@@ -858,6 +863,7 @@ public class UpdatingDatabaseService extends Service {
         }
     }
 
+    // Part of "predictWaveTrend"
     private static float[] ema(float[] x, int n) {
         float[] result = new float[x.length];
         float multiplier = (float) (2.0 / (n + 1));
@@ -870,6 +876,7 @@ public class UpdatingDatabaseService extends Service {
         return result;
     }
 
+    // Part of "predictWaveTrend"
     private static float[] sma(float[] x, int n) {
         float[] result = new float[x.length];
         for (int i = 0; i < x.length; i++) {
@@ -884,6 +891,7 @@ public class UpdatingDatabaseService extends Service {
         return result;
     }
 
+    // Part of "predictWaveTrend"
     private static float[] abs(float[] x) {
         float[] result = new float[x.length];
         for (int i = 0; i < x.length; i++) {
@@ -892,6 +900,7 @@ public class UpdatingDatabaseService extends Service {
         return result;
     }
 
+    // Part of "predictWaveTrend"
     private static float[] subtract(float[] x, float[] y) {
         float[] result = new float[x.length];
         for (int i = 0; i < x.length; i++) {
@@ -900,6 +909,7 @@ public class UpdatingDatabaseService extends Service {
         return result;
     }
 
+    // Part of "predictWaveTrend"
     private static float[] multiply(float x, float[] y) {
         float[] result = new float[y.length];
         for (int i = 0; i < y.length; i++) {
@@ -908,6 +918,7 @@ public class UpdatingDatabaseService extends Service {
         return result;
     }
 
+    // Part of "predictWaveTrend"
     private static float[] divide(float[] x, float[] y) {
         float[] result = new float[x.length];
         for (int i = 0; i < x.length; i++) {
@@ -921,6 +932,7 @@ public class UpdatingDatabaseService extends Service {
         return result;
     }
 
+    // Part of "predictWaveTrend"
     private static boolean crossOver(float[] x, float[] y) {
         int length = x.length;
         if (length < 2) {
@@ -941,7 +953,6 @@ public class UpdatingDatabaseService extends Service {
         }
         return false;
     }
-
 
     public static int predictPriceDirection(List<Kline> pastHourKlines) {
 
@@ -1212,6 +1223,12 @@ public class UpdatingDatabaseService extends Service {
         }
         //Log.e("UPDService15m", "3m: " + accepted3m + " 15m: " + accepted15m);
         return (accepted3m && accepted15m);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.e(TAG, "DESTROY");
     }
 
 }

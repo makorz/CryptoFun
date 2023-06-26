@@ -1,4 +1,6 @@
-package com.example.cryptofun.ui.retrofit;
+package com.example.cryptofun.retrofit;
+
+import android.util.Log;
 
 import java.util.concurrent.TimeUnit;
 
@@ -10,7 +12,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class RetrofitClientFutures {
 
     private static RetrofitClientFutures instance = null;
-    private ApiEndpointInterface myApi;
+    private final ApiEndpointInterface myApi;
+    private static final String TAG = "RetrofitClientFutures";
 
     private RetrofitClientFutures() {
 
@@ -27,6 +30,8 @@ public class RetrofitClientFutures {
                 .addConverterFactory(GsonConverterFactory.create())
                 .client(client)
                 .build();
+
+        Log.e(TAG, "URL: " + retrofit.baseUrl() + " " + retrofit);
         myApi = retrofit.create(ApiEndpointInterface.class);
     }
 

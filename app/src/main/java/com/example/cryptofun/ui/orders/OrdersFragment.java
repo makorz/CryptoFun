@@ -34,10 +34,9 @@ import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.FragmentOrdersBinding;
 
 import com.example.cryptofun.services.CallbackButton;
+import com.example.cryptofun.services.OrdersService;
 import com.example.cryptofun.services.ServiceFunctions;
-import com.example.cryptofun.ui.retrofit.RetrofitClientFutures;
-import com.example.cryptofun.ui.view.OrderListAdapter;
-import com.example.cryptofun.ui.view.OrderListViewElement;
+import com.example.cryptofun.retrofit.RetrofitClientFutures;
 
 import java.util.ArrayList;
 
@@ -49,16 +48,8 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 
 public class OrdersFragment extends Fragment implements CallbackButton {
 
-
     private static final String TAG = "OrdersFrag";
     private static final String TABLE_NAME_ORDERS = "current_orders";
-    private static final String TABLE_NAME_CONFIG = "config";
-    private static final String DESCRIPTION = "description";
-    private static final String VALUE_STRING = "value_string";
-    private static final String VALUE_INT = "value_int";
-    private static final String ID = "id";
-    private static final String VALUE_REAL = "value_real";
-
     private FragmentOrdersBinding binding;
     private ArrayList<OrderListViewElement> mItems = new ArrayList<>();
     private Button placeOrderButton;
@@ -110,9 +101,7 @@ public class OrdersFragment extends Fragment implements CallbackButton {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals("OrdersStatus")) {
-//                Bundle bundle = intent.getBundleExtra("bundleOrdersStatus");
                 Log.e(TAG, "APRVServiceReceived - Orders" + Thread.currentThread());
-//                mItems = (ArrayList<OrderListViewElement>) bundle.getSerializable("ordersList");
                 onReceiveNewList(adapter);
             }
         }
@@ -129,7 +118,7 @@ public class OrdersFragment extends Fragment implements CallbackButton {
             int selectedId = testOrRealRG.getCheckedRadioButtonId();
             int selectedId2 = isolatedOrCrossedRG.getCheckedRadioButtonId();
             int selectedId3 = longOrShortRG.getCheckedRadioButtonId();
-            int accountNr = -1;
+            int accountNr;
             boolean isItReal = false;
             boolean isItCrossed = false;
             boolean isItShort = false;
@@ -167,7 +156,7 @@ public class OrdersFragment extends Fragment implements CallbackButton {
                 // The text is not a valid integer
             }
 
-            if (selectedId != -1 && selectedId2 != -1 && selectedId3 != -1 && amountValue > 15) {
+            if (selectedId != -1 && selectedId2 != -1 && selectedId3 != -1 && amountValue >= 8) {
                 if (selectedId == R.id.rb_real) {
                     isItReal = true;
                 }
@@ -179,8 +168,9 @@ public class OrdersFragment extends Fragment implements CallbackButton {
                 }
 
                 databaseDB = DBHandler.getInstance(getContext());
-                float balance = 0;
                 Cursor data;
+
+                float balance = 0;
                 if (isItReal) {
 
                     accountNr = 3;
@@ -220,11 +210,10 @@ public class OrdersFragment extends Fragment implements CallbackButton {
                     float finalStopLimitValue = stopLimitValue;
                     int finalAmountValue = amountValue;
                     boolean finalIsItReal = isItReal;
-                    int finalAccountNr = accountNr;
+
                     builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-
 
                             getMarkPrice(symbol)
                                     .subscribeOn(Schedulers.io())
@@ -240,9 +229,8 @@ public class OrdersFragment extends Fragment implements CallbackButton {
                                             // handle the MarkPrice object returned by the API
                                             Log.e(TAG, "User Order Made for " + symbol + ".");
 
-                                            ServiceFunctions.makeOrderFunction(finalIsItReal, symbol, finalAmountValue, finalStopLimitValue, finalTakeProfitValue, finalMarginValue, markPrice.getMarkPrice(), finalIsItCrossed, finalIsItShort, System.currentTimeMillis(), finalBalance, finalAccountNr, getContext(), callbackButton);
+                                            ServiceFunctions.makeOrderFunction(finalIsItReal, symbol, finalAmountValue, finalStopLimitValue, finalTakeProfitValue, finalMarginValue, markPrice.getMarkPrice(), finalIsItCrossed, finalIsItShort, System.currentTimeMillis(), finalBalance, accountNr, getContext(), callbackButton);
 
-//                                            makeOrder(finalIsItReal, symbol, finalAmountValue, finalStopLimitValue, finalTakeProfitValue, finalMarginValue, markPrice.getMarkPrice(), finalIsItCrossed, finalIsItShort, System.currentTimeMillis(), finalBalance);
                                         }
 
                                         @Override
@@ -274,7 +262,7 @@ public class OrdersFragment extends Fragment implements CallbackButton {
 
             } else {
                 // No RadioButton is selected
-                Toast.makeText(getContext(), "Please mark RadioButtons also amount value should be bigger than 15 USDT", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Check if RadioButtons are marked or amount value is bigger than 10 USDT", Toast.LENGTH_SHORT).show();
                 setButtonEnabled(true);
             }
 
@@ -289,422 +277,6 @@ public class OrdersFragment extends Fragment implements CallbackButton {
                 .observeOn(AndroidSchedulers.mainThread());
     }
 
-//    private void makeOrder(boolean isItReal, String symbol, int entryAmount, float stopLimit, float takeProfit, int margin, float currentPrice, boolean isItCrossed, boolean isItShort, long time, float balance) {
-//
-//        if (isItReal) {
-//            Log.e(TAG, "REAL");
-//            int accountNr = 3;
-//            int recvWindow = 10000;
-//            String marginType = "ISOLATED";
-//
-//            if (isItCrossed) {
-//                marginType = "CROSSED";
-//            }
-//
-//            Cursor data = databaseDB.retrieveParam(14);
-//            if (data.getCount() == 0) {
-//                Log.e(TAG, "There is no param nr 14");
-//            } else {
-//                data.moveToFirst();
-//                recvWindow = data.getInt(3);
-//            }
-//            data.close();
-//
-//            float quantity = (float) ((entryAmount / currentPrice) * 0.99 * margin);
-////            setLimitOrder(symbol, "BUY", "LIMIT","RESULT", "GTC",1f, 23000f,System.currentTimeMillis(), recvWindow);
-//            int finalRecvWindow = recvWindow;
-//            String finalMarginType = marginType;
-//
-//            float stopLimitPrice = currentPrice * (1 - (float) stopLimit / 100);
-//            float takeProfitPrice = currentPrice * (1 + (float) takeProfit / 100);
-//            if (isItShort) {
-//                stopLimitPrice = currentPrice * (1 + (float) stopLimit / 100);
-//                takeProfitPrice = currentPrice * (1 - (float) takeProfit / 100);
-//            }
-//
-//            float finalStopLimitPrice = stopLimitPrice;
-//            float finalTakeProfitPrice = takeProfitPrice;
-//            new Thread(
-//                    new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            setMarginType(symbol, finalMarginType, System.currentTimeMillis(), finalRecvWindow);
-//                            setLeverage(symbol, margin, System.currentTimeMillis(), finalRecvWindow);
-//
-//                            if (isItShort) {
-//                                setMarketOrder(symbol, "SELL", "MARKET", "RESULT", quantity, System.currentTimeMillis(), finalRecvWindow, finalStopLimitPrice, finalTakeProfitPrice, entryAmount, currentPrice, margin, isItShort, isItCrossed);
-//                            } else {
-//                                setMarketOrder(symbol, "BUY", "MARKET", "RESULT", quantity, System.currentTimeMillis(), finalRecvWindow, finalStopLimitPrice, finalTakeProfitPrice, entryAmount, currentPrice, margin, isItShort, isItCrossed);
-//                            }
-//
-//                            Log.e(TAG, "START ORDER NEW THREAD");
-//
-//                        }
-//                    }
-//            ).start();
-//
-//
-//        } else {
-//            Log.e(TAG, "TEST");
-//            Log.e(TAG, isItCrossed + " " + isItShort);
-//            float stopLimitPrice = currentPrice * (1 - (float) stopLimit / 100);
-//            float takeProfitPrice = currentPrice * (1 + (float) takeProfit / 100);
-//            int isItShortValue = 0;
-//            int isItRealValue = 0;
-//            int isItCrossedValue = 0;
-//            if (isItShort) {
-//                stopLimitPrice = currentPrice * (1 + (float) stopLimit / 100);
-//                takeProfitPrice = currentPrice * (1 - (float) takeProfit / 100);
-//                isItShortValue = 1;
-//            }
-//            if (isItCrossed) {
-//                isItCrossedValue = 1;
-//            }
-//            int accountNr = 2;
-//
-//            float quantity = (float) ((entryAmount / currentPrice) * 0.99 * margin);
-//
-//            Log.e(TAG, isItCrossedValue + " " + isItShortValue);
-//            OrderListViewElement toDB = new OrderListViewElement(symbol, isItRealValue, (float) entryAmount, currentPrice, currentPrice, stopLimitPrice, takeProfitPrice, time, margin, isItShortValue, isItCrossedValue, accountNr, 0, "MARKET", quantity);
-//            mItems.add(toDB);
-//            for (int i = 0; i < mItems.size(); i++) {
-//                Log.e(TAG, mItems.get(i).getSymbol() + mItems.get(i).getCurrentPrice() + mItems.get(i).getEntryPrice());
-//            }
-//            databaseDB.addNewOrder(toDB);
-//            databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_REAL, balance - entryAmount, ID, "2");
-//            onReceiveNewList(adapter, mItems);
-//            setButtonEnabled(true);
-//
-//
-//        }
-//
-//
-//    }
-
-//    private void setLeverage(String symbol, int leverage, long timestamp, long recvWindow) {
-//        Call<Leverage> call = RetrofitClientSecretTestnet.getInstance(getContext(), 1, symbol, leverage, "", "", "", "", "0", "0", "",
-//                0, "", "0", recvWindow, timestamp).getMyApi().setLeverage(symbol, leverage, timestamp);
-//        Log.e(TAG, call.toString());
-//        call.enqueue(new Callback<Leverage>() {
-//            @Override
-//            public void onResponse(@NonNull Call<Leverage> call, @NonNull Response<Leverage> response) {
-//
-//                if (response.body() != null) {
-//                    if (response.isSuccessful()) {
-//                        Leverage leverage1 = response.body();
-//                    } else {
-//                        System.out.println(response.code() + " " + response.message());
-//                    }
-//                } else if (response.errorBody() != null) {
-//                    String errorBody = "";
-//                    try {
-//                        errorBody = response.errorBody().string();
-//                    } catch (IOException e) {
-//                        throw new RuntimeException(e);
-//                    }
-//                    Log.e(TAG, "Error response: " + errorBody);
-//                }
-//
-//                setButtonEnabled(true);
-//
-//
-//            }
-//
-//            @Override
-//            public void onFailure(@NonNull Call<Leverage> call, @NonNull Throwable t) {
-//                System.out.println("An error has occurred" + t);
-//                Log.e(TAG, String.valueOf(t));
-//                setButtonEnabled(true);
-//
-//
-//            }
-//
-//        });
-//
-//    }
-
-
-//    private void setMarginType(String symbol, String marginType, long timestamp, long recvWindow) {
-//        Call<ResponseMargin> call = RetrofitClientSecretTestnet.getInstance(getContext(), 2, symbol, 0, marginType, "", "", "", "0", "0", "",
-//                0, "", "0", recvWindow, timestamp).getMyApi().setMarginType(symbol, marginType, timestamp);
-//
-//        Log.e(TAG, call.toString());
-//        call.enqueue(new Callback<ResponseMargin>() {
-//            @Override
-//            public void onResponse(@NonNull Call<ResponseMargin> call, @NonNull Response<ResponseMargin> response) {
-//
-//                if (response.body() != null) {
-//                    if (response.isSuccessful()) {
-//                        ResponseMargin leverage1 = response.body();
-//                    } else {
-//                        System.out.println(response.code() + " " + response.message());
-//                    }
-//                } else if (response.errorBody() != null) {
-//                    String errorBody = "";
-//                    try {
-//                        errorBody = response.errorBody().string();
-//                    } catch (IOException e) {
-//                        throw new RuntimeException(e);
-//                    }
-//                    Log.e(TAG, "Error response: " + errorBody);
-//                }
-//                setButtonEnabled(true);
-//
-//
-//            }
-//
-//            @Override
-//            public void onFailure(@NonNull Call<ResponseMargin> call, @NonNull Throwable t) {
-//                System.out.println("An error has occurred" + t);
-//                Log.e(TAG, String.valueOf(t));
-//                setButtonEnabled(true);
-//
-//
-//            }
-//
-//        });
-//
-//    }
-//
-//    private void setLimitOrder(String symbol, String side, String type, String newOrderRespType, String timeInForce, float quantity, float price, long timestamp, long recvWindow) {
-//
-//        // It is for specific number of decimals for making orders
-//        DecimalFormat df = new DecimalFormat("0.00000000");
-//        String quantity2 = df.format(quantity);
-//        String price2 = df.format(price);
-//
-//        Call<RealOrder> call = RetrofitClientSecretTestnet.getInstance(getContext(), 6, symbol, 0, "", side, type, newOrderRespType, quantity2,
-//                        "0", "", 0, timeInForce, price2, recvWindow, timestamp)
-//                .getMyApi().setLimitOrder(symbol, side, type, newOrderRespType, timeInForce, quantity2, price2, timestamp);
-//
-//        Log.e(TAG, call.toString());
-//        call.enqueue(new Callback<RealOrder>() {
-//            @Override
-//            public void onResponse(@NonNull Call<RealOrder> call, @NonNull Response<RealOrder> response) {
-//
-//                if (response.body() != null) {
-//                    if (response.isSuccessful()) {
-//                        RealOrder realOrder = response.body();
-//                        Log.e(TAG, realOrder.getClientOrderId() + " " + realOrder.getSymbol() + " " + realOrder.getStatus());
-//                    } else {
-//                        System.out.println(response.code() + " " + response.message());
-//                    }
-//                } else if (response.errorBody() != null) {
-//                    String errorBody = "";
-//                    try {
-//                        errorBody = response.errorBody().string();
-//                    } catch (IOException e) {
-//                        throw new RuntimeException(e);
-//                    }
-//                    Log.e(TAG, "Error response: " + errorBody);
-//                }
-//
-//                setButtonEnabled(true);
-//
-//
-//            }
-//
-//            @Override
-//            public void onFailure(@NonNull Call<RealOrder> call, @NonNull Throwable t) {
-//                System.out.println("An error has occurred" + t);
-//                Log.e(TAG, String.valueOf(t));
-//                setButtonEnabled(true);
-//
-//
-//            }
-//
-//        });
-//
-//    }
-//
-//    //1 - for step, 0 for tick
-//    public String formatFloatForSymbol(String symbol, float value, int stepOrTick) {
-//
-//        DecimalFormat format = null;
-//
-//        // Find the symbol in the list of symbols
-//        Cursor data = databaseDB.retrieveSymbolInfo(symbol);
-//        if (data.getCount() == 0) {
-//            Log.e(TAG, "There is no symbol info for " + symbol);
-//        } else {
-//            data.moveToFirst();
-//
-//            int decimalPlaces;
-//            if (stepOrTick == 1) {
-//                decimalPlaces = getDecimalPlaces(data.getString(4));
-//            } else {
-//                decimalPlaces = getDecimalPlaces(data.getString(3));
-//            }
-//            // Create a decimal format pattern that matches the tick and step sizes
-//            String pattern = "0.";
-//            for (int i = 0; i < decimalPlaces; i++) {
-//                pattern += "0";
-//            }
-//
-//            if (!pattern.contains(".0")) {
-//                pattern = "#";
-//            }
-//
-//            Log.e(TAG, "Decimal places: " + decimalPlaces + " pattern: " + pattern);
-//            // Create the decimal format using the pattern
-//            format = new DecimalFormat(pattern);
-//
-//        }
-//
-//        // Format the value using the decimal format
-//        return format != null ? format.format(value) : String.valueOf(value);
-//    }
-//
-//    private int getDecimalPlaces(String value) {
-//        int index = value.indexOf(".");
-//        return index < 0 ? 0 : value.length() - index - 1;
-//    }
-//
-//    private void setMarketOrder(String symbol, String side, String type, String newOrderRespType, float quantity, long timestamp, long recvWindow, float stopLimitPrice, float takeProfitPrice, float entryAmount, float currentPrice, int margin, boolean isItShort, boolean isItCrossed) {
-//
-//        Log.e(TAG, "Start of market Order for " + symbol + " quantiity before: " + quantity);
-//        String quantityPrepared = formatFloatForSymbol(symbol, quantity, 1);
-//        Log.e(TAG, "Start of market Order for " + symbol + " quantiity after: " + quantityPrepared);
-//
-//
-//        Call<RealOrder> call = RetrofitClientSecretTestnet.getInstance(getContext(), 3, symbol, 0, "", side, type, newOrderRespType, quantityPrepared, "0", "", 0, "", "0", recvWindow, timestamp)
-//                .getMyApi().setMarketOrder(symbol, side, type, newOrderRespType, quantityPrepared, timestamp);
-//
-//        Log.e(TAG, call.toString());
-//        call.enqueue(new Callback<RealOrder>() {
-//            @Override
-//            public void onResponse(@NonNull Call<RealOrder> call, @NonNull Response<RealOrder> response) {
-//
-//                if (response.body() != null) {
-//                    if (response.isSuccessful()) {
-//                        RealOrder realOrder = response.body();
-//                        Log.e(TAG, realOrder.getClientOrderId() + " " + realOrder.getSymbol() + " " + realOrder.getStatus() + " " + realOrder.getOrderId());
-//
-//                        int isShort = 0;
-//                        int isCrossed = 0;
-//
-//                        if (isItShort) {
-//                            isShort = 1;
-//                        }
-//
-//                        if (isItCrossed) {
-//                            isCrossed = 1;
-//                        }
-//
-//                        OrderListViewElement toDB = new OrderListViewElement(symbol, 1, (float) entryAmount, currentPrice, currentPrice, stopLimitPrice, takeProfitPrice, timestamp, margin, isShort, isCrossed, 1, realOrder.getOrderId(), "MARKET", quantity);
-//                        mItems.add(toDB);
-//                        for (int i = 0; i < mItems.size(); i++) {
-//                            Log.e(TAG, mItems.get(i).getSymbol() + mItems.get(i).getCurrentPrice() + mItems.get(i).getEntryPrice());
-//                        }
-//                        databaseDB.addNewOrder(toDB);
-//
-//                        if (side.equals("BUY")) {
-//                            setStopLimitOrTakeProfitMarket(symbol, "SELL", "STOP_MARKET", newOrderRespType, stopLimitPrice, "true", System.currentTimeMillis(), recvWindow, toDB);
-//                            setStopLimitOrTakeProfitMarket(symbol, "SELL", "TAKE_PROFIT_MARKET", newOrderRespType, takeProfitPrice, "true", System.currentTimeMillis(), recvWindow, toDB);
-//                        } else {
-//                            setStopLimitOrTakeProfitMarket(symbol, "BUY", "STOP_MARKET", newOrderRespType, stopLimitPrice, "true", System.currentTimeMillis(), recvWindow, toDB);
-//                            setStopLimitOrTakeProfitMarket(symbol, "BUY", "TAKE_PROFIT_MARKET", newOrderRespType, takeProfitPrice, "true", System.currentTimeMillis(), recvWindow, toDB);
-//                        }
-//
-//                    } else {
-//                        System.out.println(response.code() + " " + response.message());
-//                    }
-//                } else if (response.errorBody() != null) {
-//                    String errorBody = "";
-//                    try {
-//                        errorBody = response.errorBody().string();
-//                    } catch (IOException e) {
-//                        throw new RuntimeException(e);
-//                    }
-//                    Log.e(TAG, "Error response: " + errorBody);
-//                }
-//
-//                setButtonEnabled(true);
-//
-//
-//            }
-//
-//            @Override
-//            public void onFailure(@NonNull Call<RealOrder> call, @NonNull Throwable t) {
-//                System.out.println("An error has occurred" + t);
-//                Log.e(TAG, String.valueOf(t));
-//                setButtonEnabled(true);
-//
-//
-//            }
-//
-//        });
-//
-//    }
-//
-//    private void setStopLimitOrTakeProfitMarket(String symbol, String side, String type, String newOrderRespType, float stopPrice, String closePosition, long timestamp, long recvWindow, OrderListViewElement orderElement) {
-//
-//        Log.e(TAG, "Start of stopLimit Order for " + symbol + " stopPrice before: " + stopPrice);
-//
-//        String stopPriceFinal = formatFloatForSymbol(symbol, stopPrice, 0);
-//
-//        Log.e(TAG, "Start of stopLimit Order for " + symbol + " stopPrice after: " + stopPriceFinal);
-//
-//        Call<RealOrder> call = RetrofitClientSecretTestnet.getInstance(getContext(), 4, symbol, 0, "", side, type, newOrderRespType, "0",
-//                        stopPriceFinal, closePosition, 0, "", "0", recvWindow, timestamp)
-//                .getMyApi().setStopLimitOrTakeProfitMarket(symbol, side, type, newOrderRespType, stopPriceFinal, closePosition, timestamp);
-//
-//        Log.e(TAG, call.toString());
-//        call.enqueue(new Callback<RealOrder>() {
-//            @Override
-//            public void onResponse(@NonNull Call<RealOrder> call, @NonNull Response<RealOrder> response) {
-//
-//                if (response.body() != null) {
-//                    if (response.isSuccessful()) {
-//
-//                        RealOrder realOrder = response.body();
-//                        Log.e(TAG, realOrder.getClientOrderId() + " " + realOrder.getSymbol() + " " + realOrder.getStatus());
-//                        orderElement.setOrderType(type);
-//                        orderElement.setOrderID(realOrder.getOrderId());
-//                        orderElement.setTimeWhenPlaced(timestamp);
-//                        mItems.add(orderElement);
-//                        for (int i = 0; i < mItems.size(); i++) {
-//                            Log.e(TAG, mItems.get(i).getSymbol() + mItems.get(i).getCurrentPrice() + mItems.get(i).getEntryPrice());
-//                        }
-//                        databaseDB.addNewOrder(orderElement);
-//
-//                        if (!isMyServiceRunning(OrdersService.class)) {
-//                            Intent serviceIntent = new Intent(getContext(), OrdersService.class);
-//                            getContext().startForegroundService(serviceIntent);
-//                        }
-//
-//
-//                    } else {
-//                        System.out.println(response.code() + " " + response.message());
-//                    }
-//                } else if (response.errorBody() != null) {
-//                    String errorBody = "";
-//                    try {
-//                        errorBody = response.errorBody().string();
-//                    } catch (IOException e) {
-//                        throw new RuntimeException(e);
-//                    }
-//                    Log.e(TAG, "Error response: " + errorBody);
-//                }
-//
-//                setButtonEnabled(true);
-//
-//
-//            }
-//
-//            @Override
-//            public void onFailure(@NonNull Call<RealOrder> call, @NonNull Throwable t) {
-//                System.out.println("An error has occurred" + t);
-//                Log.e(TAG, String.valueOf(t));
-//                setButtonEnabled(true);
-//
-//
-//            }
-//
-//        });
-//
-//    }
-
     private void setButtonEnabled(boolean enabled) {
         if (enabled) {
             placeOrderButton.setEnabled(true);
@@ -717,8 +289,8 @@ public class OrdersFragment extends Fragment implements CallbackButton {
         }
     }
 
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getActivity().getSystemService(Context.ACTIVITY_SERVICE);
+    private boolean isMyServiceRunning(Class<?> serviceClass, Context context) {
+        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
                 return true;
@@ -778,7 +350,7 @@ public class OrdersFragment extends Fragment implements CallbackButton {
         requireActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Log.e(TAG,"YOYOOY");
+                Log.e(TAG,"Callback returned");
                 setButtonEnabled(true);
                 onReceiveNewList(adapter);
 

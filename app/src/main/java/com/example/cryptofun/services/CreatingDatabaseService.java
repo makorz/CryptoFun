@@ -20,11 +20,12 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.example.cryptofun.R;
 import com.example.cryptofun.data.CoinSymbol;
 import com.example.cryptofun.data.CoinSymbols;
+import com.example.cryptofun.data.CryptoSymbolTickStep;
 import com.example.cryptofun.data.FilterInfo;
 import com.example.cryptofun.data.KlineRequest;
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.data.database.rawTable_Kline;
-import com.example.cryptofun.ui.retrofit.RetrofitClientFutures;
+import com.example.cryptofun.retrofit.RetrofitClientFutures;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -232,10 +233,12 @@ public class CreatingDatabaseService extends Service {
                         listOfSymbols.clear();
                     }
 
-                    List<String> arrayUSDTtemp = new ArrayList<>();
-                    List<String> arrayBUSDtemp = new ArrayList<>();
+                    List<CryptoSymbolTickStep> cryptoSymbolTickStep = new ArrayList<>();
 
                     for (int i = 0; i < tokenList.size(); i++) {
+
+                        String tickSize = "";
+                        String stepSize = "";
 
                         if (tokenList.get(i).getSymbol().contains("USDT")
                                 && tokenList.get(i).getStatus().equals("TRADING")
@@ -255,9 +258,22 @@ public class CreatingDatabaseService extends Service {
 //                                || tokenList.get(i).getPermissions().contains("TRD_GRP_006"))
                         ) { // && tokenList.get(i).getPermissions().contains("MARGIN") && !tokenList.get(i).getSymbol().contains("BUSD")
 
-                            String tempSymbol = tokenList.get(i).getSymbol().replace("USDT","");
-                            arrayUSDTtemp.add(tempSymbol);
-                            listOfSymbols.add(tokenList.get(i).getSymbol());
+                            List<FilterInfo> filters = tokenList.get(i).getFilters();
+
+                            // Iterate through the filters for each symbol
+                            for (FilterInfo filter : filters) {
+                                String filterType = filter.getFilterType();
+
+                                // Check if the filter type is what you're interested in
+                                if (filterType.equals("PRICE_FILTER")) {
+                                    tickSize = removeTrailingZeros(filter.getTickSize());
+                                } else if (filterType.equals("LOT_SIZE")) {
+                                    stepSize = removeTrailingZeros(filter.getStepSize());
+                                // Do something with the stepSize, minQty, and maxQty data for this symbol
+                                }
+                            }
+
+                            cryptoSymbolTickStep.add(new CryptoSymbolTickStep(tickSize, stepSize, tokenList.get(i).getSymbol()));
 
                         }
 
@@ -277,31 +293,9 @@ public class CreatingDatabaseService extends Service {
 //                                || tokenList.get(i).getPermissions().contains("TRD_GRP_006"))
                         ) { //
 
-                            arrayBUSDtemp.add(tokenList.get(i).getSymbol());
+//                            arrayBUSDtemp.add(tokenList.get(i).getSymbol());
 
-                        }
-
-                    }
-
-                    for (int i = 0; i < arrayUSDTtemp.size(); i++) {
-                        int finalI = i;
-                        arrayBUSDtemp.removeIf(s -> s.contains(arrayUSDTtemp.get(finalI)));
-                    }
-
-                    listOfSymbols.addAll(arrayBUSDtemp);
-
-                    Log.e(TAG, listOfSymbols.toString());
-
-                    List<String> tickSizes = new ArrayList<>();
-                    List<String> stepSizes = new ArrayList<>();
-
-                    // Assuming you have a List<Symbol> symbols with all symbol data, and a List<String> listOfSymbols with the symbols you're interested in - tickSize and StepSize are important for making orders
-                    for (CoinSymbol symbol : tokenList) {
-                        String symbolName = symbol.getSymbol();
-
-                        // Check if the symbol is in the list of symbols you're interested in
-                        if (listOfSymbols.contains(symbolName)) {
-                            List<FilterInfo> filters = symbol.getFilters();
+                            List<FilterInfo> filters = tokenList.get(i).getFilters();
 
                             // Iterate through the filters for each symbol
                             for (FilterInfo filter : filters) {
@@ -309,19 +303,55 @@ public class CreatingDatabaseService extends Service {
 
                                 // Check if the filter type is what you're interested in
                                 if (filterType.equals("PRICE_FILTER")) {
-                                    String tickSize = filter.getTickSize();
-                                    tickSizes.add(tickSize);
+                                    tickSize = removeTrailingZeros(filter.getTickSize());
                                 } else if (filterType.equals("LOT_SIZE")) {
-                                    String stepSize = filter.getStepSize();
-                                    stepSizes.add(stepSize);
+                                    stepSize = removeTrailingZeros(filter.getStepSize());
                                     // Do something with the stepSize, minQty, and maxQty data for this symbol
                                 }
+                            }
+
+                            cryptoSymbolTickStep.add(new CryptoSymbolTickStep(tickSize, stepSize, tokenList.get(i).getSymbol()));
+
+                        }
+
+                    }
+
+                    ArrayList<CryptoSymbolTickStep> objectsToRemove = new ArrayList<>();
+                    Log.e(TAG, "List size before cut: " +  cryptoSymbolTickStep.size());
+
+                    for (CryptoSymbolTickStep cryptoSymbol : cryptoSymbolTickStep) {
+
+                        String symbol = cryptoSymbol.getSymbol();
+                        if (symbol.endsWith("BUSD")) {
+
+                            String symbolWithoutSuffix = symbol.substring(0, symbol.length() - 4); // Remove "BUSD" suffix
+
+                            // Check if there is a corresponding object with "BUSDT" suffix
+                            boolean hasCorrespondingObject = cryptoSymbolTickStep.stream()
+                                    .anyMatch(crypto -> crypto.getSymbol().equals(symbolWithoutSuffix + "USDT"));
+
+                            // If there is a corresponding object, add the current object to the objectsToRemove list
+                            if (hasCorrespondingObject) {
+                                objectsToRemove.add(cryptoSymbol);
                             }
                         }
                     }
 
+                    cryptoSymbolTickStep.removeAll(objectsToRemove);
 
-                    databaseDB.addNewCrypto(listOfSymbols, tickSizes, stepSizes);
+                    Log.e(TAG, "List size after cut: " +  cryptoSymbolTickStep.size());
+
+//                    for (int i = 0; i < cryptoSymbolTickStep.size(); i++) {
+//                        Log.e(TAG, "2 " + cryptoSymbolTickStep.get(i).getSymbol() + " " + cryptoSymbolTickStep.get(i).getStepSize() + " " + cryptoSymbolTickStep.get(i).getTickSize());
+//                    }
+
+                    for (int i = 0; i < cryptoSymbolTickStep.size(); i++) {
+                        listOfSymbols.add(cryptoSymbolTickStep.get(i).getSymbol());
+                    }
+
+                    Log.e(TAG, listOfSymbols.toString());
+
+                    databaseDB.addNewCrypto(cryptoSymbolTickStep);
                     getDataOfCryptoFromAPI();
                 }
 
@@ -371,6 +401,21 @@ public class CreatingDatabaseService extends Service {
             }
 
         }
+    }
+
+    public static String removeTrailingZeros(String decimalString) {
+        if (!decimalString.contains(".")) {
+            // Not a decimal number, return as is
+            return decimalString;
+        }
+
+        // Remove trailing zeros
+        decimalString = decimalString.replaceAll("0*$", "");
+
+        // Remove decimal point if there are no digits after it
+        decimalString = decimalString.replaceAll("\\.$", "");
+
+        return decimalString;
     }
 
 

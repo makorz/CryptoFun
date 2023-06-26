@@ -1,4 +1,4 @@
-package com.example.cryptofun.ui.retrofit;
+package com.example.cryptofun.retrofit;
 
 import android.util.Log;
 
@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.text.DecimalFormat;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -20,9 +19,12 @@ import okhttp3.Response;
 
 public class SignatureInterceptor implements Interceptor {
 
+    //0 -> balance 1 -> leverage, 2 marginType, 3 - marketOrder, 4 - stopLimitMarketOrder/takeProfitMarketOrder, 5 - cancelOrder 6 - orderLimit, 7 - deleteAllOrders 8 - getAllOrders AND getAccountInfo
+
+    private static final String TAG = "SignatureInterceptor";
+
     private String apiKey;
     private String secretKey;
-    //0 -> balance 1 -> leverage, 2 marginType, 3 - marketorder, 4 - stoplimitmarketorder/takeprofitmarketorder, 5 - cancelorder 6 - order limit
     private int typeOfRetrofitClient;
     private String symbol;
     private int leverage;
@@ -36,11 +38,8 @@ public class SignatureInterceptor implements Interceptor {
     String stopPrice;
     String closePosition;
     long orderId;
-    private long recvWindow;
+    private final long recvWindow;
     private long timestamp;
-
-
-    private static final String TAG = "SignatureInterceptor";
 
     // Constructor nr 0 -> Balance
     public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, long recvWindow) {
@@ -52,27 +51,29 @@ public class SignatureInterceptor implements Interceptor {
     }
 
     // Constructor nr 1 -> Leverage
-    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, int leverage, long timestamp) {
+    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, int leverage, long recvWindow, long timestamp) {
         this.apiKey = apiKey;
         this.secretKey = secretKey;
         this.typeOfRetrofitClient = typeOfRetrofitClient;
         this.symbol = symbol;
         this.leverage = leverage;
+        this.recvWindow = recvWindow;
         this.timestamp = timestamp;
     }
 
     // Constructor nr 2 -> MarginType
-    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, String marginType, long timestamp) {
+    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, String marginType, long recvWindow, long timestamp) {
         this.apiKey = apiKey;
         this.secretKey = secretKey;
         this.typeOfRetrofitClient = typeOfRetrofitClient;
         this.symbol = symbol;
         this.marginType = marginType;
+        this.recvWindow = recvWindow;
         this.timestamp = timestamp;
     }
 
     // Constructor nr 3 -> MarketOrder
-    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, String side, String type, String newOrderRespType, String quantity, long timestamp) {
+    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, String side, String type, String newOrderRespType, String quantity, long recvWindow, long timestamp) {
         this.apiKey = apiKey;
         this.secretKey = secretKey;
         this.typeOfRetrofitClient = typeOfRetrofitClient;
@@ -81,11 +82,12 @@ public class SignatureInterceptor implements Interceptor {
         this.type = type;
         this.newOrderRespType = newOrderRespType;
         this.quantity = quantity;
+        this.recvWindow = recvWindow;
         this.timestamp = timestamp;
     }
 
     // Constructor nr 4 -> StopLimitTakeProfit
-    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, String side, String type, String newOrderRespType, String stopPrice, String closePosition, long timestamp) {
+    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, String side, String type, String newOrderRespType, String stopPrice, String closePosition, long recvWindow, long timestamp) {
         this.apiKey = apiKey;
         this.secretKey = secretKey;
         this.typeOfRetrofitClient = typeOfRetrofitClient;
@@ -95,21 +97,23 @@ public class SignatureInterceptor implements Interceptor {
         this.newOrderRespType = newOrderRespType;
         this.stopPrice = stopPrice;
         this.closePosition = closePosition;
+        this.recvWindow = recvWindow;
         this.timestamp = timestamp;
     }
 
     // Constructor nr 5 -> CancelOrder
-    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, long orderId, long timestamp) {
+    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, long orderId, long recvWindow, long timestamp) {
         this.apiKey = apiKey;
         this.secretKey = secretKey;
         this.typeOfRetrofitClient = typeOfRetrofitClient;
         this.symbol = symbol;
         this.orderId = orderId;
+        this.recvWindow = recvWindow;
         this.timestamp = timestamp;
     }
 
     // Constructor nr 6 -> LimitOrder
-    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, String side, String type, String newOrderRespType, String timeInForce, String quantity, String price, long timestamp) {
+    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, String side, String type, String newOrderRespType, String timeInForce, String quantity, String price, long recvWindow, long timestamp) {
         this.apiKey = apiKey;
         this.secretKey = secretKey;
         this.typeOfRetrofitClient = typeOfRetrofitClient;
@@ -120,24 +124,26 @@ public class SignatureInterceptor implements Interceptor {
         this.timeInForce = timeInForce;
         this.quantity = quantity;
         this.price = price;
+        this.recvWindow = recvWindow;
         this.timestamp = timestamp;
     }
 
     // Constructor nr 7 -> CancelAllOrders
-    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, long timestamp) {
+    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, String symbol, long recvWindow, long timestamp) {
         this.apiKey = apiKey;
         this.secretKey = secretKey;
         this.typeOfRetrofitClient = typeOfRetrofitClient;
         this.symbol = symbol;
+        this.recvWindow = recvWindow;
         this.timestamp = timestamp;
     }
 
-    // Constructor nr 7 -> CancelAllOrders
-    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, long timestamp, int openOrders) {
+    // Constructor nr 8 -> GetAllOrders AND getAccountInfo
+    public SignatureInterceptor(String apiKey, String secretKey, int typeOfRetrofitClient, long recvWindow, long timestamp) {
         this.apiKey = apiKey;
         this.secretKey = secretKey;
         this.typeOfRetrofitClient = typeOfRetrofitClient;
-        this.symbol = symbol;
+        this.recvWindow = recvWindow;
         this.timestamp = timestamp;
     }
 
@@ -147,7 +153,7 @@ public class SignatureInterceptor implements Interceptor {
 
         Request request = chain.request();
         HttpUrl.Builder urlBuilder = request.url().newBuilder();
-        String message = "";
+        String message;
 
         switch (typeOfRetrofitClient) {
             case 0:
@@ -157,31 +163,31 @@ public class SignatureInterceptor implements Interceptor {
                 message = "recvWindow=" + recvWindow + "&timestamp=" + timestamp;
                 break;
             case 1:
-                message = "symbol=" + symbol + "&leverage=" + leverage + "&timestamp=" + timestamp;
+                message = "symbol=" + symbol + "&leverage=" + leverage + "&recvWindow=" + recvWindow + "&timestamp=" + timestamp;
                 break;
             case 2:
-                message = "symbol=" + symbol + "&marginType=" + marginType + "&timestamp=" + timestamp;
+                message = "symbol=" + symbol + "&marginType=" + marginType + "&recvWindow=" + recvWindow + "&timestamp=" + timestamp;
                 break;
             case 3:
                 message = "symbol=" + symbol + "&side=" + side + "&type=" + type + "&newOrderRespType=" + newOrderRespType
-                        + "&quantity=" + quantity + "&timestamp=" + timestamp;
+                        + "&quantity=" + quantity + "&recvWindow=" + recvWindow + "&timestamp=" + timestamp;
                 break;
             case 4:
                 message = "symbol=" + symbol + "&side=" + side + "&type=" + type + "&newOrderRespType=" + newOrderRespType
-                        + "&stopPrice=" + stopPrice +  "&closePosition=" + closePosition + "&timestamp=" + timestamp;
+                        + "&stopPrice=" + stopPrice +  "&closePosition=" + closePosition + "&recvWindow=" + recvWindow + "&timestamp=" + timestamp;
                 break;
             case 5:
-                message = "symbol=" + symbol + "&orderId=" + orderId + "&timestamp=" + timestamp;
+                message = "symbol=" + symbol + "&orderId=" + orderId + "&recvWindow=" + recvWindow + "&timestamp=" + timestamp;
                 break;
             case 6:
                 message = "symbol=" + symbol + "&side=" + side + "&type=" + type + "&newOrderRespType=" + newOrderRespType + "&timeInForce=" + timeInForce
-                        + "&quantity=" + quantity + "&price=" + price + "&timestamp=" + timestamp;
+                        + "&quantity=" + quantity + "&price=" + price + "&recvWindow=" + recvWindow + "&timestamp=" + timestamp;
                 break;
             case 7:
-                message = "symbol=" + symbol + "&timestamp=" + timestamp;
+                message = "symbol=" + symbol + "&recvWindow=" + recvWindow +  "&timestamp=" + timestamp;
                 break;
             case 8:
-                message = "timestamp=" + timestamp;
+                message = "recvWindow=" + recvWindow + "&timestamp=" + timestamp;
                 break;
             default:
                 message = "";
