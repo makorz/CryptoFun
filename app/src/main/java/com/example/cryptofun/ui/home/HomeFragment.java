@@ -39,9 +39,6 @@ public class HomeFragment extends Fragment {
         binding.cryptoRecyclerView.setLayoutManager(new GridLayoutManager(getContext(), 6, GridLayoutManager.HORIZONTAL, false));
         binding.cryptoList6RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
         binding.cryptoList30RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
-//        binding.cryptoList2RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
-//        binding.cryptoListLONGRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
-//        binding.cryptoListSHORTRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
         ArrayList<ListViewElement> initialList = new ArrayList<>();
         ArrayList<GridViewElement> initialGrid = new ArrayList<>();
         gridAdapter = new CryptoGridAdapter(initialGrid);
@@ -52,11 +49,8 @@ public class HomeFragment extends Fragment {
         myAdapterSHORT = new SimpleListAdapter(initialList);
         binding.cryptoRecyclerView.setAdapter(gridAdapter);
         binding.cryptoList6RecyclerView.setAdapter(myAdapter6);
-
         binding.cryptoList30RecyclerView.setAdapter(myAdapter30);
-//        binding.cryptoList2RecyclerView.setAdapter(myAdapter2);
-//        binding.cryptoListLONGRecyclerView.setAdapter(myAdapterLONG);
-//        binding.cryptoListSHORTRecyclerView.setAdapter(myAdapterSHORT);
+
 
         View root = binding.getRoot();
         Log.e(TAG, "CreateView");
@@ -78,11 +72,9 @@ public class HomeFragment extends Fragment {
                 Log.e(TAG, "APRVServiceReceived " + Thread.currentThread());
 
                 onReceiveNewGridList(gridAdapter, (ArrayList<GridViewElement>) bundle.getSerializable("cryptoGridViewList"));
-//                onReceiveNewList(myAdapter2, (ArrayList<ListViewElement>) bundle.getSerializable("list2"));
+
                 onReceiveNewList(myAdapter6, (ArrayList<ListViewElement>) bundle.getSerializable("list3"));
                 onReceiveNewList(myAdapter30, (ArrayList<ListViewElement>) bundle.getSerializable("list1"));
-//                onReceiveNewSimpleList(myAdapterLONG, (ArrayList<ListViewElement>) bundle.getSerializable("list4"));
-//                onReceiveNewSimpleList(myAdapterSHORT, (ArrayList<ListViewElement>) bundle.getSerializable("list5"));
 
             } else if (intent.getAction().equals("DB_updated")) {
                 Log.e(TAG, "SendUPDMessageReceived");

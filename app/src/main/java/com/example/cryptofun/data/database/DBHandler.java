@@ -14,7 +14,6 @@ import com.example.cryptofun.data.CryptoSymbolTickStep;
 import com.example.cryptofun.data.PercentagesOfChanges;
 import com.example.cryptofun.ui.orders.OrderListViewElement;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class DBHandler extends SQLiteOpenHelper {
@@ -320,7 +319,7 @@ public class DBHandler extends SQLiteOpenHelper {
             values.put(WHAT_ACCOUNT, element.getAccountNumber());
             values.put(ORDER_ID, element.getOrderID());
             values.put(ORDER_TYPE, element.getOrderType());
-            values.put(QUANTITY, element.getQunatity());
+            values.put(QUANTITY, element.getQuantity());
             db.insert(TABLE_NAME_ORDERS, null, values);
             Log.e(TAG, values.toString());
             // Commit the transaction
@@ -349,6 +348,14 @@ public class DBHandler extends SQLiteOpenHelper {
         String query = "SELECT * FROM " + tableName;
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
     //    Log.i(TAG, query);
+        return data;
+    }
+
+    public Cursor howManyRows(String tableName) {
+        SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
+        String query = "SELECT count(*) FROM " + tableName;
+        @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
+        //    Log.i(TAG, query);
         return data;
     }
 //
@@ -646,7 +653,7 @@ public class DBHandler extends SQLiteOpenHelper {
             db.beginTransaction();
 
             String query = "DELETE FROM " + TABLE_NAME_ORDERS + " WHERE " + SYMBOL_CRYPTO + " = '" + symbol + "' and " + TIME_WHEN_PLACED + " = " + time + " and " + IS_IT_REAL + " = " + isItReal + " and " + IS_IT_SHORT + " = " + isItShort + " and " + MARGIN + " = " + margin;
-            Log.i(TAG, "DELETE Order: " + query);
+            Log.i(TAG, query);
             db.execSQL(query);
             // Commit the transaction
             db.setTransactionSuccessful();
@@ -657,9 +664,29 @@ public class DBHandler extends SQLiteOpenHelper {
             // End the transaction
             db.endTransaction();
         }
-
-
     }
+
+    public void deleteDuplicateOrderByID(long orderID) {
+        SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
+
+        try {
+            // Begin a database transaction
+            db.beginTransaction();
+
+            String query = "DELETE FROM " + TABLE_NAME_ORDERS + " WHERE " + ORDER_ID + " = '" + orderID + "' and " + MARGIN + " = 0";
+            Log.i(TAG, query);
+            db.execSQL(query);
+            // Commit the transaction
+            db.setTransactionSuccessful();
+        } catch (Exception e) {
+            // Handle any exceptions that occur during the transaction
+            Log.e(TAG, "Error updating table " + e);
+        } finally {
+            // End the transaction
+            db.endTransaction();
+        }
+    }
+
 
 
     public void deleteAllKlinesForSymbolInterval(String interval, String symbol) {

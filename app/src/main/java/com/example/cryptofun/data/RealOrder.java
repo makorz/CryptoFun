@@ -1,5 +1,7 @@
 package com.example.cryptofun.data;
 
+import androidx.annotation.NonNull;
+
 public class RealOrder {
 
     String clientOrderId;
@@ -285,4 +287,16 @@ public class RealOrder {
     public void setPriceProtect(boolean priceProtect) {
         this.priceProtect = priceProtect;
     }
+
+    @NonNull
+    @Override
+    public String toString() {
+
+        return "RealOrder{clientOrderId=" + clientOrderId + " cumQty=" + cumQty + " cumQuote=" + cumQuote + " executedQty=" + executedQty + " orderId=" + orderId + " avgPrice=" + avgPrice
+                + " origQty=" + origQty + " price=" + price + " reduceOnly=" + reduceOnly + " side=" + side +  " positionSide=" + positionSide + " status=" + status + " stopPrice=" + stopPrice
+                + " closePosition=" + closePosition +  " symbol=" + symbol + " timeInForce=" + timeInForce + " type=" + type + " origType=" + origType + " activatePrice=" + activatePrice
+                + " priceRate=" + priceRate + " updateTime=" + updateTime + " workingType=" + workingType + " priceProtect=" + priceProtect + '}';
+    }
+
+
 }

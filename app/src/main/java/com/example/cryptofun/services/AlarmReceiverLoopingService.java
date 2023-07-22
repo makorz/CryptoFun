@@ -66,8 +66,8 @@ public class AlarmReceiverLoopingService extends BroadcastReceiver {
 //            Log.e(TAG, "000");
 //            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 10L * 1000L, pi);
 //        } else {
-            Log.e(TAG, "Time: 75s");
-            am.setAlarmClock(new AlarmManager.AlarmClockInfo((System.currentTimeMillis() + 75L * 1000L), pi), pi);
+            Log.e(TAG, "Time: 55s");
+            am.setAlarmClock(new AlarmManager.AlarmClockInfo((System.currentTimeMillis() + 55L * 1000L), pi), pi);
 //        }
 
     }

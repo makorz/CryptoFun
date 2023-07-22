@@ -27,9 +27,15 @@ public class RetrofitClientSecretTestnet {
     private static RetrofitClientSecretTestnet instance = null;
     private final ApiEndpointInterface myApi;
     private final DBHandler databaseDB;
+    //KEY for testnet, real key are inserte in app to database by user
     private String apikey = "a89c0eccaa652869edcc189767213f104649a568e3c5a29f49332a67941a872c";
     private String secret = "3867e2951c72a08544b62bd975e1c953c249e5b8c6f29b049315155dbc1f6da4";
     private long recvWindow = 30000;
+    /*
+        TODO:
+            Pomyśleć czy nie dorzucić sprawdzenia czasu serwera binance, aby pominąć recvWindow, jest ono domyslnie na 5000
+
+     */
 
     // Constructor nr 0 -> Balance
     private RetrofitClientSecretTestnet(Context context) {

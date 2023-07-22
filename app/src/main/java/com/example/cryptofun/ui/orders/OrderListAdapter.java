@@ -317,22 +317,13 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
 
                         long orderId = items.get(position).getOrderID();
 
-                        Log.e(TAG, "OrderID Before: " + orderId);
-
-                        //Sometimes in real account orderId is with minus at beginning
-                        if (orderId < 0) {
-                            orderId = orderId * -1;
-                        }
-
-                        Log.e(TAG, "OrderID After: " + orderId);
                         ServiceFunctions.deleteOrder(items.get(position).getSymbol(), orderId, System.currentTimeMillis(),  context, callbackButton);
 
                     } else if (items.get(position).getOrderType().equals("MARKET")) {
 
-                        ServiceFunctions.getPositions(items.get(position).getSymbol(), System.currentTimeMillis(), context, items.get(position), callbackButton);
+                        ServiceFunctions.getPositions(items.get(position).getSymbol(), System.currentTimeMillis(), context, items.get(position), callbackButton, false);
 
                     }
-
 
                 } else {
                     Cursor data = databaseDB.retrieveParam(items.get(position).getAccountNumber());

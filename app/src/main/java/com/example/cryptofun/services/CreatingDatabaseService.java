@@ -121,8 +121,8 @@ public class CreatingDatabaseService extends Service {
         List<KlineRequest> request = new ArrayList<>();
         Log.e(TAG, "LIST OF SYMBOLS -> " + listOfSymbols);
 
-        int LIMIT3m = 20;
-        int LIMIT15m = 20;
+        int LIMIT3m = 40;
+        int LIMIT15m = 60;
         int LIMIT4h = 20;
         for (int i = 0; i < listOfSymbols.size(); i++) {
             // Make a collection of all requests you need to call at once, there can be any number of requests, not only 3. You can have 2 or 5, or 100.

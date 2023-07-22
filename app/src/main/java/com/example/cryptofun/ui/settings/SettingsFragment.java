@@ -26,7 +26,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.cryptofun.R;
+import com.example.cryptofun.data.ApprovedToken;
 import com.example.cryptofun.data.database.DBHandler;
+import com.example.cryptofun.data.database.Kline;
 import com.example.cryptofun.databinding.FragmentSettingsBinding;
 import com.example.cryptofun.services.ServiceFunctions;
 import com.example.cryptofun.ui.settings.infoBox.PagerAdapter;
@@ -35,12 +37,46 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesManager;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.VersusBuyAndHoldCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.indicators.EMAIndicator;
+import org.ta4j.core.indicators.MACDIndicator;
+import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.StochasticOscillatorKIndicator;
+import org.ta4j.core.indicators.adx.ADXIndicator;
+import org.ta4j.core.indicators.adx.MinusDIIndicator;
+import org.ta4j.core.indicators.adx.PlusDIIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.OverIndicatorRule;
+import org.ta4j.core.rules.UnderIndicatorRule;
+
+import java.text.DecimalFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 public class SettingsFragment extends Fragment {
 
     private static final String TAG = "SettingsFrag";
 
     private static final String TABLE_NAME_CONFIG = "config";
+    private static final String TABLE_NAME_KLINES_DATA = "klines_data";
     private static final String DESCRIPTION = "description";
+    private static final String TABLE_SYMBOL_AVG = "crypto_avg_price";
     private static final String VALUE_STRING = "value_string";
     private static final String VALUE_INT = "value_int";
     private static final String VALUE_REAL = "value_real";
@@ -179,6 +215,24 @@ public class SettingsFragment extends Fragment {
     }
 
     private void buttonsJob() {
+
+        accountInfoButton.setOnClickListener(v -> {
+
+            Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
+            List<String> listOfSymbols = new ArrayList<>();
+            if (data.getCount() == 0) {
+                Log.e(TAG, "Table " + TABLE_SYMBOL_AVG + " is empty. [settingsFragment]");
+            } else {
+                data.moveToFirst();
+                while (data.moveToNext()) {
+                    listOfSymbols.add(data.getString(0));
+                }
+                for (int i = 0; i < listOfSymbols.size(); i++) {
+                    countBestCryptoToBuy(listOfSymbols.get(i));
+                }
+            }
+        });
+
 
         resetTestBalanceButton.setOnClickListener(v -> {
 
@@ -491,6 +545,166 @@ public class SettingsFragment extends Fragment {
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
         dialog.show();
+    }
+
+    // Function checks what crypto is going to run in green
+    private void countBestCryptoToBuy(String symbol) {
+
+        List<Kline> coinKlines3m = new ArrayList<>();
+        List<Kline> coinKlines15m = new ArrayList<>();
+        List<Kline> coinKlines4h = new ArrayList<>();
+
+        List<Integer> statusOf3mKlines = new ArrayList<>();
+        List<Integer> statusOf15mKlines = new ArrayList<>();
+        List<Integer> statusOf4hKlines = new ArrayList<>();
+
+        Cursor data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol);
+
+        if (data.getCount() >= 0) {
+
+            while (data.moveToNext()) {
+
+                Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
+                        data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
+
+                String interval = tempKline.gettKlineInterval();
+                switch (interval) {
+                    case "3m":
+                        coinKlines3m.add(tempKline);
+                        statusOf3mKlines.add(tempKline.getStatusOfKline());
+                        break;
+                    case "15m":
+                        coinKlines15m.add(tempKline);
+                        statusOf15mKlines.add(tempKline.getStatusOfKline());
+                        break;
+                    case "4h":
+                        coinKlines4h.add(tempKline);
+                        statusOf4hKlines.add(tempKline.getStatusOfKline());
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        data.close();
+
+        String strategy3m = predictPriceMovement(coinKlines3m);
+        String strategy15m = predictPriceMovement(coinKlines15m);
+
+        String info = "STRATEGY TESTS: " + symbol + " - " + "STRATEGY:\n" + strategy3m + "\n" + strategy15m;
+        Log.e(TAG, info);
+        ServiceFunctions.writeToFile(info, getContext(), "strategy");
+
+
+    }
+
+    public static String predictPriceMovement(List<Kline> klines) {
+
+        Collections.reverse(klines);
+        // Create a new empty time series
+        BarSeries series = new BaseBarSeriesBuilder().withName("My_Crypto_Series").build();
+
+        // Load the klines into the time series
+        for (int i = 0; i < klines.size(); i++) {
+
+            if (i > 0 && klines.get(i).gettCloseTime() <= klines.get(i-1).gettCloseTime()) {
+                break;
+            }
+            long endTimeMillis = klines.get(i).gettCloseTime();
+            //Log.e(TAG, "Update time:  " + df.format(endTimeMillis));
+            ZonedDateTime endTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endTimeMillis), ZoneId.systemDefault());
+            double openPrice = klines.get(i).gettOpenPrice();
+            double highPrice = klines.get(i).gettHighPrice();
+            double lowPrice = klines.get(i).gettLowPrice();
+            double closePrice = klines.get(i).gettClosePrice();
+            series.addBar(endTime, openPrice, highPrice, lowPrice, closePrice);
+        }
+        //Log.e(TAG, series.getBarData().toString());
+
+        BarSeriesManager seriesManager = new BarSeriesManager(series);
+        // Moving momentum strategy.
+        Strategy strategy1 = buildStrategy(series);
+        // ADX Indicator strategy.
+        Strategy strategy2 = buildStrategy2(series);
+
+        // Running the strategies
+        TradingRecord tradingRecord1 = seriesManager.run(strategy1);
+        TradingRecord tradingRecord2 = seriesManager.run(strategy2);
+
+        // AnalysisOfStrategies
+        AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new GrossReturnCriterion());
+        AnalysisCriterion total = new GrossReturnCriterion();
+        Strategy bestStrategy = vsBuyAndHold.chooseBest(seriesManager, Arrays.asList(strategy1, strategy2));
+
+        if(tradingRecord1.getPositionCount() == 0 && tradingRecord2.getPositionCount() == 0) {
+            return "NO POSITIONS";
+        } else {
+            return "NrPositions: " + tradingRecord1.getPositionCount() + ", " + tradingRecord2.getPositionCount() + " Profit: " + vsBuyAndHold.calculate(series, tradingRecord1) + ", " + vsBuyAndHold.calculate(series, tradingRecord2)
+                    + " Total: " + total.calculate(series, tradingRecord1) + ", " + total.calculate(series, tradingRecord2) + " BEST: " + bestStrategy.getName();
+        }
+
+
+
+    }
+
+    public static Strategy buildStrategy(BarSeries series) {
+        if (series == null) {
+            throw new IllegalArgumentException("Series cannot be null");
+        }
+
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        // The bias is bullish when the shorter-moving average moves above the longer
+        // moving average.
+        // The bias is bearish when the shorter-moving average moves below the longer
+        // moving average.
+        EMAIndicator shortEma = new EMAIndicator(closePrice, 5); //9
+        EMAIndicator longEma = new EMAIndicator(closePrice, 26); //26
+
+        StochasticOscillatorKIndicator stochasticOscillK = new StochasticOscillatorKIndicator(series, 14);
+
+        MACDIndicator macd = new MACDIndicator(closePrice, 9, 26);
+        EMAIndicator emaMacd = new EMAIndicator(macd, 18);
+
+        // Entry rule
+        Rule entryRule = new OverIndicatorRule(shortEma, longEma) // Trend
+                .and(new CrossedDownIndicatorRule(stochasticOscillK, 20)) // Signal 1
+                .and(new OverIndicatorRule(macd, emaMacd)); // Signal 2
+
+        // Exit rule
+        Rule exitRule = new UnderIndicatorRule(shortEma, longEma) // Trend
+                .and(new CrossedUpIndicatorRule(stochasticOscillK, 80)) // Signal 1
+                .and(new UnderIndicatorRule(macd, emaMacd)); // Signal 2
+
+        return new BaseStrategy("MOMENTUM", entryRule, exitRule);
+
+    }
+
+    public static Strategy buildStrategy2(BarSeries series) {
+
+        if (series == null) {
+            throw new IllegalArgumentException("Series cannot be null");
+        }
+
+        final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        final SMAIndicator smaIndicator = new SMAIndicator(closePriceIndicator, 50);
+
+        final int adxBarCount = 14;
+        final ADXIndicator adxIndicator = new ADXIndicator(series, adxBarCount);
+        final OverIndicatorRule adxOver20Rule = new OverIndicatorRule(adxIndicator, 20);
+
+        final PlusDIIndicator plusDIIndicator = new PlusDIIndicator(series, adxBarCount);
+        final MinusDIIndicator minusDIIndicator = new MinusDIIndicator(series, adxBarCount);
+
+        final Rule plusDICrossedUpMinusDI = new CrossedUpIndicatorRule(plusDIIndicator, minusDIIndicator);
+        final Rule plusDICrossedDownMinusDI = new CrossedDownIndicatorRule(plusDIIndicator, minusDIIndicator);
+        final OverIndicatorRule closePriceOverSma = new OverIndicatorRule(closePriceIndicator, smaIndicator);
+        final Rule entryRule = adxOver20Rule.and(plusDICrossedUpMinusDI).and(closePriceOverSma);
+
+        final UnderIndicatorRule closePriceUnderSma = new UnderIndicatorRule(closePriceIndicator, smaIndicator);
+        final Rule exitRule = adxOver20Rule.and(plusDICrossedDownMinusDI).and(closePriceUnderSma);
+
+        return new BaseStrategy("ADX", entryRule, exitRule, adxBarCount);
     }
 
 

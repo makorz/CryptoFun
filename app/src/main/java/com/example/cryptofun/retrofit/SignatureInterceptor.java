@@ -202,7 +202,7 @@ public class SignatureInterceptor implements Interceptor {
                 .url(urlBuilder.build())
                 .build();
 
-        Log.e(TAG, "URL: " + newRequest.url());
+        //Log.e(TAG, "URL: " + newRequest.url());
         return chain.proceed(newRequest);
     }
 

@@ -1,6 +1,9 @@
 package com.example.cryptofun.ui.orders;
 
+import androidx.annotation.NonNull;
+
 import java.io.Serializable;
+import java.util.Objects;
 
 public class OrderListViewElement implements Serializable, Comparable<OrderListViewElement> {
 
@@ -18,9 +21,9 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
     private int accountNumber;
     private long orderID;
     private String orderType;
-    private float qunatity;
+    private float quantity;
 
-    public OrderListViewElement(String symbol, int isItReal, float entryAmount, float entryPrice, float currentPrice, float stopLimitPrice, float takeProfitPrice, long timeWhenPlaced, int margin, int isItShort, int isItCrossed, int accountNumber, long orderID, String orderType, float qunatity) {
+    public OrderListViewElement(String symbol, int isItReal, float entryAmount, float entryPrice, float currentPrice, float stopLimitPrice, float takeProfitPrice, long timeWhenPlaced, int margin, int isItShort, int isItCrossed, int accountNumber, long orderID, String orderType, float quantity) {
         this.symbol = symbol;
         this.isItReal = isItReal;
         this.entryAmount = entryAmount;
@@ -35,15 +38,15 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
         this.accountNumber = accountNumber;
         this.orderID = orderID;
         this.orderType = orderType;
-        this.qunatity = qunatity;
+        this.quantity = quantity;
     }
 
-    public float getQunatity() {
-        return qunatity;
+    public float getQuantity() {
+        return quantity;
     }
 
-    public void setQunatity(float qunatity) {
-        this.qunatity = qunatity;
+    public void setQuantity(float quantity) {
+        this.quantity = quantity;
     }
 
     public String getOrderType() {
@@ -186,6 +189,32 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
     @Override
     public int compareTo(OrderListViewElement element) {
         return Long.compare(this.getTimeWhenPlaced(), element.getTimeWhenPlaced());
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+
+        return "OrderListViewElement{symbol=" + symbol + " isItReal=" + isItReal + " entryAmount=" + entryAmount + " entryPrice=" + entryPrice + " currentPrice=" + currentPrice
+                + " stopLimitPrice=" + stopLimitPrice + " takeProfitPrice=" + takeProfitPrice + " timeWhenPlaced=" + timeWhenPlaced + " margin=" + margin + " isItShort=" + isItShort
+                +  " isItCrossed=" + isItCrossed + " accountNumber=" + accountNumber + " orderID=" + orderID + " orderType=" + orderType + " quantity=" + quantity + '}';
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null || getClass() != obj.getClass())
+            return false;
+        OrderListViewElement other = (OrderListViewElement) obj;
+        return Objects.equals(symbol, other.symbol)
+                && quantity == other.quantity
+                && accountNumber == other.accountNumber;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(symbol, quantity, accountNumber);
     }
 
 }
