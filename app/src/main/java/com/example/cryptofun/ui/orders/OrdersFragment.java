@@ -34,8 +34,7 @@ import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.FragmentOrdersBinding;
 
 import com.example.cryptofun.services.CallbackButton;
-import com.example.cryptofun.services.OrdersService;
-import com.example.cryptofun.services.ServiceFunctions;
+import com.example.cryptofun.services.ServiceFunctionsAPI;
 import com.example.cryptofun.retrofit.RetrofitClientFutures;
 
 import java.util.ArrayList;
@@ -229,7 +228,7 @@ public class OrdersFragment extends Fragment implements CallbackButton {
                                             // handle the MarkPrice object returned by the API
                                             Log.e(TAG, "User Order Made for " + symbol + ".");
 
-                                            ServiceFunctions.makeOrderFunction(finalIsItReal, symbol, finalAmountValue, finalStopLimitValue, finalTakeProfitValue, finalMarginValue, markPrice.getMarkPrice(), finalIsItCrossed, finalIsItShort, System.currentTimeMillis(), finalBalance, accountNr, getContext(), callbackButton);
+                                            ServiceFunctionsAPI.makeOrderFunction(finalIsItReal, symbol, finalAmountValue, finalStopLimitValue, finalTakeProfitValue, finalMarginValue, markPrice.getMarkPrice(), finalIsItCrossed, finalIsItShort, System.currentTimeMillis(), finalBalance, accountNr, getContext(), callbackButton);
 
                                         }
 
@@ -303,15 +302,15 @@ public class OrdersFragment extends Fragment implements CallbackButton {
         ArrayList<OrderListViewElement> currentOrders = new ArrayList<>();
         DBHandler db = DBHandler.getInstance(getContext());
         Cursor data = db.retrieveAllFromTable(TABLE_NAME_ORDERS);
+        data.moveToFirst();
         if (data.getCount() == 0) {
             Log.e(TAG, "No active orders");
         } else {
-            while (data.moveToNext()) {
-
-                OrderListViewElement tempToken = new OrderListViewElement(data.getString(1), data.getInt(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(9), data.getInt(8), data.getInt(11), data.getInt(10), data.getInt(12), data.getInt(13), data.getString(14), data.getFloat(15));
+            do {
+                OrderListViewElement tempToken = new OrderListViewElement(data.getString(1), data.getInt(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(9), data.getInt(8), data.getInt(11), data.getInt(10), data.getInt(12), data.getLong(13), data.getString(14), data.getFloat(15));
                 currentOrders.add(tempToken);
 
-            }
+            } while (data.moveToNext());
             adapter.updateList(currentOrders);
         }
         data.close();

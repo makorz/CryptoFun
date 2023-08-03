@@ -22,6 +22,7 @@ public class CryptoListAdapter extends RecyclerView.Adapter<CryptoListAdapter.Vi
 
         TextView title;
         TextView percent;
+        TextView percent2;
         TextView longOrShort;
         TextView firstPrice;
         TextView time;
@@ -30,6 +31,7 @@ public class CryptoListAdapter extends RecyclerView.Adapter<CryptoListAdapter.Vi
             super(b.getRoot());
             title = b.text;
             percent = b.textPercent;
+            percent2 = b.textPercent2;
             longOrShort = b.textLongOrShort;
             firstPrice = b.textPrice;
             time = b.textTime;
@@ -59,6 +61,7 @@ public class CryptoListAdapter extends RecyclerView.Adapter<CryptoListAdapter.Vi
 
         String symbol = items.get(position).getText();
         float percentChange = items.get(position).getPercentChange();
+        float percentChange2 = items.get(position).getPercentChange2();
         float priceWhenCaught = items.get(position).getPriceWhenCaught();
         String time = items.get(position).getTime();
         boolean isItLong = items.get(position).isItLONG();
@@ -67,20 +70,42 @@ public class CryptoListAdapter extends RecyclerView.Adapter<CryptoListAdapter.Vi
         DecimalFormat dfPr = new DecimalFormat("0.00000");
         holder.title.setText(symbol);
         if (symbol.contains("Nothing")) {
-
             holder.percent.setTextColor(Color.BLACK);
             holder.longOrShort.setTextColor(Color.BLACK);
         } else {
             if (isItLong) {
-                holder.longOrShort.setText("LONG");
-                holder.percent.setTextColor(Color.GREEN);
-                holder.longOrShort.setTextColor(Color.GREEN);
+                holder.longOrShort.setText("LN");
+                if (percentChange > 0) {
+                    holder.percent.setTextColor(Color.GREEN);
+                    holder.longOrShort.setTextColor(Color.GREEN);
+                } else {
+                    holder.percent.setTextColor(Color.BLUE);
+                    holder.longOrShort.setTextColor(Color.GREEN);
+                }
+                if (percentChange2 > 0) {
+                    holder.percent2.setTextColor(Color.GREEN);
+                } else {
+                    holder.percent2.setTextColor(Color.BLUE);
+                }
             } else {
-                holder.longOrShort.setText("SHORT");
-                holder.percent.setTextColor(Color.RED);
-                holder.longOrShort.setTextColor(Color.RED);
+                holder.longOrShort.setText("SH");
+                if (percentChange < 0) {
+                    holder.percent.setTextColor(Color.RED);
+                    holder.longOrShort.setTextColor(Color.RED);
+                } else {
+                    holder.percent.setTextColor(Color.BLUE);
+                    holder.longOrShort.setTextColor(Color.RED);
+                }
+                if (percentChange2 < 0) {
+                    holder.percent2.setTextColor(Color.RED);
+                } else {
+                    holder.percent2.setTextColor(Color.BLUE);
+                }
+
             }
             holder.percent.setText(dfNr.format(percentChange) + "%");
+            holder.percent2.setText(dfNr.format(percentChange2) + "%");
+
             if (priceWhenCaught > 10) {
                 holder.firstPrice.setText(dfNr.format(priceWhenCaught));
             } else {

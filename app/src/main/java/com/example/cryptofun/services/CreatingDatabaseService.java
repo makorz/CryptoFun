@@ -2,22 +2,15 @@ package com.example.cryptofun.services;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
-import com.example.cryptofun.R;
 import com.example.cryptofun.data.CoinSymbol;
 import com.example.cryptofun.data.CoinSymbols;
 import com.example.cryptofun.data.CryptoSymbolTickStep;
@@ -26,10 +19,8 @@ import com.example.cryptofun.data.KlineRequest;
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.data.database.rawTable_Kline;
 import com.example.cryptofun.retrofit.RetrofitClientFutures;
-
 import java.util.ArrayList;
 import java.util.List;
-
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.functions.Consumer;
@@ -58,7 +49,7 @@ public class CreatingDatabaseService extends Service {
                         Log.e(TAG, "SIZE ON START -> " + listOfSymbols.size() );
 
                         // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-                        Notification notification = createNotification();
+                        Notification notification = ServiceFunctionsOther.createNotificationSimple("Preparing for money, buddy!", TAG, getApplicationContext());
                         // Notification ID cannot be 0.
                         startForeground(1, notification);
                         getDataOfCryptoFromAPI();
@@ -69,31 +60,6 @@ public class CreatingDatabaseService extends Service {
 
         return START_STICKY;
     }
-
-    private Notification createNotification() {
-
-        String CHANNEL_ID = "cryptoFun";
-        NotificationChannel chan = new NotificationChannel(
-                CHANNEL_ID,
-                TAG,
-                NotificationManager.IMPORTANCE_LOW);
-        chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
-
-        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        assert manager != null;
-        manager.createNotificationChannel(chan);
-
-        // Create a notification to indicate that the service is running.
-        // You can customize the notification to display the information you want.
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("CRTDatabase")
-                .setContentText("Preparing for money, buddy!")
-                .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setSmallIcon(R.drawable.crypto_fun_logo);
-
-        return builder.build();
-    }
-
 
     @Nullable
     @Override
@@ -219,6 +185,7 @@ public class CreatingDatabaseService extends Service {
     private void getSymbolsList() {
 
         Cursor data = databaseDB.retrieveAllFromTable(TABLE_SYMBOL_AVG);
+        data.moveToFirst();
         if (data.getCount() == 0) {
             Call<CoinSymbols> call = RetrofitClientFutures.getInstance().getMyApi().getFuturesSymbols();
             call.enqueue(new Callback<CoinSymbols>() {
@@ -240,23 +207,7 @@ public class CreatingDatabaseService extends Service {
                         String tickSize = "";
                         String stepSize = "";
 
-                        if (tokenList.get(i).getSymbol().contains("USDT")
-                                && tokenList.get(i).getStatus().equals("TRADING")
-                                && !tokenList.get(i).getSymbol().contains("BUSD")
-                                && !tokenList.get(i).getSymbol().contains("_")
-//                                && !tokenList.get(i).getSymbol().contains("EUR")
-//                                && !tokenList.get(i).getSymbol().contains("PLN")
-//                                && !tokenList.get(i).getSymbol().contains("UP")
-//                                && !tokenList.get(i).getSymbol().contains("DOWN")
-//                                && !tokenList.get(i).getSymbol().contains("BTCST")
-//                                && (tokenList.get(i).getPermissions().contains("MARGIN")
-//                                || (tokenList.get(i).getPermissions().contains("TRD_GRP_004") || tokenList.get(i).getPermissions().contains("TRD_GRP_005")
-//                                || tokenList.get(i).getPermissions().contains("TRD_GRP_006")))
-//
-//                                && tokenList.get(i).getPermissions().contains("MARGIN")
-//                                && (tokenList.get(i).getPermissions().contains("TRD_GRP_004") || tokenList.get(i).getPermissions().contains("TRD_GRP_005")
-//                                || tokenList.get(i).getPermissions().contains("TRD_GRP_006"))
-                        ) { // && tokenList.get(i).getPermissions().contains("MARGIN") && !tokenList.get(i).getSymbol().contains("BUSD")
+                        if (tokenList.get(i).getSymbol().contains("USDT") && tokenList.get(i).getStatus().equals("TRADING") && !tokenList.get(i).getSymbol().contains("BUSD") && !tokenList.get(i).getSymbol().contains("_")) {
 
                             List<FilterInfo> filters = tokenList.get(i).getFilters();
 
@@ -277,24 +228,7 @@ public class CreatingDatabaseService extends Service {
 
                         }
 
-                        if (tokenList.get(i).getSymbol().contains("BUSD")
-                                && tokenList.get(i).getStatus().equals("TRADING")
-                                && !tokenList.get(i).getSymbol().contains("USDT")
-                                && !tokenList.get(i).getSymbol().contains("_")
-//                                && !tokenList.get(i).getSymbol().contains("UP")
-//                                && !tokenList.get(i).getSymbol().contains("DOWN")
-//                                && !tokenList.get(i).getSymbol().contains("EUR")
-//                                && !tokenList.get(i).getSymbol().contains("PLN")
-//                                && (tokenList.get(i).getPermissions().contains("MARGIN")
-//                                || (tokenList.get(i).getPermissions().contains("TRD_GRP_004") || tokenList.get(i).getPermissions().contains("TRD_GRP_005")
-//                                || tokenList.get(i).getPermissions().contains("TRD_GRP_006")))
-//
-//                                && (tokenList.get(i).getPermissions().contains("TRD_GRP_004") || tokenList.get(i).getPermissions().contains("TRD_GRP_005")
-//                                || tokenList.get(i).getPermissions().contains("TRD_GRP_006"))
-                        ) { //
-
-//                            arrayBUSDtemp.add(tokenList.get(i).getSymbol());
-
+                        if (tokenList.get(i).getSymbol().contains("BUSD") && tokenList.get(i).getStatus().equals("TRADING") && !tokenList.get(i).getSymbol().contains("USDT") && !tokenList.get(i).getSymbol().contains("_")  ) {
                             List<FilterInfo> filters = tokenList.get(i).getFilters();
 
                             // Iterate through the filters for each symbol
@@ -363,9 +297,9 @@ public class CreatingDatabaseService extends Service {
             });
         } else {
             listOfSymbols.clear();
-            while (data.moveToNext()) {
+            do {
                 listOfSymbols.add(data.getString(1));
-            }
+            } while (data.moveToNext());
         }
         data.close();
     }
@@ -377,30 +311,29 @@ public class CreatingDatabaseService extends Service {
         if (data.getCount() == 0) {
             Log.e(TAG, "Table " + TABLE_SYMBOL_AVG + " is empty.");
             getSymbolsList();
-            data.close();
         } else {
-            data.close();
             getSymbolsList();
             Cursor data2 = databaseDB.retrieveAllFromTable(TABLE_NAME_KLINES_DATA);
             if (data2.getCount() == 0) {
                 Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty.");
                 getDataOfCryptoKlines();
-                data2.close();
             } else {
-                data2.close();
                 Cursor data3 = databaseDB.retrieveAllFromTable(TABLE_SYMBOL_AVG);
                 Log.e(TAG, String.valueOf(listOfSymbols.size()));
                 if (data3.getCount() != 0 && listOfSymbols.size() == 0) {
                     data3.moveToFirst();
-                    while (data3.moveToNext()) {
+                    do {
                         listOfSymbols.add(data3.getString(1));
-                    }
+                    } while (data3.moveToNext());
                 }
+                data.close();
+                data2.close();
                 data3.close();
                 sendMessageToActivity();
             }
-
+            data2.close();
         }
+        data.close();
     }
 
     public static String removeTrailingZeros(String decimalString) {
@@ -408,17 +341,11 @@ public class CreatingDatabaseService extends Service {
             // Not a decimal number, return as is
             return decimalString;
         }
-
         // Remove trailing zeros
         decimalString = decimalString.replaceAll("0*$", "");
-
         // Remove decimal point if there are no digits after it
         decimalString = decimalString.replaceAll("\\.$", "");
-
         return decimalString;
     }
-
-
-
 
 }

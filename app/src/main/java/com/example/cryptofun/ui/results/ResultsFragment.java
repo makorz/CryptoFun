@@ -1,6 +1,5 @@
 package com.example.cryptofun.ui.results;
 
-import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -21,8 +20,6 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.FragmentResultsBinding;
 import com.example.cryptofun.services.CallbackButton;
-import com.example.cryptofun.services.OrdersService;
-import com.example.cryptofun.services.ServiceFunctions;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;

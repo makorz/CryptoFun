@@ -1,12 +1,9 @@
 package com.example.cryptofun.services;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.database.Cursor;
 import android.util.Log;
-
 import androidx.annotation.NonNull;
-
 import com.example.cryptofun.data.AccountBalance;
 import com.example.cryptofun.data.AccountInfo;
 import com.example.cryptofun.data.Leverage;
@@ -19,53 +16,20 @@ import com.example.cryptofun.retrofit.RetrofitClientSecretTestnet;
 import com.example.cryptofun.ui.orders.OrderListViewElement;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.sql.Timestamp;
-import java.text.DateFormat;
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class ServiceFunctions {
-
-    public static void writeToFile(String data, Context context, String fileName) {
-
-        String nameOFLogFile;
-        Timestamp stamp = new Timestamp(System.currentTimeMillis());
-        @SuppressLint("SimpleDateFormat") DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        @SuppressLint("SimpleDateFormat") DateFormat df2 = new SimpleDateFormat("dd");
-
-        if (fileName.equals("result")) {
-            nameOFLogFile = "result_" + df2.format(new Date(stamp.getTime())) + ".txt";
-        } else if (fileName.equals("strategy")){
-            nameOFLogFile = "StrategyTest.txt";
-        } else {
-            nameOFLogFile = "OrdersLog.txt";
-        }
-
-
-        try {
-            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(context.openFileOutput(nameOFLogFile, Context.MODE_APPEND));
-            outputStreamWriter.write(df.format(new Date(stamp.getTime())) + " " + data + "\n");
-            outputStreamWriter.close();
-        } catch (IOException e) {
-            Log.e("Exception", "File write failed: " + e);
-        }
-    }
+public class ServiceFunctionsAPI {
 
     public static void makeOrderFunction(boolean isItReal, String symbol, int entryAmount, float stopLimit, float takeProfit, int leverage, float currentPrice, boolean isItCrossed, boolean isItShort, long time, float balance, int accountNr, Context context, final CallbackButton callbackButton) {
 
@@ -201,7 +165,7 @@ public class ServiceFunctions {
                     }
                     Log.e("F: setMarketOrder", errorBody);
                     //Toast.makeText(marketOrder.getContext().getApplicationContext(), errorBody, //Toast.LENGTH_SHORT).show();
-                    writeToFile(errorBody, marketOrder.getContext(), "orders");
+                    ServiceFunctionsOther.writeToFile(errorBody, marketOrder.getContext(), "orders");
                 }
 
             }
@@ -282,7 +246,7 @@ public class ServiceFunctions {
                     }
                     Log.e("F: setStopLimitOrTakeProfitMarket", errorBody);
                     //Toast.makeText(context.getApplicationContext(), errorBody, //Toast.LENGTH_SHORT).show();
-                    writeToFile(errorBody, context, "orders");
+                    ServiceFunctionsOther.writeToFile(errorBody, context, "orders");
                 }
 
             }
@@ -326,7 +290,7 @@ public class ServiceFunctions {
                     }
                     Log.e("F: setLeverage", errorBody);
                     //Toast.makeText(marketOrder.getContext().getApplicationContext(), errorBody, //Toast.LENGTH_SHORT).show();
-                    writeToFile(errorBody, marketOrder.getContext(), "orders");
+                    ServiceFunctionsOther.writeToFile(errorBody, marketOrder.getContext(), "orders");
                 }
 
 
@@ -376,7 +340,7 @@ public class ServiceFunctions {
 
                     Log.e("F: setMarginType", errorBody);
                     //Toast.makeText(marketOrder.getContext().getApplicationContext(), errorBody, //Toast.LENGTH_SHORT).show();
-                    writeToFile(errorBody, marketOrder.getContext(), "orders");
+                    ServiceFunctionsOther.writeToFile(errorBody, marketOrder.getContext(), "orders");
                 }
 
 
@@ -426,7 +390,7 @@ public class ServiceFunctions {
             format = new DecimalFormat(pattern);
 
         }
-
+        data.close();
         // Format the value using the decimal format
         return format != null ? format.format(value) : String.valueOf(value);
     }
@@ -465,6 +429,7 @@ public class ServiceFunctions {
                                     databaseDB.updateWithWhereClauseREAL("config", "value_real", balanceList.get(i).getAvailableBalance(), "id", "3");
                                 }
                                 data2.close();
+
                                 if (callbackButton != null) {
                                     callbackButton.onSuccess();
                                 }
@@ -552,7 +517,7 @@ public class ServiceFunctions {
                     }
                     Log.e("F: setMarketOrderToCancelCurrentOrder", errorBody);
                     //Toast.makeText(context.getApplicationContext(), errorBody, //Toast.LENGTH_SHORT).show();
-                    writeToFile(errorBody, context, "orders");
+                    ServiceFunctionsOther.writeToFile(errorBody, context, "orders");
 
 
                     if (callbackButton != null) {
@@ -620,7 +585,7 @@ public class ServiceFunctions {
                     }
                     Log.e("F: deleteOrder", errorBody);
                     //Toast.makeText(context.getApplicationContext(), errorBody, //Toast.LENGTH_SHORT).show();
-                    writeToFile(errorBody, context, "orders");
+                    ServiceFunctionsOther.writeToFile(errorBody, context, "orders");
                     if (callbackButton != null && !errorBody.contains("-2011")) {
                         callbackButton.onError();
                     } else if (callbackButton != null) {
@@ -700,7 +665,7 @@ public class ServiceFunctions {
                     }
                     Log.e("F: updateStopLimitForOrder", errorBody);
                     //Toast.makeText(context.getApplicationContext(), errorBody, //Toast.LENGTH_SHORT).show();
-                    writeToFile(errorBody, context, "orders");
+                    ServiceFunctionsOther.writeToFile(errorBody, context, "orders");
                     if (callbackButton != null && !errorBody.contains("-2011")) {
                         callbackButton.onError();
                     } else if (callbackButton != null) {
@@ -1005,7 +970,7 @@ public class ServiceFunctions {
 
     }
 
-    public static void getPositions(String symbol, long timestamp, Context context, OrderListViewElement orderToCheckAndDelete, CallbackButton callbackButton, boolean checkBetweenRmoteAndLocal) {
+    public static void getPositions(String symbol, long timestamp, Context context, OrderListViewElement orderToCheckAndDelete, CallbackButton callbackButton, boolean checkBetweenRemoteAndLocal) {
 
         long recvWindow = 10000;
 
@@ -1044,9 +1009,10 @@ public class ServiceFunctions {
                         assert positionForSymbol != null;
                         Log.e("F: getPositions", positionForSymbol.toString());
 
-                        if (!checkBetweenRmoteAndLocal) {
+                        if (!checkBetweenRemoteAndLocal) {
 
-                            if (positionForSymbol.getPositionAmt() > 0 && orderToCheckAndDelete != null) {
+                            if ((positionForSymbol.getPositionAmt() > 0 || positionForSymbol.getPositionAmt() < 0 ) && orderToCheckAndDelete != null) {
+                                Log.e("F: getPositions", orderToCheckAndDelete + " MARKET ORDER REAL TO DELETE");
 
                                 //TO CANCEL ORDER IN REAL MARKET WE NEED TO DO OPPOSITE ACTION WITH SAME AMOUNT OF CRYPTO
                                 String side = orderToCheckAndDelete.getIsItShort() == 1 ? "BUY" : "SELL";
@@ -1057,6 +1023,7 @@ public class ServiceFunctions {
                                         0, 0, 0, 0, 0, isItShortCancelOrder, false, context, callbackButton, orderToCheckAndDelete);
 
                             } else if (orderToCheckAndDelete != null) {
+                                Log.e("F: getPositions", orderToCheckAndDelete + " MARKET ORDER TEST TO DELETE");
 
                                 if (callbackButton != null) {
                                     callbackButton.onSuccess();

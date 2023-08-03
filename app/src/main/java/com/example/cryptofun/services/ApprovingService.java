@@ -2,22 +2,16 @@ package com.example.cryptofun.services;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
-import com.example.cryptofun.R;
-import com.example.cryptofun.data.ApprovedToken;
 import com.example.cryptofun.data.MarkPrice;
 import com.example.cryptofun.data.PercentagesOfChanges;
 import com.example.cryptofun.data.database.DBHandler;
@@ -60,10 +54,10 @@ public class ApprovingService extends Service {
     int isAutomaticForTestEnabled = 0;
     int isAutomaticForRealEnabled = 0;
     private DBHandler databaseDB;
+    private Handler handler;
     private final List<String> listOfSymbols = new ArrayList<>();
-    ArrayList<ListViewElement> lastSixHoursTokensStat = new ArrayList<>();
-    ArrayList<ListViewElement> lastTwoHoursTokensStat = new ArrayList<>();
-    ArrayList<ListViewElement> last10MinTokensStat = new ArrayList<>();
+    ArrayList<ListViewElement> last14HoursTokensStat = new ArrayList<>();
+    ArrayList<ListViewElement> last3MinutesTokensStat = new ArrayList<>();
     ArrayList<GridViewElement> cryptoGridViewList = new ArrayList<>();
     ArrayList<ListViewElement> cryptoForLONGOrders = new ArrayList<>();
     ArrayList<ListViewElement> cryptoForSHORTOrders = new ArrayList<>();
@@ -76,9 +70,10 @@ public class ApprovingService extends Service {
                 new Runnable() {
                     @Override
                     public void run() {
+
                         Log.e(TAG, "START of Service Thread");
                         // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-                        Notification notification = createNotification();
+                        Notification notification = ServiceFunctionsOther.createNotificationSimple("Calculating what's best.", TAG, getApplicationContext());
                         // Notification ID cannot be 0.
                         startForeground(1, notification);
                         approvingCryptos();
@@ -91,34 +86,15 @@ public class ApprovingService extends Service {
     }
 
     @Override
+    public void onCreate() {
+        super.onCreate();
+        handler = new Handler();
+    }
+
+    @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
-
-    private Notification createNotification() {
-
-        String CHANNEL_ID = "cryptoFun";
-
-        NotificationChannel chan = new NotificationChannel(
-                CHANNEL_ID,
-                TAG,
-                NotificationManager.IMPORTANCE_LOW);
-        chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
-        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        assert manager != null;
-        manager.createNotificationChannel(chan);
-
-        // Create a notification to indicate that the service is running.
-        // You can customize the notification to display the information you want.
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("CryptoFun")
-                .setContentText("Calculating what's best.")
-                .setSmallIcon(R.drawable.crypto_fun_logo)
-                .setPriority(NotificationCompat.PRIORITY_MIN);
-
-        return builder.build();
-    }
-
 
     private void sendMessageToActivity() {
         Log.e(TAG, "RESULT: " + serviceFinishedEverything + " HOW: " + howManyNeedsToDo);
@@ -128,14 +104,15 @@ public class ApprovingService extends Service {
             //Verification of missed orders remote and local
             ArrayList<OrderListViewElement> returnList = new ArrayList<>();
             Cursor data = databaseDB.retrieveAllFromTable(TABLE_NAME_ORDERS);
-            if (data.getCount() >= 0) {
-                while (data.moveToNext()) {
+            data.moveToFirst();
+            if (data.getCount() > 0) {
+                do {
                     OrderListViewElement tempToken = new OrderListViewElement(data.getString(1), data.getInt(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(9), data.getInt(8), data.getInt(11), data.getInt(10), data.getInt(12), data.getLong(13), data.getString(14), data.getFloat(15));
                     returnList.add(tempToken);
-                }
+                } while (data.moveToNext());
             }
             data.close();
-            ServiceFunctions.getAllOrders(System.currentTimeMillis(), getApplicationContext(), returnList);
+            ServiceFunctionsAPI.getAllOrders(System.currentTimeMillis(), getApplicationContext(), returnList);
         }
 
         if (serviceFinishedEverything >= howManyNeedsToDo) {
@@ -143,32 +120,42 @@ public class ApprovingService extends Service {
             Log.e(TAG, "BROADCAST - Approve Finished " + Thread.currentThread() + " " + Thread.activeCount());
             Bundle bundle = new Bundle();
             // 1 - 30min, 2 - 2h, 3 - 6h
-            bundle.putSerializable("list1", (Serializable) last10MinTokensStat);
-            bundle.putSerializable("list3", (Serializable) lastSixHoursTokensStat);
+            bundle.putSerializable("list1", (Serializable) last3MinutesTokensStat);
+            bundle.putSerializable("list3", (Serializable) last14HoursTokensStat);
             bundle.putSerializable("cryptoGridViewList", (Serializable) cryptoGridViewList);
             intent.putExtra("bundleApprovedCrypto", bundle);
             LocalBroadcastManager.getInstance(ApprovingService.this).sendBroadcast(intent);
-            stopForeground(true);
-            stopSelf();
+
+            //Wait 3 second before stopping service, error:  Process: com.example.cryptofun, PID: 6921 android.app.ForegroundServiceDidNotStartInTimeException: Context.startForegroundService() did not then cal Service.startForeground():
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    stopForeground(true);
+                    stopSelf();
+                }
+            }, 2000);
+
         }
     }
 
     public void approvingCryptos() {
 
-        long sixHours = 21600000;
-        long tenMinutes = 600000;
-        long sixMinutes = 360000;
-        long threeMinutes = 180000;
+        long fourteenHours = 50400000;
+        //Wait one minute before entering
+        long oneMinute = 60000;
+        long threeAndHalfMinute = 210000;
 
-        lastSixHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(sixHours, threeMinutes);
-        last10MinTokensStat = getListOfSymbolsAccordingToProvidedTime(threeMinutes, 0);
+        last14HoursTokensStat = getListOfSymbolsAccordingToProvidedTime(fourteenHours, oneMinute);
+        last3MinutesTokensStat = getListOfSymbolsAccordingToProvidedTime(threeAndHalfMinute, oneMinute);
 
-        if (last10MinTokensStat.size() > 0) {
-            for (int i = 0; i < last10MinTokensStat.size(); i++) {
-                if (last10MinTokensStat.get(i).isItLONG()) {
-                    cryptoForLONGOrders.add(last10MinTokensStat.get(i));
+        Log.e(TAG, "list3mTokensSize: " + last3MinutesTokensStat.size());
+
+        if (last3MinutesTokensStat.size() > 0) {
+            for (int i = 0; i < last3MinutesTokensStat.size(); i++) {
+                if (last3MinutesTokensStat.get(i).isItLONG()) {
+                    cryptoForLONGOrders.add(last3MinutesTokensStat.get(i));
                 } else {
-                    cryptoForSHORTOrders.add(last10MinTokensStat.get(i));
+                    cryptoForSHORTOrders.add(last3MinutesTokensStat.get(i));
                 }
             }
         }
@@ -180,7 +167,7 @@ public class ApprovingService extends Service {
 
         // First array list for grid view, other two need to calculate changes in percents hour after hour
         // ArrayList<GridViewElement> cryptoPercentageListGrid3hours = new ArrayList<>();
-        ArrayList<GridViewElement> cryptoPercentageListFourHours = new ArrayList<>();
+        ArrayList<GridViewElement> cryptoPercentageList = new ArrayList<>();
         float percentU2 = 0;
         float percentU1 = 0;
         float percentU0 = 0;
@@ -189,124 +176,23 @@ public class ApprovingService extends Service {
         float percentO2 = 0;
 
         Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
+        data.moveToFirst();
         if (data.getCount() == 0) {
             Log.e(TAG, "Table " + TABLE_SYMBOL_AVG + " is empty");
         } else {
             listOfSymbols.clear();
-            while (data.moveToNext()) {
+            do {
                 listOfSymbols.add(data.getString(0));
-            }
-            int nrOfGridElements = 36;
+            } while (data.moveToNext());
+            int nrOfGridElements = 30;
             List<String> biggestNrOfTradesSymbols = getBiggestNrOfTradesSymbols("4h", nrOfGridElements);
 
             for (int i = 0; i < listOfSymbols.size(); i++) {
-                //cryptoPercentageListGrid3hours.add(getTimePercentChangeForCrypto(listOfSymbols.get(i), 12));
-                cryptoPercentageListFourHours.add(getTimePercentChangeForCrypto(listOfSymbols.get(i), 12));
-                if (cryptoPercentageListFourHours.get(i) == null) {
-                    cryptoPercentageListFourHours.remove(i);
+                cryptoPercentageList.add(getTimePercentChangeForCrypto(listOfSymbols.get(i), 16));
+                if (cryptoPercentageList.get(i) == null) {
+                    cryptoPercentageList.remove(i);
                 }
             }
-
-//            int under15 = 0;
-//            int under5 = 0;
-//            int under0 = 0;
-//            int over0 = 0;
-//            int over5 = 0;
-//            int over15 = 0;
-//
-//            for (int i = 0; i < cryptoPercentageListGrid3hours.size(); i++) {
-//
-//                if (cryptoPercentageListGrid3hours.get(i).getPercent() < -15) {
-//                    under15++;
-//                } else if (cryptoPercentageListGrid3hours.get(i).getPercent() >= -15 && cryptoPercentageListGrid3hours.get(i).getPercent() < -5) {
-//                    under5++;
-//                } else if (cryptoPercentageListGrid3hours.get(i).getPercent() >= -5 && cryptoPercentageListGrid3hours.get(i).getPercent() < 0) {
-//                    under0++;
-//                } else if (cryptoPercentageListGrid3hours.get(i).getPercent() >= 0 && cryptoPercentageListGrid3hours.get(i).getPercent() < 5) {
-//                    over0++;
-//                } else if (cryptoPercentageListGrid3hours.get(i).getPercent() >= 5 && cryptoPercentageListGrid3hours.get(i).getPercent() <= 15) {
-//                    over5++;
-//                } else if (cryptoPercentageListGrid3hours.get(i).getPercent() > 15) {
-//                    over15++;
-//                }
-//            }
-//
-//            percentU15 = (float) under15 / cryptoPercentageListGrid3hours.size() * 100;
-//            percentU5 = (float) under5 / cryptoPercentageListGrid3hours.size() * 100;
-//            percentU0 = (float) under0 / cryptoPercentageListGrid3hours.size() * 100;
-//            percentO0 = (float) over0 / cryptoPercentageListGrid3hours.size() * 100;
-//            percentO5 = (float) over5 / cryptoPercentageListGrid3hours.size() * 100;
-//            percentO15 = (float) over15 / cryptoPercentageListGrid3hours.size() * 100;
-//
-//            if (biggestNrOfTradesSymbols.size() > 1) {
-//                cryptoGridViewList.add(new GridViewElement("< -15%", percentU15, under15));
-//                cryptoGridViewList.add(new GridViewElement("-15% - -5%", percentU5, under5));
-//                cryptoGridViewList.add(new GridViewElement("-5% - 0%", percentU0, under0));
-//                cryptoGridViewList.add(new GridViewElement("0% - 5%", percentO0, over0));
-//                cryptoGridViewList.add(new GridViewElement("5% - 15%", percentO5, over5));
-//                cryptoGridViewList.add(new GridViewElement("> 15%", percentO15, over15));
-//                for (int i = 0; i < nrOfGridElements; i++) {
-//                    cryptoGridViewList.add(getTimePercentChangeForCrypto(biggestNrOfTradesSymbols.get(i),3));
-//                }
-//            }
-
-//            float percentU5 = 0;
-//            float percentU2 = 0;
-//            float percentU0 = 0;
-//            float percentO0 = 0;
-//            float percentO2 = 0;
-//            float percentO5 = 0;
-//
-//            int under5 = 0;
-//            int under2 = 0;
-//            int under0 = 0;
-//            int over0 = 0;
-//            int over2 = 0;
-//            int over5 = 0;
-//
-//            for (int i = 0; i < cryptoPercentageListGrid3hours.size(); i++) {
-//
-//                if (cryptoPercentageListGrid3hours.get(i).getPercent() < -5) {
-//                    under5++;
-//                } else if (cryptoPercentageListGrid3hours.get(i).getPercent() >= -5 && cryptoPercentageListGrid3hours.get(i).getPercent() < -2) {
-//                    under2++;
-//                } else if (cryptoPercentageListGrid3hours.get(i).getPercent() >= -2 && cryptoPercentageListGrid3hours.get(i).getPercent() < 0) {
-//                    under0++;
-//                } else if (cryptoPercentageListGrid3hours.get(i).getPercent() >= 0 && cryptoPercentageListGrid3hours.get(i).getPercent() < 2) {
-//                    over0++;
-//                } else if (cryptoPercentageListGrid3hours.get(i).getPercent() >= 2 && cryptoPercentageListGrid3hours.get(i).getPercent() <= 5) {
-//                    over2++;
-//                } else if (cryptoPercentageListGrid3hours.get(i).getPercent() > 5) {
-//                    over5++;
-//                }
-//            }
-//
-//            percentU5 = (float) under5 / cryptoPercentageListGrid3hours.size() * 100;
-//            percentU2 = (float) under2 / cryptoPercentageListGrid3hours.size() * 100;
-//            percentU0 = (float) under0 / cryptoPercentageListGrid3hours.size() * 100;
-//            percentO0 = (float) over0 / cryptoPercentageListGrid3hours.size() * 100;
-//            percentO2 = (float) over2 / cryptoPercentageListGrid3hours.size() * 100;
-//            percentO5 = (float) over5 / cryptoPercentageListGrid3hours.size() * 100;
-//
-//            PercentagesOfChanges changes = new PercentagesOfChanges(percentU5, percentU2, percentU0, percentO0, percentO2, percentO5, System.currentTimeMillis());
-//            databaseDB.addPercentages(changes);
-//
-//            if (biggestNrOfTradesSymbols.size() > 1) {
-//                cryptoGridViewList.add(new GridViewElement("< -5%", percentU5, under5));
-//                cryptoGridViewList.add(new GridViewElement("-5% - -2%", percentU2, under2));
-//                cryptoGridViewList.add(new GridViewElement("-2% - 0%", percentU0, under0));
-//                cryptoGridViewList.add(new GridViewElement("0% - 2%", percentO0, over0));
-//                cryptoGridViewList.add(new GridViewElement("2% - 5%", percentO2, over2));
-//                cryptoGridViewList.add(new GridViewElement("> 5%", percentO5, over5));
-//                for (int i = 0; i < nrOfGridElements; i++) {
-//                    cryptoGridViewList.add(getTimePercentChangeForCrypto(biggestNrOfTradesSymbols.get(i), 3));
-//                }
-//            }
-//
-//
-//        }
-//        data.close();
-
 
             int under2 = 0;
             int under1 = 0;
@@ -315,29 +201,29 @@ public class ApprovingService extends Service {
             int over1 = 0;
             int over2 = 0;
 
-            for (int i = 0; i < cryptoPercentageListFourHours.size(); i++) {
+            for (int i = 0; i < cryptoPercentageList.size(); i++) {
 
-                if (cryptoPercentageListFourHours.get(i).getPercent() < -2) {
+                if (cryptoPercentageList.get(i).getPercent() < -2) {
                     under2++;
-                } else if (cryptoPercentageListFourHours.get(i).getPercent() >= -2 && cryptoPercentageListFourHours.get(i).getPercent() < -1) {
+                } else if (cryptoPercentageList.get(i).getPercent() >= -2 && cryptoPercentageList.get(i).getPercent() < -1) {
                     under1++;
-                } else if (cryptoPercentageListFourHours.get(i).getPercent() >= -1 && cryptoPercentageListFourHours.get(i).getPercent() < 0) {
+                } else if (cryptoPercentageList.get(i).getPercent() >= -1 && cryptoPercentageList.get(i).getPercent() < 0) {
                     under0++;
-                } else if (cryptoPercentageListFourHours.get(i).getPercent() >= 0 && cryptoPercentageListFourHours.get(i).getPercent() < 1) {
+                } else if (cryptoPercentageList.get(i).getPercent() >= 0 && cryptoPercentageList.get(i).getPercent() < 1) {
                     over0++;
-                } else if (cryptoPercentageListFourHours.get(i).getPercent() >= 1 && cryptoPercentageListFourHours.get(i).getPercent() <= 2) {
+                } else if (cryptoPercentageList.get(i).getPercent() >= 1 && cryptoPercentageList.get(i).getPercent() <= 2) {
                     over1++;
-                } else if (cryptoPercentageListFourHours.get(i).getPercent() > 2) {
+                } else if (cryptoPercentageList.get(i).getPercent() > 2) {
                     over2++;
                 }
             }
 
-            percentU2 = (float) under2 / cryptoPercentageListFourHours.size() * 100;
-            percentU1 = (float) under1 / cryptoPercentageListFourHours.size() * 100;
-            percentU0 = (float) under0 / cryptoPercentageListFourHours.size() * 100;
-            percentO0 = (float) over0 / cryptoPercentageListFourHours.size() * 100;
-            percentO1 = (float) over1 / cryptoPercentageListFourHours.size() * 100;
-            percentO2 = (float) over2 / cryptoPercentageListFourHours.size() * 100;
+            percentU2 = (float) under2 / cryptoPercentageList.size() * 100;
+            percentU1 = (float) under1 / cryptoPercentageList.size() * 100;
+            percentU0 = (float) under0 / cryptoPercentageList.size() * 100;
+            percentO0 = (float) over0 / cryptoPercentageList.size() * 100;
+            percentO1 = (float) over1 / cryptoPercentageList.size() * 100;
+            percentO2 = (float) over2 / cryptoPercentageList.size() * 100;
 
             PercentagesOfChanges changes = new PercentagesOfChanges(percentU2, percentU1, percentU0, percentO0, percentO1, percentO2, System.currentTimeMillis());
             databaseDB.addPercentages(changes);
@@ -350,7 +236,7 @@ public class ApprovingService extends Service {
                 cryptoGridViewList.add(new GridViewElement("1% - 2%", percentO1, over1));
                 cryptoGridViewList.add(new GridViewElement("> 2%", percentO2, over2));
 
-                if( biggestNrOfTradesSymbols.size() < nrOfGridElements) {
+                if (biggestNrOfTradesSymbols.size() < nrOfGridElements) {
                     nrOfGridElements = biggestNrOfTradesSymbols.size();
                 }
 
@@ -391,38 +277,39 @@ public class ApprovingService extends Service {
             long halfHour = 1800000;
 
             data = databaseDB.retrievePercentages(now - tenMinutes, now);
+            data.moveToFirst();
             if (data.getCount() == 0) {
                 Log.e(TAG, "Table " + TABLE_HISTORIC_PERCENTAGES + " is empty");
             } else {
-                while (data.moveToNext()) {
+                do {
                     percentages.add(new PercentagesOfChanges(data.getFloat(1), data.getFloat(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getLong(7)));
-                }
+                } while (data.moveToNext());
+            }
+            data.close();
+
+            float underPercentage = percentU0 + percentU1 + percentU2;
+            float underPercentage2 = percentU0 + percentU1;
+            float overPercentage = percentO0 + percentO1 + percentO2;
+            float overPercentage2 = percentO0 + percentO2;
+            boolean isItGoodForShort = false;
+            boolean isItGoodForLong = false;
+
+            if (percentages.size() > 6) {
+                isItGoodForLong = isPercentageInFavor(percentages, 0);
+                isItGoodForShort = isPercentageInFavor(percentages, 1);
+                databaseDB.clearHistoricPercentages(now - halfHour);
             }
 
-//            float underPercentage = percentU0 + percentU1 + percentU2;
-//            float underPercentage2 = percentU0 + percentU1;
-//            float overPercentage = percentO0 + percentO1 + percentO2;
-//            float overPercentage2 = percentO0 + percentO2;
-//            boolean isItGoodForShort = false;
-//            boolean isItGoodForLong = false;
-//
-//            if (percentages.size() > 6) {
-//                isItGoodForLong = isPercentageInFavor(percentages, 0);
-//                isItGoodForShort = isPercentageInFavor(percentages, 1);
-//                String infoOfOrder = "LEVEL4: AutomaticTest: " + isAutomaticForTestEnabled + " AutomaticReal: " + isAutomaticForRealEnabled + " Percentage Favor: " + isItGoodForLong + " for long " + isItGoodForShort + " for short";
-//                Log.e(TAG, infoOfOrder);
-//                ServiceFunctions.writeToFile(infoOfOrder, getApplicationContext(), "result");
-//                databaseDB.clearHistoricPercentages(now - halfHour);
-//            }
+            String infoOfOrder = "LEVEL3: AutomaticTest: " + isAutomaticForTestEnabled + " AutomaticReal: " + isAutomaticForRealEnabled + " Percentage Favor(long, short): " + isItGoodForLong + " " + isItGoodForShort + " ListSize(Long, Short): " + cryptoForLONGOrders.size() + " " + cryptoForSHORTOrders.size() + " Under: " + percentU0 + "% " + percentU1 + "% " + percentU2 + " Over: " + percentO0 + "% " + percentO1 + "% " + percentO2 + "%";
+            Log.e(TAG, infoOfOrder);
+            ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
 
-            Log.e(TAG, "LEVEL3 " + cryptoForSHORTOrders.size() + " " + cryptoForLONGOrders.size());
-
-            if (cryptoForSHORTOrders.size() > cryptoForLONGOrders.size() ) { // && isItGoodForShort       && percentU5 < 20 && percentU2 > 5 && underPercentage > overPercentage + 10  && percentU2 < 10 && underPercentage2 > 58 //cryptoForLONGOrders.size() + 1
+            if (cryptoForSHORTOrders.size() > cryptoForLONGOrders.size()) { // && isItGoodForShort       && percentU5 < 20 && percentU2 > 5 && underPercentage > overPercentage + 10  && percentU2 < 10 && underPercentage2 > 58 //cryptoForLONGOrders.size() + 1
                 serviceFinishedEverything++;
                 automaticOrdersFunction(cryptoForSHORTOrders, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
 
 
-            } else if (cryptoForLONGOrders.size() > cryptoForSHORTOrders.size()) { //  && isItGoodForLong        && percentO5 < 20 && percentO2 > 5 && underPercentage + 10 < overPercentage && percentO2 < 10 && overPercentage2 > 58
+            } else if (cryptoForLONGOrders.size() > cryptoForSHORTOrders.size()) { //   // && isItGoodForLong      && percentO5 < 20 && percentO2 > 5 && underPercentage + 10 < overPercentage && percentO2 < 10 && overPercentage2 > 58
                 serviceFinishedEverything++;
                 automaticOrdersFunction(cryptoForLONGOrders, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
 
@@ -440,48 +327,87 @@ public class ApprovingService extends Service {
 
     private ArrayList<ListViewElement> getListOfSymbolsAccordingToProvidedTime(long timeFrom, long timeTo) {
 
-        @SuppressLint("SimpleDateFormat")
-        DateFormat df = new SimpleDateFormat("HH:mm");
         long currentTime = System.currentTimeMillis();
-        ArrayList<ListViewElement> returnList = new ArrayList<ListViewElement>();
+        ArrayList<ListViewElement> returnList = new ArrayList<>();
+        @SuppressLint("SimpleDateFormat") DateFormat df = new SimpleDateFormat("HH:mm:ss - EEE, dd");
+        @SuppressLint("SimpleDateFormat") DateFormat df2 = new SimpleDateFormat("HH:mm");
 
-        Cursor data2 = databaseDB.firstAppearOfTokenInCertainTime(currentTime - timeFrom, currentTime - timeTo);
-
-        if (data2.getCount() == 0) {
-            //returnList.add(new ListViewElement("Nothing in DB"));
-            Log.e(TAG, "Nothing in DB");
+        Cursor data = databaseDB.firstAppearOfTokenInCertainTimeV1(currentTime - timeFrom, currentTime - timeTo);
+        data.moveToFirst();
+        if (data.getCount() == 0) {
+            Log.e(TAG, "Nothing in [historic_approved_tokens 1]");
         } else {
-            while (data2.moveToNext()) {
+            do {
+                int isItLongInt = data.getInt(1);
+                boolean isItLong;
+                if (isItLongInt == 1) {
+                    isItLong = true;
+                } else {
+                    isItLong = false;
+                }
+                String symbol = data.getString(0);
+                long approveTime = data.getLong(2);
+                float approvedPrice = data.getFloat(3);
 
-                ApprovedToken tempToken = new ApprovedToken(data2.getString(0), data2.getInt(8), data2.getFloat(5), data2.getLong(7), data2.getFloat(9));
-                String symbol = tempToken.getSymbol();
-                int longOrShort = tempToken.getLongOrShort();
-                long approveTime = tempToken.getTime();
-                float closePrice = tempToken.getClosePrice();
-                float price = tempToken.getPriceOnTimeOfApprove();
-                //Log.e("APPROVE SERVICE", symbol + " " + longOrShort + " " + approveTime + " " + (currentTime - timeFrom) + " ");
+                //We are searching for highest/lowest price in certain time for that symbol and then look for opposite high/low between entry and opposite
+                float maxMinPrice = 0;
+                float maxMinPrice2 = 0;
+                long closeTimeMaxMin = 0;
+
+                Log.e(TAG, "APPROVE SERVICE1 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
+                        + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin));
+                // Because we are taking open_time ant interval 15 m, we need to take at least one Kline for start from approvetime
+                Cursor data2;
+                if (currentTime - approveTime < 900000) {
+                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime - 300000, currentTime - timeTo, isItLong, "3m");
+                } else {
+                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime, currentTime - timeTo, isItLong, "15m");
+                }
+
+                data2.moveToFirst();
+                if (data2.getCount() == 0) {
+                    Log.e(TAG, "Nothing in [historic_approved_tokens 2]");
+                } else {
+                    maxMinPrice = data2.getFloat(1);
+                    closeTimeMaxMin = data2.getLong(2);
+                }
+                data2.close();
+
+                Log.e(TAG, "APPROVE SERVICE2 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
+                        + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin));
+
+                if (currentTime - approveTime < 900000) {
+                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime - 300000, closeTimeMaxMin, !isItLong, "3m");
+                } else {
+                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime, closeTimeMaxMin, !isItLong, "15m");
+                }
+
+                data2.moveToFirst();
+                if (data2.getCount() == 0) {
+                    Log.e(TAG, "Nothing in [historic_approved_tokens 3]");
+                } else {
+                    maxMinPrice2 = data2.getFloat(1);
+                }
+                data2.close();
 
                 if (approveTime > currentTime - timeFrom) {
                     Timestamp stamp = new Timestamp(approveTime);
-                    String date = df.format(new Date(stamp.getTime()));
-                    float percentOfChange = ((closePrice / price) * 100) - 100;
+                    String date = df2.format(new Date(stamp.getTime()));
+                    float percentOfChange = ((maxMinPrice / approvedPrice) * 100) - 100;
+                    float percentOfChange2 = ((maxMinPrice2 / approvedPrice) * 100) - 100;
 
-                    if (longOrShort == 0) {
-//                        if (percentOfChange < -0.1) {
-//                            returnList.add(new ListViewElement(symbol, percentOfChange, price, date, false));
-//                        }
-                        returnList.add(new ListViewElement(symbol, percentOfChange, price, date, false));
-
-                    } else if (longOrShort == 1) {
-//                        if (percentOfChange > 0.1) {
-//                            returnList.add(new ListViewElement(symbol, percentOfChange, price, date, true));
-//                        }
-                        returnList.add(new ListViewElement(symbol, percentOfChange, price, date, true));
+                    if (isItLong) {
+                        returnList.add(new ListViewElement(symbol, percentOfChange, percentOfChange2, approvedPrice, date, isItLong));
+                    } else {
+                        returnList.add(new ListViewElement(symbol, percentOfChange, percentOfChange2, approvedPrice, date, isItLong));
                     }
+
+                    Log.e(TAG, "APPROVE SERVICE3 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
+                            + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin));
                 }
-            }
+            } while (data.moveToNext());
         }
-        data2.close();
+        data.close();
 
         if (returnList.size() == 0) {
             Log.e(TAG, "Nothing good in DB");
@@ -493,9 +419,9 @@ public class ApprovingService extends Service {
                 }
             });
         }
+        Log.e(TAG, "Return list size: " + returnList.size());
         return returnList;
     }
-
 
 
     public boolean isPercentageInFavor(ArrayList<PercentagesOfChanges> percents, int isItShort) {
@@ -579,20 +505,17 @@ public class ApprovingService extends Service {
 
         data = databaseDB.retrieveAllFromTable(TABLE_NAME_ORDERS);
         ArrayList<OrderListViewElement> currentOrders = new ArrayList<>();
+        data.moveToFirst();
         if (data.getCount() == 0) {
             Log.e(TAG, "No active orders");
         } else {
-            while (data.moveToNext()) {
-
+            do {
                 OrderListViewElement tempToken = new OrderListViewElement(data.getString(1), data.getInt(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(9), data.getInt(8), data.getInt(11), data.getInt(10), data.getInt(12), data.getInt(13), data.getString(14), data.getFloat(15));
                 currentOrders.add(tempToken);
                 Log.e(TAG, tempToken.toString());
-            }
+            } while (data.moveToNext());
         }
         data.close();
-
-        Log.e(TAG, "LEVEL4 AUTOMATIC: " + testAccountBalances + " REAL: " + realAccountBalance);
-        //Log.e(TAG, "List of crypto to try:" + listOfCryptosToTry.toString());
 
         //Default params for my order
         data = databaseDB.retrieveParam(11);
@@ -655,7 +578,9 @@ public class ApprovingService extends Service {
                     Random random = new Random();
                     // Generate a random index that has not been used before
                     int index = random.nextInt(listOfCryptosToTry.size());
-                    Log.e(TAG, "Random from list: " + index);
+                    String indexText = "Random test index: " + index + " size: " + listOfCryptosToTry.size();
+                    Log.e(TAG, indexText);
+                    ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "orders");
 
                     // Get the element at the random index
                     ListViewElement randomElement = listOfCryptosToTry.get(index);
@@ -704,13 +629,13 @@ public class ApprovingService extends Service {
                                     public void onNext(@NonNull MarkPrice markPrice) {
 
                                         // handle the MarkPrice object returned by the API
-                                        String infoOfOrder = "LEVEL5 (ORDER): Symbol# " + randomElement.getText() + " Entry$$$# " + entryAmount + " TestAccount# " + (finalI + 1) + " Margin# " + margin + " isItShort# "
-                                                + isItShort + " MarkPrice# " + markPrice.getMarkPrice();
+                                        String infoOfOrder = "LEVEL5 (ORDER): " + randomElement.getText() + " EntryAmount$: " + entryAmount + " AccountNr: " + (finalI + 1) + " Leverage: " + margin + " isItShort: " + isItShort + " MarkPrice: " + markPrice.getMarkPrice();
                                         Log.e(TAG, infoOfOrder);
-                                        ServiceFunctions.writeToFile(infoOfOrder, getApplicationContext(), "result");
-                                        ServiceFunctions.writeToFile(infoOfOrder, getApplicationContext(), "orders");
+                                        ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
+                                        ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "orders");
+                                        ServiceFunctionsOther.createNotificationWithText(infoOfOrder, TAG, getApplicationContext());
 
-                                        ServiceFunctions.makeOrderFunction(false, randomElement.getText(), entryAmount, stopLimit, takeProfit, margin, markPrice.getMarkPrice(), isItCrossed, isItShort, System.currentTimeMillis(), testAccountBalances.get(finalI), (finalI + 6), getApplicationContext(), null);
+                                        ServiceFunctionsAPI.makeOrderFunction(false, randomElement.getText(), entryAmount, stopLimit, takeProfit, margin, markPrice.getMarkPrice(), isItCrossed, isItShort, System.currentTimeMillis(), testAccountBalances.get(finalI), (finalI + 6), getApplicationContext(), null);
 
                                     }
 
@@ -730,7 +655,7 @@ public class ApprovingService extends Service {
 
                 }
             } else {
-                Log.e(TAG, "There are active orders on account " + (i+6));
+                Log.e(TAG, "There are active orders on account " + (i + 6));
             }
             serviceFinishedEverything++;
             data.close();
@@ -738,37 +663,35 @@ public class ApprovingService extends Service {
 
 
         data = databaseDB.retrieveActiveOrdersOnAccount(1, "MARKET", 1);
-        if (data.getCount() < 1  && isAutomaticRealEnabled == 1) { ///!!!!!!!
+        if (data.getCount() < 2 && isAutomaticRealEnabled == 1) { ///!!!!!!!
             Log.e(TAG, "No order for REAL account.");
             Log.e(TAG, currentOrders.toString());
 
-            if (realAccountBalance > 6) {
+            if (realAccountBalance > 5) {
 
+                //Generate a random index that has not been used before
                 Random random = new Random();
-                // Generate a random index that has not been used before
                 int index = random.nextInt(listOfCryptosToTry.size());
-                Log.e(TAG, "Random index: " + index);
+                String indexText = "Random real index: " + index + " size: " + listOfCryptosToTry.size();
+                Log.e(TAG, indexText);
+                ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "orders");
 
                 // Get the element at the random index
                 ListViewElement randomElement = listOfCryptosToTry.get(index);
-
                 boolean isThereSuchOrderForRandomizedSymbolOnRealAccount = false;
 
                 for (int i = 0; i < currentOrders.size(); i++) {
 
                     if (currentOrders.get(i).getIsItReal() == 1 && currentOrders.get(i).getSymbol().equals(randomElement.getText())) {
                         isThereSuchOrderForRandomizedSymbolOnRealAccount = true;
-                        Log.e(TAG, "Random symbol: " + randomElement.getText() + " Current orders symbol: " + currentOrders.get(i).getSymbol() + " is it real: " + currentOrders.get(i).getIsItReal() );
+                        Log.e(TAG, "Random symbol: " + randomElement.getText() + " Current orders symbol: " + currentOrders.get(i).getSymbol() + " is it real: " + currentOrders.get(i).getIsItReal());
                     }
 
                 }
 
                 int entryAmount = (int) (realAccountBalance * 0.98);
                 boolean isItShort;
-
                 isItShort = !randomElement.isItLONG();
-
-
 
                 if (!isThereSuchOrderForRandomizedSymbolOnRealAccount) {
 
@@ -784,14 +707,14 @@ public class ApprovingService extends Service {
                                 @Override
                                 public void onNext(@NonNull MarkPrice markPrice) {
                                     // handle the MarkPrice object returned by the API
-                                    String infoOfOrder = "LEVEL5 (ORDER) " + randomElement.getText() + ", Entry$: " + entryAmount + ", REALAccount: True, Margin: " + margin + ", isItShort: "
-                                            + isItShort + ", MarkPrice: " + markPrice.getMarkPrice();
+                                    String infoOfOrder = "LEVEL5 (ORDER): " + randomElement.getText() + " EntryAmount$: " + entryAmount + " AccountNr: REAL Leverage: " + margin + " isItShort: " + isItShort + " MarkPrice: " + markPrice.getMarkPrice();
 
                                     Log.e(TAG, infoOfOrder);
-                                    ServiceFunctions.writeToFile(infoOfOrder, getApplicationContext(), "result");
-                                    ServiceFunctions.writeToFile(infoOfOrder, getApplicationContext(), "orders");
+                                    ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
+                                    ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "orders");
+                                    ServiceFunctionsOther.createNotificationWithText(infoOfOrder, TAG, getApplicationContext());
 
-                                    ServiceFunctions.makeOrderFunction(true, randomElement.getText(), entryAmount, stopLimit, takeProfit, margin, markPrice.getMarkPrice(), isItCrossed, isItShort, System.currentTimeMillis(), realAccountBalance, realAccountNr, getApplicationContext(), null);
+                                    ServiceFunctionsAPI.makeOrderFunction(true, randomElement.getText(), entryAmount, stopLimit, takeProfit, margin, markPrice.getMarkPrice(), isItCrossed, isItShort, System.currentTimeMillis(), realAccountBalance, realAccountNr, getApplicationContext(), null);
 
                                 }
 
@@ -832,21 +755,17 @@ public class ApprovingService extends Service {
 
         List<Kline> coinKlines15m = new ArrayList<>();
         Cursor data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol);
-
-
+        data.moveToFirst();
         if (data.getCount() == 0) {
             Log.e(TAG, "24hPercentCount-Table " + TABLE_NAME_KLINES_DATA + " Empty");
-
         } else {
-            data.moveToFirst();
-            while (data.moveToNext()) {
-
+            do {
                 if (data.getString(10).equals("15m")) {
 
                     coinKlines15m.add(new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10)));
 
                 }
-            }
+            } while (data.moveToNext());
 
             if (coinKlines15m.size() >= nrOf15mKlinesBack) {
 
@@ -856,6 +775,7 @@ public class ApprovingService extends Service {
                 percentOfChange = ((closePriceToday / closePriceYesterday) * 100) - 100;
                 data.close();
                 return new GridViewElement(symbol, percentOfChange, closePriceToday);
+
             }
         }
         data.close();
@@ -866,13 +786,11 @@ public class ApprovingService extends Service {
     public List<String> getBiggestNrOfTradesSymbols(String interval, int nrOfResults) {
 
         List<String> bigVolume = new ArrayList<>();
-        // List<Kline> klinesVolume = new ArrayList<>();
         Cursor data = databaseDB.checkVolumeOfKlineInterval(interval);
-
+        data.moveToFirst();
         if (data.getCount() == 0) {
             Log.e(TAG, "BiggestNrOfTrades-Table " + TABLE_NAME_KLINES_DATA + " Empty");
         } else {
-            data.moveToFirst();
             int all = data.getCount();
             if (nrOfResults < all) {
                 for (int i = 0; i < nrOfResults; i++) {
@@ -883,11 +801,11 @@ public class ApprovingService extends Service {
                 }
 
             } else {
-                while (data.moveToNext()) {
+                do {
                     if (!data.getString(0).contains("BUSDUSDT")) {
                         bigVolume.add(data.getString(0));
                     }
-                }
+                } while (data.moveToNext());
             }
         }
         data.close();

@@ -1,36 +1,28 @@
 package com.example.cryptofun.services;
 
 import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
-
-import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
-import com.example.cryptofun.R;
-import com.example.cryptofun.data.PositionRisk;
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.ui.orders.OrderListViewElement;
-
 import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 
 public class OrdersService extends Service implements CallbackButton {
 
     private static final String TAG = "ORDService";
 
     private DBHandler databaseDB;
+    private Handler handler;
     private static final String TABLE_NAME_ORDERS = "current_orders";
     private static final String TABLE_NAME_CONFIG = "config";
     private static final String VALUE_REAL = "value_real";
@@ -50,7 +42,7 @@ public class OrdersService extends Service implements CallbackButton {
                     public void run() {
                         Log.e(TAG, "START");
                         // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
-                        Notification notification = createNotification();
+                        Notification notification = ServiceFunctionsOther.createNotificationSimple("Orders verification.", TAG, getApplicationContext());
                         // Notification ID cannot be 0.
                         startForeground(1, notification);
                         updatingCurrentOrders();
@@ -62,28 +54,10 @@ public class OrdersService extends Service implements CallbackButton {
         return START_STICKY;
     }
 
-
-    private Notification createNotification() {
-
-        String CHANNEL_ID = "cryptoFun";
-        NotificationChannel chan = new NotificationChannel(
-                CHANNEL_ID,
-                TAG,
-                NotificationManager.IMPORTANCE_LOW);
-        chan.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
-        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        assert manager != null;
-        manager.createNotificationChannel(chan);
-
-        // Create a notification to indicate that the service is running.
-        // You can customize the notification to display the information you want.
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("CryptoFun")
-                .setContentText("Orders verification.")
-                .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setSmallIcon(R.drawable.crypto_fun_logo);
-
-        return builder.build();
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        handler = new Handler();
     }
 
     @Override
@@ -91,11 +65,10 @@ public class OrdersService extends Service implements CallbackButton {
         return null;
     }
 
-
     private void sendMessageToActivity(ArrayList<OrderListViewElement> listOrders, String test, ArrayList<String> automatic) { //String real,
 
         Intent intent = new Intent("OrdersStatus");
-        Log.e(TAG, "SendMessage " + Thread.currentThread() + " " + Thread.activeCount());
+        Log.e(TAG, "SendMessage " + Thread.currentThread() + " " + Thread.activeCount() + " size: " + returnList.size());
         Bundle bundle = new Bundle();
         // 1 - 30min, 2 - 2h, 3 - 6h
         bundle.putSerializable("ordersList", (Serializable) listOrders);
@@ -108,8 +81,16 @@ public class OrdersService extends Service implements CallbackButton {
         bundle.putString("autoBalance5", automatic.get(4));
         intent.putExtra("bundleOrdersStatus", bundle);
         LocalBroadcastManager.getInstance(OrdersService.this).sendBroadcast(intent);
-        stopForeground(true);
-        stopSelf();
+
+        //Wait 3 second before stopping service, error:  Process: com.example.cryptofun, PID: 6921 android.app.ForegroundServiceDidNotStartInTimeException: Context.startForegroundService() did not then cal Service.startForeground():
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                stopForeground(true);
+                stopSelf();
+            }
+        }, 2000);
+
     }
 
     @Override
@@ -121,40 +102,19 @@ public class OrdersService extends Service implements CallbackButton {
     private void updatingCurrentOrders() {
 
         Cursor data = databaseDB.retrieveAllFromTable(TABLE_NAME_ORDERS);
-
+        data.moveToFirst();
         if (data.getCount() == 0) {
-            Log.e(TAG, "No active orders");
-            returnList = new ArrayList<>();
+            Log.e(TAG, "No active orders " + returnList.size());
+            returnList.clear();
         } else {
-            while (data.moveToNext()) {
+            do {
 
                 OrderListViewElement tempToken = new OrderListViewElement(data.getString(1), data.getInt(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(9), data.getInt(8), data.getInt(11), data.getInt(10), data.getInt(12), data.getLong(13), data.getString(14), data.getFloat(15));
                 returnList.add(tempToken);
                 Log.e(TAG, tempToken.toString());
-            }
+            } while (data.moveToNext());
         }
         data.close();
-
-        //Verification of missed orders remote and local
-//        ServiceFunctions.getAllOrders(System.currentTimeMillis(), getApplicationContext(), returnList);
-
-
-//        List<OrderListViewElement> verifyList = new ArrayList<>();
-//        //Check if there are duplicates local test
-//        for (OrderListViewElement order : returnList) {
-//            if (order.getIsItReal() == 0 && order.getAccountNumber() >= 6) {
-//                verifyList.add(order);
-//            }
-//        }
-//        for (int i = 0; i < verifyList.size(); i++) {
-//            for (int k = 1; k < verifyList.size(); k++) {
-//                Log.e("F: getAllOrders", "DUPLICATE TESTSb: " + verifyList.get(i));
-//                if (verifyList.get(i).getSymbol().equals(verifyList.get(k).getSymbol()) && verifyList.get(i).getQuantity() == verifyList.get(k).getQuantity() && verifyList.get(i).getAccountNumber() == verifyList.get(k).getAccountNumber()) {
-//                    Log.e("F: getAllOrders", "DUPLICATE TESTSc: " + verifyList.get(k));
-//                    databaseDB.deleteOrder(verifyList.get(k).getSymbol(), verifyList.get(k).getTimeWhenPlaced(), verifyList.get(k).getIsItReal(), verifyList.get(k).getIsItShort(), verifyList.get(k).getMargin());
-//                }
-//            }
-//        }
 
         //Sort by time placed of Orders
         Collections.sort(returnList, new Comparator<OrderListViewElement>() {
@@ -168,12 +128,11 @@ public class OrdersService extends Service implements CallbackButton {
 
             float price = 0;
             Cursor data2 = databaseDB.retrieveLastClosePrice(returnList.get(i).getSymbol());
+            data2.moveToFirst();
             if (data2.getCount() == 0) {
                 Log.e(TAG, "There is no crypto with that symbol");
             } else {
-                data2.moveToFirst();
                 price = data2.getFloat(6);
-
                 float percentPrevious = returnList.get(i).getPercentOfPriceChange();
                 databaseDB.updatePricesOfCryptoInOrder(returnList.get(i).getSymbol(), CURRENT_PRICE, price, returnList.get(i).getTimeWhenPlaced());
                 returnList.get(i).setCurrentPrice(price);
@@ -191,7 +150,8 @@ public class OrdersService extends Service implements CallbackButton {
                 String infoOfOrder = returnList.get(i).toString() + " CP# " + price + " PP# " + returnList.get(i).getCurrentPrice() + " NowPriceChange%: " + percentNow
                         + " PreviousPriceChange%: " + percentPrevious;
 
-                Log.e(TAG, "LEVEL5.5: " + infoOfOrder);
+                Log.e(TAG, "LEVEL6: " + infoOfOrder);
+                ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
 
                 if (returnList.get(i).getIsItShort() == 1) {
 
@@ -199,18 +159,18 @@ public class OrdersService extends Service implements CallbackButton {
                     if (price > returnList.get(i).getStopLimitPrice()) {
                         returnList.get(i).setCurrentPrice(returnList.get(i).getStopLimitPrice());
 
-                        Log.e(TAG, "LEVEL7 STOP (SHORT): " + infoOfOrder);
-                        ServiceFunctions.writeToFile("LEVEL7 STOP (SHORT): " + infoOfOrder, getApplicationContext(), "result");
-                        ServiceFunctions.writeToFile("LEVEL7 STOP (SHORT): " + infoOfOrder, getApplicationContext(), "orders");
+                        Log.e(TAG, "LEVEL8 STOP (SHORT): " + infoOfOrder);
+                        ServiceFunctionsOther.writeToFile("LEVEL8 STOP (SHORT): " + infoOfOrder, getApplicationContext(), "result");
+                        ServiceFunctionsOther.writeToFile("LEVEL8 STOP (SHORT): " + infoOfOrder, getApplicationContext(), "orders");
                         closeOrder(i, returnList);
 
                     }
                     if (price < returnList.get(i).getTakeProfitPrice()) {
                         returnList.get(i).setCurrentPrice(returnList.get(i).getTakeProfitPrice());
 
-                        Log.e(TAG, "LEVEL7 TAKE (SHORT): " + infoOfOrder);
-                        ServiceFunctions.writeToFile("LEVEL7 TAKE (SHORT): " + infoOfOrder, getApplicationContext(), "result");
-                        ServiceFunctions.writeToFile("LEVEL7 TAKE (SHORT): " + infoOfOrder, getApplicationContext(), "orders");
+                        Log.e(TAG, "LEVEL8 TAKE (SHORT): " + infoOfOrder);
+                        ServiceFunctionsOther.writeToFile("LEVEL8 TAKE (SHORT): " + infoOfOrder, getApplicationContext(), "result");
+                        ServiceFunctionsOther.writeToFile("LEVEL8 TAKE (SHORT): " + infoOfOrder, getApplicationContext(), "orders");
                         closeOrder(i, returnList);
 
                     }
@@ -218,18 +178,18 @@ public class OrdersService extends Service implements CallbackButton {
                     if (price < returnList.get(i).getStopLimitPrice()) {
                         returnList.get(i).setCurrentPrice(returnList.get(i).getStopLimitPrice());
 
-                        Log.e(TAG, "LEVEL7 STOP (LONG): " + infoOfOrder);
-                        ServiceFunctions.writeToFile("LEVEL7 STOP (LONG): " + infoOfOrder, getApplicationContext(), "result");
-                        ServiceFunctions.writeToFile("LEVEL7 STOP (LONG): " + infoOfOrder, getApplicationContext(), "orders");
+                        Log.e(TAG, "LEVEL8 STOP (LONG): " + infoOfOrder);
+                        ServiceFunctionsOther.writeToFile("LEVEL8 STOP (LONG): " + infoOfOrder, getApplicationContext(), "result");
+                        ServiceFunctionsOther.writeToFile("LEVEL8 STOP (LONG): " + infoOfOrder, getApplicationContext(), "orders");
                         closeOrder(i, returnList);
 
                     }
                     if (price > returnList.get(i).getTakeProfitPrice()) {
                         returnList.get(i).setCurrentPrice(returnList.get(i).getTakeProfitPrice());
 
-                        Log.e(TAG, "LEVEL7 TAKE (LONG): " + infoOfOrder);
-                        ServiceFunctions.writeToFile("LEVEL7 TAKE (LONG): " + infoOfOrder, getApplicationContext(), "result");
-                        ServiceFunctions.writeToFile("LEVEL7 TAKE (LONG): " + infoOfOrder, getApplicationContext(), "orders");
+                        Log.e(TAG, "LEVEL8 TAKE (LONG): " + infoOfOrder);
+                        ServiceFunctionsOther.writeToFile("LEVEL8 TAKE (LONG): " + infoOfOrder, getApplicationContext(), "result");
+                        ServiceFunctionsOther.writeToFile("LEVEL8 TAKE (LONG): " + infoOfOrder, getApplicationContext(), "orders");
                         closeOrder(i, returnList);
 
 
@@ -242,17 +202,35 @@ public class OrdersService extends Service implements CallbackButton {
                 TODO:
                     Aktualizuje stary stop limit na nowszy z mniej korzystna cena  - do sprawdzenia
                  */
+//                int whatToDoWithSL = 0;
+//                if (returnList.get(i).getIsItShort() == 1) {
+//
+//                }
+//                if (percentNow >)
+//
+//                switch (whatToDoWithSL) {
+//
+//                    case 1:
+//                        break;
+//                    case 2:
+//                        break;
+//                    default:
+//                        break;
+//                    case 3:
+//                        break;
+//                }
 
-                if (percentNow > 0.65 && percentNow > percentPrevious && returnList.get(i).getIsItShort() == 0 && returnList.get(i).getOrderType().equals("MARKET")) {
 
-                    Log.e(TAG, "LEVEL6(Previous SL - LONG): " + returnList.get(i).getStopLimitPrice());
-                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * 0.9925f; // 0.995f
+                if (percentNow > 0.65 && returnList.get(i).getIsItShort() == 0 && returnList.get(i).getOrderType().equals("MARKET")) { //&& percentNow > percentPrevious
+
+                    Log.e(TAG, "LEVEL7(Previous SL - LONG): " + returnList.get(i).getStopLimitPrice());
+                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * 0.9935f; // 0.995f
 
                     if (returnList.get(i).getIsItReal() == 0 && stopLimitPrice > returnList.get(i).getStopLimitPrice()) {
 
                         returnList.get(i).setStopLimitPrice(stopLimitPrice);
                         databaseDB.updatePricesOfCryptoInOrder(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
-                        Log.e(TAG, "LEVEL6(New SL - LONG - TEST): " + returnList.get(i).getStopLimitPrice());
+                        Log.e(TAG, "LEVEL7(New SL - LONG - TEST): " + returnList.get(i).getStopLimitPrice());
 
                     }
 
@@ -260,7 +238,7 @@ public class OrdersService extends Service implements CallbackButton {
 
                         returnList.get(i).setStopLimitPrice(stopLimitPrice);
                         databaseDB.updatePricesOfCryptoInOrder(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
-                        Log.e(TAG, "LEVEL6(New SL - LONG - REAL): " + returnList.get(i).getStopLimitPrice());
+                        Log.e(TAG, "LEVEL7(New SL - LONG - REAL): " + returnList.get(i).getStopLimitPrice());
 
                         boolean isThereStopLimitForThatSymbol = false;
                         long stopLimitOrderId = 0;
@@ -278,33 +256,33 @@ public class OrdersService extends Service implements CallbackButton {
                         }
 
                         if (isThereStopLimitForThatSymbol) {
-                            Log.e(TAG, "LEVEL6(SL - NEW - START): " + stopLimitPrice);
-                            ServiceFunctions.updateStopLimitForOrder(returnList.get(i).getSymbol(), stopLimitOrderId, "SELL", "STOP_MARKET", "RESULT", stopLimitPrice, "true", timeOfStopLimitOrderPlacement, System.currentTimeMillis(), 0, getApplicationContext(), returnList.get(i), null);
+                            Log.e(TAG, "LEVEL7(SL - NEW - START): " + stopLimitPrice);
+                            ServiceFunctionsAPI.updateStopLimitForOrder(returnList.get(i).getSymbol(), stopLimitOrderId, "SELL", "STOP_MARKET", "RESULT", stopLimitPrice, "true", timeOfStopLimitOrderPlacement, System.currentTimeMillis(), 0, getApplicationContext(), returnList.get(i), null);
 
                         } else {
-                            Log.e(TAG, "LEVEL6(SL - NEW - START): " + stopLimitPrice);
-                            ServiceFunctions.setStopLimitOrTakeProfitMarket(returnList.get(i).getSymbol(), "SELL", "STOP_MARKET", "RESULT", stopLimitPrice, "true", System.currentTimeMillis(), 0, returnList.get(i), getApplicationContext(), null);
+                            Log.e(TAG, "LEVEL7(SL - NEW - START): " + stopLimitPrice);
+                            ServiceFunctionsAPI.setStopLimitOrTakeProfitMarket(returnList.get(i).getSymbol(), "SELL", "STOP_MARKET", "RESULT", stopLimitPrice, "true", System.currentTimeMillis(), 0, returnList.get(i), getApplicationContext(), null);
 
                         }
 
                     }
                 } else if (percentNow < -0.65 && percentPrevious > percentNow && returnList.get(i).getIsItShort() == 1 && returnList.get(i).getOrderType().equals("MARKET")) { //0.75
 
-                    Log.e(TAG, "LEVEL6(Previous SL - SHORT):" + returnList.get(i).getStopLimitPrice());
-                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * 1.0075f; // 1.005f
+                    Log.e(TAG, "LEVEL7(Previous SL - SHORT):" + returnList.get(i).getStopLimitPrice());
+                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * 1.0065f; // 1.005f
 
                     if (returnList.get(i).getIsItReal() == 0 && stopLimitPrice < returnList.get(i).getStopLimitPrice()) {
 
                         returnList.get(i).setStopLimitPrice(stopLimitPrice);
                         databaseDB.updatePricesOfCryptoInOrder(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
-                        Log.e(TAG, "LEVEL6(New SL - SHORT - TEST): " + returnList.get(i).getStopLimitPrice());
+                        Log.e(TAG, "LEVEL7(New SL - SHORT - TEST): " + returnList.get(i).getStopLimitPrice());
 
                     }
 
                     if (returnList.get(i).getIsItReal() == 1 && stopLimitPrice < returnList.get(i).getStopLimitPrice()) {
 
                         returnList.get(i).setStopLimitPrice(stopLimitPrice);
-                        Log.e(TAG, "LEVEL6(New SL - SHORT - REAL): " + stopLimitPrice);
+                        Log.e(TAG, "LEVEL7(New SL - SHORT - REAL): " + stopLimitPrice);
 
                         boolean isThereStopLimitForThatSymbol = false;
                         long stopLimitOrderId = 0;
@@ -321,12 +299,12 @@ public class OrdersService extends Service implements CallbackButton {
                         }
 
                         if (isThereStopLimitForThatSymbol) {
-                            Log.e(TAG, "LEVEL6(SL - NEW - START): " + stopLimitPrice + " orderID: " + stopLimitOrderId);
-                            ServiceFunctions.updateStopLimitForOrder(returnList.get(i).getSymbol(), stopLimitOrderId, "BUY", "STOP_MARKET", "RESULT", stopLimitPrice, "true", timeOfStopLimitOrderPlacement, System.currentTimeMillis(), 0, getApplicationContext(), returnList.get(i), null);
+                            Log.e(TAG, "LEVEL7(SL - NEW - START): " + stopLimitPrice + " orderID: " + stopLimitOrderId);
+                            ServiceFunctionsAPI.updateStopLimitForOrder(returnList.get(i).getSymbol(), stopLimitOrderId, "BUY", "STOP_MARKET", "RESULT", stopLimitPrice, "true", timeOfStopLimitOrderPlacement, System.currentTimeMillis(), 0, getApplicationContext(), returnList.get(i), null);
 
                         } else {
-                            Log.e(TAG, "LEVEL6(SL - NEW - START): " + stopLimitPrice + " orderID: " + stopLimitOrderId);
-                            ServiceFunctions.setStopLimitOrTakeProfitMarket(returnList.get(i).getSymbol(), "BUY", "STOP_MARKET", "RESULT", stopLimitPrice, "true", System.currentTimeMillis(), 0, returnList.get(i), getApplicationContext(), null);
+                            Log.e(TAG, "LEVEL7(SL - NEW - START): " + stopLimitPrice + " orderID: " + stopLimitOrderId);
+                            ServiceFunctionsAPI.setStopLimitOrTakeProfitMarket(returnList.get(i).getSymbol(), "BUY", "STOP_MARKET", "RESULT", stopLimitPrice, "true", System.currentTimeMillis(), 0, returnList.get(i), getApplicationContext(), null);
 
                         }
                     }
@@ -334,17 +312,18 @@ public class OrdersService extends Service implements CallbackButton {
                         && returnList.get(i).getIsItShort() == 0
                         && returnList.get(i).getEntryPrice() * 0.995 > returnList.get(i).getCurrentPrice()
                 ) {
-                    Log.e(TAG, "LEVEL7 PASSED(LONG) " + infoOfOrder);
-                    ServiceFunctions.writeToFile("LEVEL7 PASSED(LONG) " + infoOfOrder, getApplicationContext(), "result");
-                    ServiceFunctions.writeToFile("LEVEL7 PASSED(LONG) " + infoOfOrder, getApplicationContext(), "orders");
+                    Log.e(TAG, "LEVEL8 PASSED(LONG) " + infoOfOrder);
+                    ServiceFunctionsOther.writeToFile("LEVEL8 PASSED(LONG) " + infoOfOrder, getApplicationContext(), "result");
+                    ServiceFunctionsOther.writeToFile("LEVEL8 PASSED(LONG) " + infoOfOrder, getApplicationContext(), "orders");
                     closeOrder(i, returnList);
+
                 } else if (((orderTime + eightHours) < currentTime)
                         && returnList.get(i).getIsItShort() == 1
                         && returnList.get(i).getEntryPrice() * 1.005 < returnList.get(i).getCurrentPrice()
                 ) {
-                    Log.e(TAG, "LEVEL7 PASSED(SHORT) " + infoOfOrder);
-                    ServiceFunctions.writeToFile("LEVEL7 PASSED(SHORT) " + infoOfOrder, getApplicationContext(), "result");
-                    ServiceFunctions.writeToFile("LEVEL7 PASSED(SHORT) " + infoOfOrder, getApplicationContext(), "orders");
+                    Log.e(TAG, "LEVEL8 PASSED(SHORT) " + infoOfOrder);
+                    ServiceFunctionsOther.writeToFile("LEVEL8 PASSED(SHORT) " + infoOfOrder, getApplicationContext(), "result");
+                    ServiceFunctionsOther.writeToFile("LEVEL8 PASSED(SHORT) " + infoOfOrder, getApplicationContext(), "orders");
                     closeOrder(i, returnList);
                 }
 
@@ -382,13 +361,13 @@ public class OrdersService extends Service implements CallbackButton {
 
                 }
                 if (!areStopOrTakeRelevant) {
-                    ServiceFunctions.deleteOrder(returnList.get(position).getSymbol(), returnList.get(position).getOrderID(), System.currentTimeMillis(), getApplicationContext(), null);
+                    ServiceFunctionsAPI.deleteOrder(returnList.get(position).getSymbol(), returnList.get(position).getOrderID(), System.currentTimeMillis(), getApplicationContext(), null);
                 }
 
 
             } else if (returnList.get(position).getOrderType().equals("MARKET")) {
 
-                ServiceFunctions.getPositions(returnList.get(position).getSymbol(), System.currentTimeMillis(), getApplicationContext(), returnList.get(position), null, false);
+                ServiceFunctionsAPI.getPositions(returnList.get(position).getSymbol(), System.currentTimeMillis(), getApplicationContext(), returnList.get(position), null, false);
 
             }
 
@@ -467,7 +446,7 @@ public class OrdersService extends Service implements CallbackButton {
         }
 
         if (isAutomaticForRealEnabled == 1) {
-            ServiceFunctions.getRealAccountBalance(getApplicationContext(), null);
+            ServiceFunctionsAPI.getRealAccountBalance(getApplicationContext(), null);
         }
 
         sendMessageToActivity(returnList, testBalance, automaticBalance);

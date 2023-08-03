@@ -28,7 +28,7 @@ public class HomeFragment extends Fragment {
 
     private FragmentHomeBinding binding;
     CryptoListAdapter myAdapter6, myAdapter2, myAdapter30;
-    SimpleListAdapter myAdapterLONG, myAdapterSHORT;
+    //SimpleListAdapter myAdapterLONG, myAdapterSHORT;
     CryptoGridAdapter gridAdapter;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -45,8 +45,8 @@ public class HomeFragment extends Fragment {
         myAdapter6 = new CryptoListAdapter(initialList);
         myAdapter2 = new CryptoListAdapter(initialList);
         myAdapter30 = new CryptoListAdapter(initialList);
-        myAdapterLONG = new SimpleListAdapter(initialList);
-        myAdapterSHORT = new SimpleListAdapter(initialList);
+//        myAdapterLONG = new SimpleListAdapter(initialList);
+//        myAdapterSHORT = new SimpleListAdapter(initialList);
         binding.cryptoRecyclerView.setAdapter(gridAdapter);
         binding.cryptoList6RecyclerView.setAdapter(myAdapter6);
         binding.cryptoList30RecyclerView.setAdapter(myAdapter30);
@@ -72,7 +72,6 @@ public class HomeFragment extends Fragment {
                 Log.e(TAG, "APRVServiceReceived " + Thread.currentThread());
 
                 onReceiveNewGridList(gridAdapter, (ArrayList<GridViewElement>) bundle.getSerializable("cryptoGridViewList"));
-
                 onReceiveNewList(myAdapter6, (ArrayList<ListViewElement>) bundle.getSerializable("list3"));
                 onReceiveNewList(myAdapter30, (ArrayList<ListViewElement>) bundle.getSerializable("list1"));
 
@@ -131,13 +130,13 @@ public class HomeFragment extends Fragment {
     @Override
     public void onResume() {
         Log.e(TAG, "Resume");
-        Intent serviceIntent = new Intent(getActivity(),
-                ApprovingService.class);
-
-        if (!isMyServiceRunning(ApprovingService.class, getContext())) {
-            Log.e(TAG, "APRVServiceBeginFromResume");
-            getContext().startForegroundService(serviceIntent);
-        }
+//        Intent serviceIntent = new Intent(getActivity(),
+//                ApprovingService.class);
+//
+//        if (!isMyServiceRunning(ApprovingService.class, getContext())) {
+//            Log.e(TAG, "APRVServiceBeginFromResume");
+//            getContext().startForegroundService(serviceIntent);
+//        }
 
         super.onResume();
     }

@@ -454,6 +454,7 @@
                 <Button
                     android:id="@+id/bt_checkAccountInfo"
                     style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                    android:visibility="gone"
                     android:layout_width="0dp"
                     android:layout_height="50dp"
                     android:layout_marginStart="10dp"

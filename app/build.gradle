@@ -50,7 +50,9 @@ dependencies {
     implementation 'org.ta4j:ta4j-core:0.15'
     implementation 'com.squareup.retrofit2:converter-gson:2.6.2'
     implementation 'com.google.android.gms:play-services-base:18.1.0'
-    
+
+    implementation 'org.slf4j:slf4j-nop:1.7.25'
+
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
     // Because RxAndroid releases are few and far between, it is recommended you also
     // explicitly depend on RxJava's latest version for bug fixes and new features.

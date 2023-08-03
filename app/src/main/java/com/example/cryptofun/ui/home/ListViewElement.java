@@ -6,21 +6,39 @@ public class ListViewElement implements Serializable, Comparable<ListViewElement
 
     private String text;
     private float percentChange;
+    private float percentChange2;
     private float priceWhenCaught;
     private String time;
     private boolean isItLONG;
 
-    public ListViewElement(String text, float percentChange, float priceWhenCaught, String time, boolean longOrShort) {
-        this.text = text;
-        this.percentChange = percentChange;
-        this.priceWhenCaught = priceWhenCaught;
-        this.time = time;
-        this.isItLONG = longOrShort;
-    }
+//    public ListViewElement(String text, float percentChange, float priceWhenCaught, String time, boolean isItLong) {
+//        this.text = text;
+//        this.percentChange = percentChange;
+//        this.priceWhenCaught = priceWhenCaught;
+//        this.time = time;
+//        this.isItLONG = isItLong;
+//    }
 
     public ListViewElement(String text) {
         this.text = text;
 
+    }
+
+    public ListViewElement(String text, float percentChange, float percentChange2, float priceWhenCaught, String time, boolean isItLONG) {
+        this.text = text;
+        this.percentChange = percentChange;
+        this.percentChange2 = percentChange2;
+        this.priceWhenCaught = priceWhenCaught;
+        this.time = time;
+        this.isItLONG = isItLONG;
+    }
+
+    public float getPercentChange2() {
+        return percentChange2;
+    }
+
+    public void setPercentChange2(float percentChange2) {
+        this.percentChange2 = percentChange2;
     }
 
     public float getPercentChange() {

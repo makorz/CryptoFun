@@ -31,7 +31,7 @@ public class RetrofitClientFutures {
                 .client(client)
                 .build();
 
-        Log.e(TAG, "URL: " + retrofit.baseUrl() + " " + retrofit);
+       // Log.e(TAG, "URL: " + retrofit.baseUrl() + " " + retrofit);
         myApi = retrofit.create(ApiEndpointInterface.class);
     }
 

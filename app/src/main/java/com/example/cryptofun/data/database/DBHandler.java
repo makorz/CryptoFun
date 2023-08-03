@@ -443,16 +443,47 @@ public class DBHandler extends SQLiteOpenHelper {
         return data;
     }
 
+//    public Cursor firstAppearOfTokenInCertainTime(long time1, long time2) {
+//        SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
+//        Cursor data;
+////        if (sqLiteDatabase.isOpen()) {
+//        String query = "WITH timePeriodHistoric AS (SELECT * FROM historic_approved_tokens where approve_time BETWEEN " + time1 + " AND " + time2 + " ), " + "firstWriteOfToken AS (SELECT  *, MIN(approve_time) FROM timePeriodHistoric GROUP BY symbol, longOrShort), " + "klines AS (SELECT * FROM klines_data WHERE symbol in (SELECT symbol FROM firstWriteOfToken) AND interval LIKE '3m') " + "SELECT K.symbol, open_time, open_price, high_price, low_price, close_price, close_time, F.approve_time, F.longOrShort, F.price_when_approved FROM klines K " + "JOIN firstWriteOfToken F ON K.symbol = F.symbol " + "WHERE K.open_time = (SELECT MAX(open_time) FROM klines WHERE symbol = K.symbol) ORDER BY K.symbol asc";
+//        Log.i(TAG,query);
+//        data = sqLiteDatabase.rawQuery(query, null);
+////
+////        }
+//        return data;
+//    }
 
-    public Cursor firstAppearOfTokenInCertainTime(long time1, long time2) {
+    public Cursor firstAppearOfTokenInCertainTimeV1(long time1, long time2) {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         Cursor data;
-//        if (sqLiteDatabase.isOpen()) {
-        String query = "WITH timePeriodHistoric AS (SELECT * FROM historic_approved_tokens where approve_time BETWEEN " + time1 + " AND " + time2 + " ), " + "firstWriteOfToken AS (SELECT  *, MIN(approve_time) FROM timePeriodHistoric GROUP BY symbol, longOrShort), " + "klines AS (SELECT * FROM klines_data WHERE symbol in (SELECT symbol FROM firstWriteOfToken) AND interval LIKE '3m') " + "SELECT K.symbol, open_time, open_price, high_price, low_price, close_price, close_time, F.approve_time, F.longOrShort, F.price_when_approved FROM klines K " + "JOIN firstWriteOfToken F ON K.symbol = F.symbol " + "WHERE K.open_time = (SELECT MAX(open_time) FROM klines WHERE symbol = K.symbol) ORDER BY K.symbol asc";
+        String query = "SELECT symbol, longOrShort, MIN(approve_time), price_when_approved FROM historic_approved_tokens where approve_time BETWEEN " + time1 + " AND " + time2 + " group by symbol, longOrShort order by symbol, approve_time asc";
         Log.i(TAG,query);
         data = sqLiteDatabase.rawQuery(query, null);
-//
-//        }
+        return data;
+    }
+
+    public Cursor firstAppearOfTokenInCertainTimeV2(String name, long time1, long time2) {
+        SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
+        Cursor data;
+        String query = "SELECT symbol, MAX(high_price), MIN(low_price) FROM klines_data where open_time BETWEEN " + time1 + " AND " + time2 + " and interval = '15m' and symbol = '" + name + "'";
+        Log.i(TAG,query);
+        data = sqLiteDatabase.rawQuery(query, null);
+        return data;
+    }
+
+    public Cursor maxOrMinPriceForSymbolInCertainTimeAndInterval(String name, long time1, long time2, boolean isItLong, String interval) {
+        SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
+        Cursor data;
+        String query;
+        if (isItLong) {
+            query = "SELECT symbol, MAX(high_price), close_time FROM klines_data where close_time BETWEEN " + time1 + " AND " + time2 + " and interval = '" + interval + "' and symbol = '" + name + "'";
+        } else {
+            query = "SELECT symbol, MIN(low_price), close_time FROM klines_data where close_time BETWEEN " + time1 + " AND " + time2 + " and interval = '" + interval + "' and symbol = '" + name + "'";
+        }
+        Log.i(TAG,query);
+        data = sqLiteDatabase.rawQuery(query, null);
         return data;
     }
 

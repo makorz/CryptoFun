@@ -26,11 +26,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.cryptofun.R;
-import com.example.cryptofun.data.ApprovedToken;
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.data.database.Kline;
 import com.example.cryptofun.databinding.FragmentSettingsBinding;
-import com.example.cryptofun.services.ServiceFunctions;
+import com.example.cryptofun.services.ServiceFunctionsAPI;
+import com.example.cryptofun.services.ServiceFunctionsOther;
 import com.example.cryptofun.ui.settings.infoBox.PagerAdapter;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
@@ -60,7 +60,6 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
-import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -220,17 +219,19 @@ public class SettingsFragment extends Fragment {
 
             Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
             List<String> listOfSymbols = new ArrayList<>();
+            data.moveToFirst();
             if (data.getCount() == 0) {
                 Log.e(TAG, "Table " + TABLE_SYMBOL_AVG + " is empty. [settingsFragment]");
             } else {
                 data.moveToFirst();
-                while (data.moveToNext()) {
+                do {
                     listOfSymbols.add(data.getString(0));
-                }
+                } while (data.moveToNext());
                 for (int i = 0; i < listOfSymbols.size(); i++) {
                     countBestCryptoToBuy(listOfSymbols.get(i));
                 }
             }
+            data.close();
         });
 
 
@@ -296,8 +297,8 @@ public class SettingsFragment extends Fragment {
             int nrOfParams = 0;
 
             if (!margin.equals("") && margin.matches("\\d+")) {
-                if (Integer.parseInt(margin) > 100 || Integer.parseInt(margin) < 0) {
-                    Toast.makeText(getContext(), "Margin should be between 0 and 100", Toast.LENGTH_SHORT).show();
+                if (Integer.parseInt(margin) >= 25 || Integer.parseInt(margin) < 2) {
+                    Toast.makeText(getContext(), "Margin should be between 0 and 25", Toast.LENGTH_SHORT).show();
                 } else {
                     String add = "Margin: " + margin + "\n\n";
                     finalMessage += add;
@@ -315,7 +316,7 @@ public class SettingsFragment extends Fragment {
             }
             if (!takeP.equals("")) {
                 if (Float.parseFloat(takeP) > 50 || Float.parseFloat(takeP) < 0) {
-                    Toast.makeText(getContext(), "TakeProfit should be between 0 and 100", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "TakeProfit should be between 0 and 50", Toast.LENGTH_SHORT).show();
                 } else {
                     String add = "TakeProfit: " + takeP + "\n\n";
                     finalMessage += add;
@@ -559,10 +560,10 @@ public class SettingsFragment extends Fragment {
         List<Integer> statusOf4hKlines = new ArrayList<>();
 
         Cursor data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol);
+        data.moveToFirst();
+        if (data.getCount() > 0) {
 
-        if (data.getCount() >= 0) {
-
-            while (data.moveToNext()) {
+            do {
 
                 Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
                         data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
@@ -584,7 +585,7 @@ public class SettingsFragment extends Fragment {
                     default:
                         break;
                 }
-            }
+            } while (data.moveToNext());
         }
 
         data.close();
@@ -594,7 +595,7 @@ public class SettingsFragment extends Fragment {
 
         String info = "STRATEGY TESTS: " + symbol + " - " + "STRATEGY:\n" + strategy3m + "\n" + strategy15m;
         Log.e(TAG, info);
-        ServiceFunctions.writeToFile(info, getContext(), "strategy");
+        ServiceFunctionsOther.writeToFile(info, getContext(), "strategy");
 
 
     }
@@ -608,7 +609,7 @@ public class SettingsFragment extends Fragment {
         // Load the klines into the time series
         for (int i = 0; i < klines.size(); i++) {
 
-            if (i > 0 && klines.get(i).gettCloseTime() <= klines.get(i-1).gettCloseTime()) {
+            if (i > 0 && klines.get(i).gettCloseTime() <= klines.get(i - 1).gettCloseTime()) {
                 break;
             }
             long endTimeMillis = klines.get(i).gettCloseTime();
@@ -637,13 +638,12 @@ public class SettingsFragment extends Fragment {
         AnalysisCriterion total = new GrossReturnCriterion();
         Strategy bestStrategy = vsBuyAndHold.chooseBest(seriesManager, Arrays.asList(strategy1, strategy2));
 
-        if(tradingRecord1.getPositionCount() == 0 && tradingRecord2.getPositionCount() == 0) {
+        if (tradingRecord1.getPositionCount() == 0 && tradingRecord2.getPositionCount() == 0) {
             return "NO POSITIONS";
         } else {
             return "NrPositions: " + tradingRecord1.getPositionCount() + ", " + tradingRecord2.getPositionCount() + " Profit: " + vsBuyAndHold.calculate(series, tradingRecord1) + ", " + vsBuyAndHold.calculate(series, tradingRecord2)
                     + " Total: " + total.calculate(series, tradingRecord1) + ", " + total.calculate(series, tradingRecord2) + " BEST: " + bestStrategy.getName();
         }
-
 
 
     }

@@ -91,9 +91,9 @@ public class MainActivity extends AppCompatActivity {
             ProgressBar loadingBar = binding.loaderOfData;
             loadingBar.setVisibility(View.VISIBLE);
 
-            Intent serviceIntent = new Intent(this,
+            Intent serviceIntent = new Intent(MainActivity.this,
                     CreatingDatabaseService.class);
-            startForegroundService(serviceIntent);
+            MainActivity.this.startForegroundService(serviceIntent);
 
         }
 
@@ -134,10 +134,9 @@ public class MainActivity extends AppCompatActivity {
             if (intent.getAction().equals("DB_updated") && DBCreated) {
 
                 if (!isMyServiceRunning(ApprovingService.class)) {
-                    Intent serviceIntent = new Intent(getApplicationContext(),
-                            ApprovingService.class);
+                    Intent serviceIntent = new Intent(MainActivity.this, ApprovingService.class);
                     Log.e(TAG, "APRVServiceBegin - UPD");
-                    getApplicationContext().startForegroundService(serviceIntent);
+                    MainActivity.this.startForegroundService(serviceIntent);
                 }
 
                 TextView timeView = binding.textMain;
@@ -154,14 +153,14 @@ public class MainActivity extends AppCompatActivity {
 
                 if (!isMyServiceRunning(UpdatingDatabaseService.class)) {
                     Log.e(TAG, "UPDServiceBegin - CRT");
-                    Intent serviceIntent = new Intent(getApplicationContext(), UpdatingDatabaseService.class);
-                    getApplicationContext().startForegroundService(serviceIntent);
+                    Intent serviceIntent = new Intent(MainActivity.this, UpdatingDatabaseService.class);
+                    MainActivity.this.startForegroundService(serviceIntent);
                 }
 
                 if (!isMyServiceRunning(ApprovingService.class)) {
                     Log.e(TAG, "APRVServiceBegin - CRT");
-                    Intent serviceIntent = new Intent(getApplicationContext(), ApprovingService.class);
-                    getApplicationContext().startForegroundService(serviceIntent);
+                    Intent serviceIntent = new Intent(MainActivity.this, ApprovingService.class);
+                    MainActivity.this.startForegroundService(serviceIntent);
                 }
 
                 AlarmReceiverLoopingService alarm = new AlarmReceiverLoopingService();
@@ -180,8 +179,8 @@ public class MainActivity extends AppCompatActivity {
                 loadingBar.setVisibility(View.GONE);
 
                 if (!isMyServiceRunning(OrdersService.class)) {
-                    Intent serviceIntent = new Intent(getApplicationContext(),OrdersService.class);
-                    getApplicationContext().startForegroundService(serviceIntent);
+                    Intent serviceIntent = new Intent(MainActivity.this,OrdersService.class);
+                    MainActivity.this.startForegroundService(serviceIntent);
                 }
 
                 if (active == fragment0) {
@@ -202,8 +201,8 @@ public class MainActivity extends AppCompatActivity {
                                 return true;
                             case R.id.navigation_dashboard:
                                 if (!isMyServiceRunning(OrdersService.class) && !isMyServiceRunning(ApprovingService.class) && !isMyServiceRunning(UpdatingDatabaseService.class)) {
-                                    Intent serviceIntent = new Intent(getApplicationContext(), OrdersService.class);
-                                    getApplicationContext().startForegroundService(serviceIntent);
+                                    Intent serviceIntent = new Intent(MainActivity.this, OrdersService.class);
+                                    MainActivity.this.startForegroundService(serviceIntent);
 
                                 }
                                 fm.beginTransaction().hide(active).show(fragment2).commitAllowingStateLoss();
@@ -211,8 +210,8 @@ public class MainActivity extends AppCompatActivity {
                                 return true;
                             case R.id.navigation_notifications:
                                 if (!isMyServiceRunning(OrdersService.class) && !isMyServiceRunning(ApprovingService.class) && !isMyServiceRunning(UpdatingDatabaseService.class)) {
-                                    Intent serviceIntent = new Intent(getApplicationContext(), OrdersService.class);
-                                    getApplicationContext().startForegroundService(serviceIntent);
+                                    Intent serviceIntent = new Intent(MainActivity.this, OrdersService.class);
+                                    MainActivity.this.startForegroundService(serviceIntent);
 
                                 }
                                 fm.beginTransaction().hide(active).show(fragment3).commitAllowingStateLoss();

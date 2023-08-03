@@ -19,10 +19,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.cryptofun.R;
 import com.example.cryptofun.data.DeleteOrderData;
 import com.example.cryptofun.data.database.DBHandler;
-import com.example.cryptofun.databinding.CardViewOrder2Binding;
 import com.example.cryptofun.databinding.CardViewOrderBinding;
 import com.example.cryptofun.services.CallbackButton;
-import com.example.cryptofun.services.ServiceFunctions;
+import com.example.cryptofun.services.ServiceFunctionsAPI;
 
 import java.text.DateFormat;
 import java.text.DecimalFormat;
@@ -317,11 +316,13 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
 
                         long orderId = items.get(position).getOrderID();
 
-                        ServiceFunctions.deleteOrder(items.get(position).getSymbol(), orderId, System.currentTimeMillis(),  context, callbackButton);
+                        Log.e(TAG, items.get(position).toString());
+
+                        ServiceFunctionsAPI.deleteOrder(items.get(position).getSymbol(), orderId, System.currentTimeMillis(),  context, callbackButton);
 
                     } else if (items.get(position).getOrderType().equals("MARKET")) {
-
-                        ServiceFunctions.getPositions(items.get(position).getSymbol(), System.currentTimeMillis(), context, items.get(position), callbackButton, false);
+                        Log.e(TAG, "GetPositionToCancelStarted: " + items.get(position).toString() + " " + callbackButton.toString());
+                        ServiceFunctionsAPI.getPositions(items.get(position).getSymbol(), System.currentTimeMillis(), context, items.get(position), callbackButton, false);
 
                     }
 
@@ -350,18 +351,18 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
     @Override
     public void onSuccess() {
         if (deleteData != null) {
-            Log.e(TAG, "DELETED FOR REAL ACCOUNT: " + deleteData.getSymbol());
+            Log.e(TAG, "DELETED FOR REAL ACCOUNT: " + deleteData);
             databaseDB.deleteOrder(deleteData.getSymbol(), deleteData.getTime(), deleteData.getIsItReal(), deleteData.getIsItShort(), deleteData.getIsItMargin());
             deleteItem(deleteData.getPosition());
         } else {
-            Log.e(TAG, "NOT DELETED" + deleteData.getSymbol());
+            Log.e(TAG, "NOT DELETED " + deleteData.getSymbol());
         }
 
     }
 
     @Override
     public void onError() {
-
+        Log.e(TAG, "ERROR RECEIVED from CALLBACK");
     }
 
     private void deleteItem(int position) {

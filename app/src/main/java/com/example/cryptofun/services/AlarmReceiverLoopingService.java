@@ -34,14 +34,13 @@ public class AlarmReceiverLoopingService extends BroadcastReceiver {
         if (!isMyServiceRunning(UpdatingDatabaseService.class, context)) {
             Log.e(TAG, "Start service UPD");
             context.startForegroundService(in);
+        } else {
+            if (!isMyServiceRunning(ApprovingService.class, context)) {
+                Log.e(TAG, "Start service APRV");
+                Intent serviceIntent = new Intent(context, ApprovingService.class);
+                context.startForegroundService(serviceIntent);
+            }
         }
-
-        if (!isMyServiceRunning(ApprovingService.class, context)) {
-            Log.e(TAG, "Start service APRV");
-            Intent serviceIntent = new Intent(context, ApprovingService.class);
-            context.startForegroundService(serviceIntent);
-        }
-
         setAlarm(context, 1);
     }
 
