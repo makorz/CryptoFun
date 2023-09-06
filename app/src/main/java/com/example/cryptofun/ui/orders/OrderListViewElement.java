@@ -181,10 +181,6 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
         this.timeWhenPlaced = timeWhenPlaced;
     }
 
-//    @Override
-//    public int compareTo(OrderListViewElement element) {
-//        return this.getTimeWhenPlaced().compareTo(element.getTimeWhenPlaced());
-
 
     @Override
     public int compareTo(OrderListViewElement element) {

@@ -141,12 +141,12 @@ public class ApprovingService extends Service {
     public void approvingCryptos() {
 
         long fourteenHours = 50400000;
-        //Wait one minute before entering
-        long oneMinute = 60000;
-        long threeAndHalfMinute = 210000;
+        //Wait two minutes before entering
+        long halfMinute = 30000;
+        long fourMinutes = 240000;
 
-        last14HoursTokensStat = getListOfSymbolsAccordingToProvidedTime(fourteenHours, oneMinute);
-        last3MinutesTokensStat = getListOfSymbolsAccordingToProvidedTime(threeAndHalfMinute, oneMinute);
+        last14HoursTokensStat = getListOfSymbolsAccordingToProvidedTime(fourteenHours, halfMinute); //oneMinute
+        last3MinutesTokensStat = getListOfSymbolsAccordingToProvidedTime(fourMinutes, halfMinute); //oneMinute
 
         Log.e(TAG, "list3mTokensSize: " + last3MinutesTokensStat.size());
 
@@ -287,29 +287,24 @@ public class ApprovingService extends Service {
             }
             data.close();
 
-            float underPercentage = percentU0 + percentU1 + percentU2;
-            float underPercentage2 = percentU0 + percentU1;
-            float overPercentage = percentO0 + percentO1 + percentO2;
-            float overPercentage2 = percentO0 + percentO2;
             boolean isItGoodForShort = false;
             boolean isItGoodForLong = false;
-
             if (percentages.size() > 6) {
                 isItGoodForLong = isPercentageInFavor(percentages, 0);
                 isItGoodForShort = isPercentageInFavor(percentages, 1);
                 databaseDB.clearHistoricPercentages(now - halfHour);
             }
 
-            String infoOfOrder = "LEVEL3: AutomaticTest: " + isAutomaticForTestEnabled + " AutomaticReal: " + isAutomaticForRealEnabled + " Percentage Favor(long, short): " + isItGoodForLong + " " + isItGoodForShort + " ListSize(Long, Short): " + cryptoForLONGOrders.size() + " " + cryptoForSHORTOrders.size() + " Under: " + percentU0 + "% " + percentU1 + "% " + percentU2 + " Over: " + percentO0 + "% " + percentO1 + "% " + percentO2 + "%";
+            String infoOfOrder = "LEVEL 3 AutomaticTest: " + isAutomaticForTestEnabled + " AutomaticReal: " + isAutomaticForRealEnabled + " Percentage Favor(long, short): " + isItGoodForLong + " " + isItGoodForShort + " ListSize(Long, Short): " + cryptoForLONGOrders.size() + " " + cryptoForSHORTOrders.size() + " Under: " + percentU0 + "% " + percentU1 + "% " + percentU2 + " Over: " + percentO0 + "% " + percentO1 + "% " + percentO2 + "%";
             Log.e(TAG, infoOfOrder);
             ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
 
-            if (cryptoForSHORTOrders.size() > cryptoForLONGOrders.size()) { // && isItGoodForShort       && percentU5 < 20 && percentU2 > 5 && underPercentage > overPercentage + 10  && percentU2 < 10 && underPercentage2 > 58 //cryptoForLONGOrders.size() + 1
+            if (cryptoForSHORTOrders.size() > cryptoForLONGOrders.size()){ //&& isItGoodForShort) { // && isItGoodForShort       && percentU5 < 20 && percentU2 > 5 && underPercentage > overPercentage + 10  && percentU2 < 10 && underPercentage2 > 58 //cryptoForLONGOrders.size() + 1
                 serviceFinishedEverything++;
                 automaticOrdersFunction(cryptoForSHORTOrders, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
 
 
-            } else if (cryptoForLONGOrders.size() > cryptoForSHORTOrders.size()) { //   // && isItGoodForLong      && percentO5 < 20 && percentO2 > 5 && underPercentage + 10 < overPercentage && percentO2 < 10 && overPercentage2 > 58
+            } else if (cryptoForLONGOrders.size() > cryptoForSHORTOrders.size()){ //&& isItGoodForLong) { //   // && isItGoodForLong      && percentO5 < 20 && percentO2 > 5 && underPercentage + 10 < overPercentage && percentO2 < 10 && overPercentage2 > 58
                 serviceFinishedEverything++;
                 automaticOrdersFunction(cryptoForLONGOrders, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
 
@@ -354,7 +349,7 @@ public class ApprovingService extends Service {
                 float maxMinPrice2 = 0;
                 long closeTimeMaxMin = 0;
 
-                Log.e(TAG, "APPROVE SERVICE1 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
+                Log.e(TAG, "1 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
                         + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin));
                 // Because we are taking open_time ant interval 15 m, we need to take at least one Kline for start from approvetime
                 Cursor data2;
@@ -373,7 +368,7 @@ public class ApprovingService extends Service {
                 }
                 data2.close();
 
-                Log.e(TAG, "APPROVE SERVICE2 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
+                Log.e(TAG, "2 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
                         + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin));
 
                 if (currentTime - approveTime < 900000) {
@@ -402,7 +397,7 @@ public class ApprovingService extends Service {
                         returnList.add(new ListViewElement(symbol, percentOfChange, percentOfChange2, approvedPrice, date, isItLong));
                     }
 
-                    Log.e(TAG, "APPROVE SERVICE3 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
+                    Log.e(TAG, "3 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
                             + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin));
                 }
             } while (data.moveToNext());
@@ -413,9 +408,9 @@ public class ApprovingService extends Service {
             Log.e(TAG, "Nothing good in DB");
             //returnList.add(new ListViewElement("Nothing good", 0, 0, "", true));
         } else {
-            Collections.sort(returnList, new Comparator<ListViewElement>() {
+            returnList.sort(new Comparator<ListViewElement>() {
                 public int compare(ListViewElement o1, ListViewElement o2) {
-                    return Float.compare(o2.getPercentChange(), o1.getPercentChange());
+                    return Float.compare(o1.getPercentChange(), o2.getPercentChange());
                 }
             });
         }
@@ -578,9 +573,9 @@ public class ApprovingService extends Service {
                     Random random = new Random();
                     // Generate a random index that has not been used before
                     int index = random.nextInt(listOfCryptosToTry.size());
-                    String indexText = "Random test index: " + index + " size: " + listOfCryptosToTry.size();
-                    Log.e(TAG, indexText);
-                    ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "orders");
+//                    String indexText = "Random test index: " + index + " size: " + listOfCryptosToTry.size();
+//                    Log.e(TAG, indexText);
+//                    ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "orders");
 
                     // Get the element at the random index
                     ListViewElement randomElement = listOfCryptosToTry.get(index);
@@ -629,7 +624,7 @@ public class ApprovingService extends Service {
                                     public void onNext(@NonNull MarkPrice markPrice) {
 
                                         // handle the MarkPrice object returned by the API
-                                        String infoOfOrder = "LEVEL5 (ORDER): " + randomElement.getText() + " EntryAmount$: " + entryAmount + " AccountNr: " + (finalI + 1) + " Leverage: " + margin + " isItShort: " + isItShort + " MarkPrice: " + markPrice.getMarkPrice();
+                                        String infoOfOrder = "LEVEL 4 [" + randomElement.getText() + "] " + " MarkPrice: " + markPrice.getMarkPrice() + " EntryAmount$: " + entryAmount + " AccountNr: " + (finalI + 1) + " Leverage: " + margin + " isItShort: " + isItShort ;
                                         Log.e(TAG, infoOfOrder);
                                         ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
                                         ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "orders");
@@ -662,9 +657,36 @@ public class ApprovingService extends Service {
         }
 
 
+        //Check how many orders can Ybe according to account balance
+        int nrOfOrders;
+        float multiplierOfAccountBalance;
+        if (realAccountBalance > 12 && realAccountBalance <= 21){
+            nrOfOrders = 2;
+            multiplierOfAccountBalance = 0.48f;
+        } else if (realAccountBalance > 21 && realAccountBalance <= 100) {
+            nrOfOrders = 3;
+            multiplierOfAccountBalance = 0.33f;
+        } else if (realAccountBalance > 100 && realAccountBalance <= 750) {
+            nrOfOrders = 4;
+            multiplierOfAccountBalance = 0.24f;
+        } else if (realAccountBalance > 750 && realAccountBalance <= 4000) {
+            nrOfOrders = 5;
+            multiplierOfAccountBalance = 0.19f;
+        } else if (realAccountBalance > 4000 && realAccountBalance <= 12500) {
+            nrOfOrders = 6;
+            multiplierOfAccountBalance = 0.15f;
+        } else if (realAccountBalance > 12500) {
+            nrOfOrders = 7;
+            multiplierOfAccountBalance = 0.13f;
+        } else {
+            nrOfOrders = 1;
+            multiplierOfAccountBalance = 0.98f;
+        }
+
+
         data = databaseDB.retrieveActiveOrdersOnAccount(1, "MARKET", 1);
-        if (data.getCount() < 2 && isAutomaticRealEnabled == 1) { ///!!!!!!!
-            Log.e(TAG, "No order for REAL account.");
+        if (data.getCount() <= nrOfOrders && isAutomaticRealEnabled == 1) { ///!!!!!!!
+            //Log.e(TAG, "No order for REAL account.");
             Log.e(TAG, currentOrders.toString());
 
             if (realAccountBalance > 5) {
@@ -672,9 +694,9 @@ public class ApprovingService extends Service {
                 //Generate a random index that has not been used before
                 Random random = new Random();
                 int index = random.nextInt(listOfCryptosToTry.size());
-                String indexText = "Random real index: " + index + " size: " + listOfCryptosToTry.size();
-                Log.e(TAG, indexText);
-                ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "orders");
+//                String indexText = "Random real index: " + index + " size: " + listOfCryptosToTry.size();
+//                Log.e(TAG, indexText);
+//                ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "orders");
 
                 // Get the element at the random index
                 ListViewElement randomElement = listOfCryptosToTry.get(index);
@@ -689,7 +711,7 @@ public class ApprovingService extends Service {
 
                 }
 
-                int entryAmount = (int) (realAccountBalance * 0.98);
+                int entryAmount = (int) (realAccountBalance * (multiplierOfAccountBalance * 1 + (data.getCount()/10)));
                 boolean isItShort;
                 isItShort = !randomElement.isItLONG();
 
@@ -707,8 +729,7 @@ public class ApprovingService extends Service {
                                 @Override
                                 public void onNext(@NonNull MarkPrice markPrice) {
                                     // handle the MarkPrice object returned by the API
-                                    String infoOfOrder = "LEVEL5 (ORDER): " + randomElement.getText() + " EntryAmount$: " + entryAmount + " AccountNr: REAL Leverage: " + margin + " isItShort: " + isItShort + " MarkPrice: " + markPrice.getMarkPrice();
-
+                                    String infoOfOrder = "LEVEL 4 [" + randomElement.getText() + "] " + " MarkPrice: " + markPrice.getMarkPrice() + " EntryAmount$: " + entryAmount + " AccountNr: REAL Leverage: " + margin + " isItShort: " + isItShort ;
                                     Log.e(TAG, infoOfOrder);
                                     ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
                                     ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "orders");
@@ -730,8 +751,6 @@ public class ApprovingService extends Service {
                                 }
                             });
                 }
-
-
             }
         } else {
             Log.e(TAG, "There is active order on REAL account ");

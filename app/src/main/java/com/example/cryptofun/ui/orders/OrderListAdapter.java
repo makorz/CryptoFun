@@ -313,17 +313,11 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
                     deleteData = new DeleteOrderData(items.get(position).getSymbol(), items.get(position).getTimeWhenPlaced(), items.get(position).getIsItReal(), items.get(position).getIsItShort(), items.get(position).getMargin(), position);
 
                     if(items.get(position).getOrderType().equals("TAKE_PROFIT_MARKET") || items.get(position).getOrderType().equals("STOP_MARKET")) {
-
-                        long orderId = items.get(position).getOrderID();
-
                         Log.e(TAG, items.get(position).toString());
-
-                        ServiceFunctionsAPI.deleteOrder(items.get(position).getSymbol(), orderId, System.currentTimeMillis(),  context, callbackButton);
-
+                        ServiceFunctionsAPI.deleteOrder(items.get(position), System.currentTimeMillis(),  context, callbackButton);
                     } else if (items.get(position).getOrderType().equals("MARKET")) {
                         Log.e(TAG, "GetPositionToCancelStarted: " + items.get(position).toString() + " " + callbackButton.toString());
                         ServiceFunctionsAPI.getPositions(items.get(position).getSymbol(), System.currentTimeMillis(), context, items.get(position), callbackButton, false);
-
                     }
 
                 } else {

@@ -203,7 +203,6 @@
 
             </LinearLayout>
 
-
             <LinearLayout
                 android:id="@+id/sixthLinear"
                 android:layout_width="match_parent"
@@ -347,17 +346,45 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/eightLinear">
 
-<!--                <TextView-->
-<!--                    android:id="@+id/tv_reset_test_balance"-->
-<!--                    android:layout_width="0dp"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:layout_marginStart="20dp"-->
-<!--                    android:layout_marginTop="0dp"-->
-<!--                    android:layout_marginEnd="20dp"-->
-<!--                    android:layout_marginBottom="0dp"-->
-<!--                    android:layout_weight="2"-->
-<!--                    android:text="Reset test balance:"-->
-<!--                    android:textSize="14sp" />-->
+
+                <TextView
+                    android:id="@+id/tv_choose_strategy"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="2"
+                    android:text="Choose strategy (default -> 1):"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_strategy"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="(from 1 to 4)"
+                    android:inputType="number"
+                    android:textSize="14sp" />
+
+
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tenthLinear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthLinear">
+
 
                 <Button
                     android:id="@+id/bt_show_keys"
@@ -386,29 +413,17 @@
                     android:textSize="12sp" />
 
 
-
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/tenthLinear"
+                android:id="@+id/eleventhLinear"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/ninthLinear">
+                app:layout_constraintTop_toBottomOf="@id/tenthLinear">
 
-<!--                <TextView-->
-<!--                    android:id="@+id/tv_reset_automatic_test_balance"-->
-<!--                    android:layout_width="0dp"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:layout_marginStart="20dp"-->
-<!--                    android:layout_marginTop="0dp"-->
-<!--                    android:layout_marginEnd="20dp"-->
-<!--                    android:layout_marginBottom="0dp"-->
-<!--                    android:layout_weight="2"-->
-<!--                    android:text="Reset automatic test balance:"-->
-<!--                    android:textSize="14sp" />-->
                 <Button
                     android:id="@+id/bt_reset_test_balance"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -437,19 +452,17 @@
                     android:textColor="@color/red"
                     android:textSize="12sp" />
 
-
-
-
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/eleventhLinear"
+                android:id="@+id/twelfthLinear"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="200dp"
                 android:orientation="horizontal"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tenthLinear">
+                app:layout_constraintTop_toBottomOf="@id/eleventhLinear"
+                app:layout_constraintBottom_toTopOf="@id/lastLinear">
 
                 <Button
                     android:id="@+id/bt_checkAccountInfo"
@@ -464,18 +477,6 @@
                     android:layout_weight="1"
                     android:text="ACCOUNT INFO"
                     android:textSize="12sp" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/twelfthLinear"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:orientation="horizontal"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/eleventhLinear"
-                app:layout_constraintBottom_toTopOf="@id/lastLinear">
 
             </LinearLayout>
 

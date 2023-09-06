@@ -3,7 +3,9 @@ package com.example.cryptofun.services;
 import android.content.Context;
 import android.database.Cursor;
 import android.util.Log;
+
 import androidx.annotation.NonNull;
+
 import com.example.cryptofun.data.AccountBalance;
 import com.example.cryptofun.data.AccountInfo;
 import com.example.cryptofun.data.Leverage;
@@ -16,8 +18,10 @@ import com.example.cryptofun.retrofit.RetrofitClientSecretTestnet;
 import com.example.cryptofun.ui.orders.OrderListViewElement;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -25,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -357,44 +362,6 @@ public class ServiceFunctionsAPI {
 
     }
 
-    //1 - for step, 0 for tick
-    public static String formatFloatForSymbol(String symbol, float value, int stepOrTick, Context context) {
-
-        DecimalFormat format = null;
-        DBHandler databaseDB = DBHandler.getInstance(context);
-        // Find the symbol in the list of symbols
-        Cursor data = databaseDB.retrieveSymbolInfo(symbol);
-        if (data.getCount() == 0) {
-            Log.e("F: formatFloatForSymbol", "There is no symbol info for " + symbol);
-        } else {
-            data.moveToFirst();
-
-            int decimalPlaces;
-            if (stepOrTick == 1) {
-                decimalPlaces = getDecimalPlaces(data.getString(4));
-            } else {
-                decimalPlaces = getDecimalPlaces(data.getString(3));
-            }
-            // Create a decimal format pattern that matches the tick and step sizes
-            String pattern = "0.";
-            for (int i = 0; i < decimalPlaces; i++) {
-                pattern += "0";
-            }
-
-            if (!pattern.contains(".0") || decimalPlaces == 1) {
-                pattern = "#";
-            }
-
-            Log.e("F: formatFloatForSymbol", "Decimal places: " + decimalPlaces + " pattern: " + pattern);
-            // Create the decimal format using the pattern
-            format = new DecimalFormat(pattern);
-
-        }
-        data.close();
-        // Format the value using the decimal format
-        return format != null ? format.format(value) : String.valueOf(value);
-    }
-
     public static int getDecimalPlaces(String value) {
         int index = value.indexOf(".");
         return index < 0 ? 0 : value.length() - index - 1;
@@ -539,74 +506,6 @@ public class ServiceFunctionsAPI {
 
     }
 
-    public static void deleteOrder(String symbol, long orderId, long timestamp, Context context, CallbackButton callbackButton) {
-
-        long recvWindow = 10000;
-
-        DBHandler databaseDB = DBHandler.getInstance(context);
-
-        Cursor data = databaseDB.retrieveParam(14);
-        if (data.getCount() == 0) {
-            Log.e("F: makeOrderFunction", "There is no param nr 14");
-        } else {
-            data.moveToFirst();
-            recvWindow = data.getInt(3);
-        }
-        data.close();
-
-        Call<RealOrder> call = RetrofitClientSecretTestnet.getInstance(context, 5, symbol, 0, "", "", "", "", "0", "0", "",
-                        orderId, "", "0", recvWindow, timestamp)
-                .getMyApi().deleteOrder(symbol, orderId, recvWindow, timestamp);
-
-        Log.e("F: deleteOrder", call.request().toString());
-
-        call.enqueue(new Callback<RealOrder>() {
-            @Override
-            public void onResponse(@NonNull Call<RealOrder> call, @NonNull Response<RealOrder> response) {
-
-                if (response.body() != null) {
-                    if (response.isSuccessful()) {
-                        RealOrder realOrder = response.body();
-                        Log.e("F: deleteOrder", "ORDER HAS BEEN CANCELED: " + realOrder);
-
-                        if (callbackButton != null) {
-                            callbackButton.onSuccess();
-                        }
-
-                    } else {
-                        System.out.println(response.code() + " " + response.message());
-                    }
-                } else if (response.errorBody() != null) {
-                    String errorBody;
-                    try {
-                        errorBody = symbol + " " + convertErrorBodyToJson(response.errorBody().string());
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    Log.e("F: deleteOrder", errorBody);
-                    //Toast.makeText(context.getApplicationContext(), errorBody, //Toast.LENGTH_SHORT).show();
-                    ServiceFunctionsOther.writeToFile(errorBody, context, "orders");
-                    if (callbackButton != null && !errorBody.contains("-2011")) {
-                        callbackButton.onError();
-                    } else if (callbackButton != null) {
-                        callbackButton.onSuccess();
-                    }
-                }
-            }
-
-            @Override
-            public void onFailure(@NonNull Call<RealOrder> call, @NonNull Throwable t) {
-                System.out.println("An error has occurred" + t);
-                Log.e("F: deleteOrder", String.valueOf(t));
-                if (callbackButton != null) {
-                    callbackButton.onError();
-                }
-            }
-
-        });
-
-    }
-
     public static void updateStopLimitForOrder(String symbol, long orderId, String side, String type, String newOrderRespType, float stopPrice, String closePosition, long previousOrderTimeStamp, long timestamp, long recvWindow, Context context, OrderListViewElement orderElement, CallbackButton callbackButton) {
         Log.e("F: updateStopLimitForOrder", orderId + " " + orderElement.getOrderID());
 
@@ -727,6 +626,77 @@ public class ServiceFunctionsAPI {
 
     }
 
+    public static void deleteOrder(OrderListViewElement orderElement, long timestamp, Context context, CallbackButton callbackButton) {
+
+        long recvWindow = 10000;
+
+        DBHandler databaseDB = DBHandler.getInstance(context);
+
+        Cursor data = databaseDB.retrieveParam(14);
+        if (data.getCount() == 0) {
+            Log.e("F: makeOrderFunction", "There is no param nr 14");
+        } else {
+            data.moveToFirst();
+            recvWindow = data.getInt(3);
+        }
+        data.close();
+
+        Call<RealOrder> call = RetrofitClientSecretTestnet.getInstance(context, 5, orderElement.getSymbol(), 0, "", "", "", "", "0", "0", "",
+                        orderElement.getOrderID(), "", "0", recvWindow, timestamp)
+                .getMyApi().deleteOrder(orderElement.getSymbol(), orderElement.getOrderID(), recvWindow, timestamp);
+
+        Log.e("F: deleteOrder", call.request().toString());
+
+        call.enqueue(new Callback<RealOrder>() {
+            @Override
+            public void onResponse(@NonNull Call<RealOrder> call, @NonNull Response<RealOrder> response) {
+
+                if (response.body() != null) {
+                    if (response.isSuccessful()) {
+                        RealOrder realOrder = response.body();
+                        Log.e("F: deleteOrder", "ORDER HAS BEEN CANCELED: " + realOrder);
+
+                        if (callbackButton != null) {
+                            callbackButton.onSuccess();
+                        } else {
+                            databaseDB.deleteOrder(orderElement.getSymbol(), orderElement.getTimeWhenPlaced(), 1,
+                                    orderElement.getIsItShort(), orderElement.getMargin());
+                        }
+
+                    } else {
+                        System.out.println(response.code() + " " + response.message());
+                    }
+                } else if (response.errorBody() != null) {
+                    String errorBody;
+                    try {
+                        errorBody = orderElement.getSymbol() + " " + convertErrorBodyToJson(response.errorBody().string());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    Log.e("F: deleteOrder", errorBody);
+                    //Toast.makeText(context.getApplicationContext(), errorBody, //Toast.LENGTH_SHORT).show();
+                    ServiceFunctionsOther.writeToFile(errorBody, context, "orders");
+                    if (callbackButton != null && !errorBody.contains("-2011")) {
+                        callbackButton.onError();
+                    } else if (callbackButton != null) {
+                        callbackButton.onSuccess();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<RealOrder> call, @NonNull Throwable t) {
+                System.out.println("An error has occurred" + t);
+                Log.e("F: deleteOrder", String.valueOf(t));
+                if (callbackButton != null) {
+                    callbackButton.onError();
+                }
+            }
+
+        });
+
+    }
+
     public static void getAllOrders(long timestamp, Context context, ArrayList<OrderListViewElement> returnList) {
 
         long recvWindow = 10000;
@@ -762,18 +732,19 @@ public class ServiceFunctionsAPI {
                         if (returnList != null) {
 
                             List<OrderListViewElement> localMarketOrders = new ArrayList<>();
+                            List<OrderListViewElement> localTPandSLOrders = new ArrayList<>();
                             List<OrderListViewElement> testMarketOrders = new ArrayList<>();
                             List<Long> localOrderIDofStopAndTake = new ArrayList<>();
                             List<Long> remoteOrderIDofStopAndTake = new ArrayList<>();
                             ArrayList<RealOrder> remoteOrdersFull = new ArrayList<>();
 
-                            // Create lists to analyze
+                            // Create lists to analyze - from local DB
                             for (OrderListViewElement order : returnList) {
-
                                 if (order.getIsItReal() == 1) {
                                     Log.e("F: getAllOrders", "LOCAL: " + order);
                                     if (order.getOrderType().equals("TAKE_PROFIT_MARKET") || order.getOrderType().equals("STOP_MARKET")) {
                                         localOrderIDofStopAndTake.add(order.getOrderID());
+                                        localTPandSLOrders.add(order);
                                     } else {
                                         localMarketOrders.add(order);
                                     }
@@ -782,11 +753,27 @@ public class ServiceFunctionsAPI {
                                 }
                             }
 
+                            //Remove TP i SL if there is no longer MARKET order
+                            for (OrderListViewElement orderTPandSL : localTPandSLOrders) {
+                                boolean thereIsAMarketOrderForThatSymbol = false;
+                                for (OrderListViewElement orderMarket : localMarketOrders) {
+                                    if (orderTPandSL.getSymbol().equals(orderMarket.getSymbol()) && orderMarket.getOrderType().equals("MARKET")){
+                                        thereIsAMarketOrderForThatSymbol = true;
+                                    }
+                                }
+                                if (!thereIsAMarketOrderForThatSymbol) {
+                                    Log.e("F: getAllOrders", "DELETE TP/SL if there is no MARKET: " + orderTPandSL);
+                                    deleteOrder(orderTPandSL, System.currentTimeMillis(), context.getApplicationContext(), null);
+                                }
+
+                            }
+
+                            // Create lists to analyze - from remote API account
                             for (JsonObject jsonObject : responseBody) {
                                 RealOrder order = gson.fromJson(jsonObject, RealOrder.class);
                                 remoteOrderIDofStopAndTake.add(order.getOrderId());
                                 remoteOrdersFull.add(order);
-                                Log.e("F: getAllOrders","REMOTE: " + order);
+                                Log.e("F: getAllOrders", "REMOTE: " + order);
                             }
 
                             // Check if there are duplicate OrdersID locally
@@ -815,7 +802,7 @@ public class ServiceFunctionsAPI {
                             // Perform a specific action with the duplicate objects
                             for (OrderListViewElement duplicate : duplicates) {
                                 Log.e("F: getAllOrders", "DUPLICATE TESTSc: " + duplicate);
-                                 databaseDB.deleteOrder(duplicate.getSymbol(), duplicate.getTimeWhenPlaced(), duplicate.getIsItReal(), duplicate.getIsItShort(), duplicate.getMargin());
+                                databaseDB.deleteOrder(duplicate.getSymbol(), duplicate.getTimeWhenPlaced(), duplicate.getIsItReal(), duplicate.getIsItShort(), duplicate.getMargin());
                             }
 
                             // Now, uniqueSet contains the list without duplicates
@@ -824,12 +811,12 @@ public class ServiceFunctionsAPI {
                             // Check if there are missing values from local in remote
                             for (Long item : localOrderIDofStopAndTake) {
                                 if (!remoteOrderIDofStopAndTake.contains(item)) {
-                                    Log.e("F: getAllOrders", "OrderID"  + item + " is missing from remote List");
+                                    Log.e("F: getAllOrders", "OrderID" + item + " is missing from remote List");
 
                                     for (OrderListViewElement wrongOrder : returnList) {
 
                                         if (wrongOrder.getOrderID() == item) {
-                                            Log.e("F: getAllOrders", "DELETE of WRONG LOCAL ORDER:" + wrongOrder);
+                                            Log.e("F: getAllOrders", "DELETE of WRONG LOCAL ORDER: " + wrongOrder);
                                             databaseDB.deleteOrder(wrongOrder.getSymbol(), wrongOrder.getTimeWhenPlaced(), wrongOrder.getIsItReal(), wrongOrder.getIsItShort(), wrongOrder.getMargin());
 
                                         }
@@ -875,6 +862,119 @@ public class ServiceFunctionsAPI {
             public void onFailure(@NonNull Call<List<JsonObject>> call, @NonNull Throwable t) {
                 System.out.println("An error has occurred" + t);
                 Log.e("F: getAllOrders", String.valueOf(t));
+            }
+
+        });
+
+    }
+
+    public static void getPositions(String symbol, long timestamp, Context context, OrderListViewElement orderToCheckAndDelete, CallbackButton callbackButton, boolean checkBetweenRemoteAndLocal) {
+
+        long recvWindow = 10000;
+
+        DBHandler databaseDB = DBHandler.getInstance(context);
+
+        Cursor data = databaseDB.retrieveParam(14);
+        if (data.getCount() == 0) {
+            Log.e("F: getPositions", "There is no param nr 14");
+        } else {
+            data.moveToFirst();
+            recvWindow = data.getInt(3);
+        }
+        data.close();
+
+        Call<List<PositionRisk>> call = RetrofitClientSecretTestnet.getInstance(context, 7, symbol, 0, "", "", "", "", "0", "0", "",
+                        0, "", "0", recvWindow, timestamp)
+                .getMyApi().positionsInfo(symbol, recvWindow, timestamp);
+
+        Log.e("F: getPositions", call.request().toString());
+
+        call.enqueue(new Callback<List<PositionRisk>>() {
+            @Override
+            public void onResponse(@NonNull Call<List<PositionRisk>> call, @NonNull Response<List<PositionRisk>> response) {
+
+                if (response.body() != null) {
+                    if (response.isSuccessful()) {
+                        List<PositionRisk> responseBody = response.body();
+
+                        PositionRisk positionForSymbol = null;
+                        for (int i = 0; i < responseBody.size(); i++) {
+                            if (responseBody.get(i).getSymbol().equals(symbol)) {
+                                positionForSymbol = responseBody.get(i);
+                            }
+                        }
+
+                        assert positionForSymbol != null;
+                        Log.e("F: getPositions", positionForSymbol.toString());
+
+                        if (!checkBetweenRemoteAndLocal) {
+
+                            if ((positionForSymbol.getPositionAmt() > 0 || positionForSymbol.getPositionAmt() < 0) && orderToCheckAndDelete != null) {
+                                Log.e("F: getPositions", orderToCheckAndDelete + " MARKET ORDER REAL TO DELETE");
+
+                                //TO CANCEL ORDER IN REAL MARKET WE NEED TO DO OPPOSITE ACTION WITH SAME AMOUNT OF CRYPTO
+                                String side = orderToCheckAndDelete.getIsItShort() == 1 ? "BUY" : "SELL";
+                                //Opposite side when closing
+                                boolean isItShortCancelOrder = orderToCheckAndDelete.getIsItShort() != 1;
+
+                                setMarketOrderToCancelCurrentOrder(symbol, side, "MARKET", "RESULT", orderToCheckAndDelete.getQuantity(), System.currentTimeMillis(),
+                                        0, 0, 0, 0, 0, isItShortCancelOrder, false, context, callbackButton, orderToCheckAndDelete);
+
+                            } else if (orderToCheckAndDelete != null) {
+                                Log.e("F: getPositions", orderToCheckAndDelete + " MARKET ORDER TEST TO DELETE");
+
+                                if (callbackButton != null) {
+                                    callbackButton.onSuccess();
+                                } else {
+                                    databaseDB.deleteOrder(symbol, orderToCheckAndDelete.getTimeWhenPlaced(), 1,
+                                            orderToCheckAndDelete.getIsItShort(), orderToCheckAndDelete.getMargin());
+                                }
+                            }
+
+                        } else if (positionForSymbol.getPositionAmt() == 0) {
+                            databaseDB.deleteOrder(symbol, orderToCheckAndDelete.getTimeWhenPlaced(), 1,
+                                    orderToCheckAndDelete.getIsItShort(), orderToCheckAndDelete.getMargin());
+                        }
+
+
+// Log all of response
+//                        String all = "";
+//                        for(int i = 0; i < responseBody.size(); i++) {
+//                            all += responseBody.get(i).toString();
+//                        }
+//
+//                        int length = all.length();
+//                        int startIndex = 0;
+//                        int endIndex = Math.min(startIndex + 1000, length);
+//
+//                        while (startIndex < length) {
+//                            String chunk = all.substring(startIndex, endIndex);
+//                            Log.d("F: getPositions", chunk);
+//
+//                            startIndex = endIndex;
+//                            endIndex = Math.min(startIndex + 1000, length);
+//                        }
+
+
+                    } else {
+                        System.out.println(response.code() + " " + response.message());
+                    }
+                } else if (response.errorBody() != null) {
+                    String errorBody = "";
+                    try {
+                        errorBody = convertErrorBodyToJson(response.errorBody().string());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    Log.e("F: getPositions", errorBody);
+                }
+            }
+
+
+            @Override
+            public void onFailure(@NonNull Call<List<PositionRisk>> call, @NonNull Throwable t) {
+                System.out.println("An error has occurred" + t);
+                Log.e("F: getPositions", String.valueOf(t));
             }
 
         });
@@ -970,119 +1070,6 @@ public class ServiceFunctionsAPI {
 
     }
 
-    public static void getPositions(String symbol, long timestamp, Context context, OrderListViewElement orderToCheckAndDelete, CallbackButton callbackButton, boolean checkBetweenRemoteAndLocal) {
-
-        long recvWindow = 10000;
-
-        DBHandler databaseDB = DBHandler.getInstance(context);
-
-        Cursor data = databaseDB.retrieveParam(14);
-        if (data.getCount() == 0) {
-            Log.e("F: getPositions", "There is no param nr 14");
-        } else {
-            data.moveToFirst();
-            recvWindow = data.getInt(3);
-        }
-        data.close();
-
-        Call<List<PositionRisk>> call = RetrofitClientSecretTestnet.getInstance(context, 7, symbol, 0, "", "", "", "", "0", "0", "",
-                        0, "", "0", recvWindow, timestamp)
-                .getMyApi().positionsInfo(symbol, recvWindow, timestamp);
-
-        Log.e("F: getPositions", call.request().toString());
-
-        call.enqueue(new Callback<List<PositionRisk>>() {
-            @Override
-            public void onResponse(@NonNull Call<List<PositionRisk>> call, @NonNull Response<List<PositionRisk>> response) {
-
-                if (response.body() != null) {
-                    if (response.isSuccessful()) {
-                        List<PositionRisk> responseBody = response.body();
-
-                        PositionRisk positionForSymbol = null;
-                        for (int i = 0; i < responseBody.size(); i++) {
-                            if (responseBody.get(i).getSymbol().equals(symbol)) {
-                                positionForSymbol = responseBody.get(i);
-                            }
-                        }
-
-                        assert positionForSymbol != null;
-                        Log.e("F: getPositions", positionForSymbol.toString());
-
-                        if (!checkBetweenRemoteAndLocal) {
-
-                            if ((positionForSymbol.getPositionAmt() > 0 || positionForSymbol.getPositionAmt() < 0 ) && orderToCheckAndDelete != null) {
-                                Log.e("F: getPositions", orderToCheckAndDelete + " MARKET ORDER REAL TO DELETE");
-
-                                //TO CANCEL ORDER IN REAL MARKET WE NEED TO DO OPPOSITE ACTION WITH SAME AMOUNT OF CRYPTO
-                                String side = orderToCheckAndDelete.getIsItShort() == 1 ? "BUY" : "SELL";
-                                //Opposite side when closing
-                                boolean isItShortCancelOrder = orderToCheckAndDelete.getIsItShort() != 1;
-
-                                setMarketOrderToCancelCurrentOrder(symbol, side, "MARKET", "RESULT", orderToCheckAndDelete.getQuantity(), System.currentTimeMillis(),
-                                        0, 0, 0, 0, 0, isItShortCancelOrder, false, context, callbackButton, orderToCheckAndDelete);
-
-                            } else if (orderToCheckAndDelete != null) {
-                                Log.e("F: getPositions", orderToCheckAndDelete + " MARKET ORDER TEST TO DELETE");
-
-                                if (callbackButton != null) {
-                                    callbackButton.onSuccess();
-                                } else {
-                                    databaseDB.deleteOrder(symbol, orderToCheckAndDelete.getTimeWhenPlaced(), 1,
-                                            orderToCheckAndDelete.getIsItShort(), orderToCheckAndDelete.getMargin());
-                                }
-                            }
-
-                        } else if (positionForSymbol.getPositionAmt() == 0) {
-                            databaseDB.deleteOrder(symbol, orderToCheckAndDelete.getTimeWhenPlaced(), 1,
-                                    orderToCheckAndDelete.getIsItShort(), orderToCheckAndDelete.getMargin());
-                        }
-
-
-// Log all of response
-//                        String all = "";
-//                        for(int i = 0; i < responseBody.size(); i++) {
-//                            all += responseBody.get(i).toString();
-//                        }
-//
-//                        int length = all.length();
-//                        int startIndex = 0;
-//                        int endIndex = Math.min(startIndex + 1000, length);
-//
-//                        while (startIndex < length) {
-//                            String chunk = all.substring(startIndex, endIndex);
-//                            Log.d("F: getPositions", chunk);
-//
-//                            startIndex = endIndex;
-//                            endIndex = Math.min(startIndex + 1000, length);
-//                        }
-
-
-                    } else {
-                        System.out.println(response.code() + " " + response.message());
-                    }
-                } else if (response.errorBody() != null) {
-                    String errorBody = "";
-                    try {
-                        errorBody = convertErrorBodyToJson(response.errorBody().string());
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    Log.e("F: getPositions", errorBody);
-                }
-            }
-
-
-            @Override
-            public void onFailure(@NonNull Call<List<PositionRisk>> call, @NonNull Throwable t) {
-                System.out.println("An error has occurred" + t);
-                Log.e("F: getPositions", String.valueOf(t));
-            }
-
-        });
-
-    }
-
     public static String convertErrorBodyToJson(String errorBody) {
         try {
             JSONObject jsonObject = new JSONObject(errorBody);
@@ -1096,6 +1083,45 @@ public class ServiceFunctionsAPI {
             return "Error: Unable to parse error response.";
         }
     }
+
+    //1 - for step, 0 for tick
+    public static String formatFloatForSymbol(String symbol, float value, int stepOrTick, Context context) {
+
+        DecimalFormat format = null;
+        DBHandler databaseDB = DBHandler.getInstance(context);
+        // Find the symbol in the list of symbols
+        Cursor data = databaseDB.retrieveSymbolInfo(symbol);
+        if (data.getCount() == 0) {
+            Log.e("F: formatFloatForSymbol", "There is no symbol info for " + symbol);
+        } else {
+            data.moveToFirst();
+
+            int decimalPlaces;
+            if (stepOrTick == 1) {
+                decimalPlaces = getDecimalPlaces(data.getString(4));
+            } else {
+                decimalPlaces = getDecimalPlaces(data.getString(3));
+            }
+            // Create a decimal format pattern that matches the tick and step sizes
+            String pattern = "0.";
+            for (int i = 0; i < decimalPlaces; i++) {
+                pattern += "0";
+            }
+
+            if (!pattern.contains(".0") || decimalPlaces == 1) {
+                pattern = "#";
+            }
+
+            Log.e("F: formatFloatForSymbol", "Decimal places: " + decimalPlaces + " pattern: " + pattern);
+            // Create the decimal format using the pattern
+            format = new DecimalFormat(pattern);
+
+        }
+        data.close();
+        // Format the value using the decimal format
+        return format != null ? format.format(value) : String.valueOf(value);
+    }
+
 
 
 }
