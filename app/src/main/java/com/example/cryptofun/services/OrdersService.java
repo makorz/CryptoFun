@@ -12,6 +12,7 @@ import android.util.Log;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.example.cryptofun.data.database.DBHandler;
+import com.example.cryptofun.data.database.Kline;
 import com.example.cryptofun.ui.orders.OrderListViewElement;
 
 import java.io.Serializable;
@@ -19,6 +20,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
 public class OrdersService extends Service implements CallbackButton {
 
@@ -28,6 +30,7 @@ public class OrdersService extends Service implements CallbackButton {
     private Handler handler;
     private static final String TABLE_NAME_ORDERS = "current_orders";
     private static final String TABLE_NAME_CONFIG = "config";
+    private static final String TABLE_NAME_KLINES_DATA = "klines_data";
     private static final String VALUE_REAL = "value_real";
     private static final String ID = "id";
     private static final String CURRENT_PRICE = "current_price";
@@ -151,7 +154,9 @@ public class OrdersService extends Service implements CallbackButton {
                     long orderTime = returnList.get(i).getTimeWhenPlaced();
                     long minutes45 = 2700000;
                     long eightHours = 28800000;
+                    long twelveHours = 43200000;
                     long tenHours = 36000000;
+                    long threeHours = 10800000;
                     long minutes15 = 900000;
                     long halfHour = 1800000;
 
@@ -160,52 +165,212 @@ public class OrdersService extends Service implements CallbackButton {
                     Log.e(TAG, infoOfOrder);
                     ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
 
+                    int strategyNr;
+                    data = databaseDB.retrieveParam(17);
+                    if (data.getCount() == 0) {
+                        Log.e(TAG, "There is no param nr 17");
+                        strategyNr = 1;
+                    } else {
+                        data.moveToFirst();
+                        strategyNr = data.getInt(3);
+                    }
+                    data.close();
+
                     int whatToDoWithSL = 0;
                     long timeSinceEntry = System.currentTimeMillis() - returnList.get(i).getTimeWhenPlaced();
-                    float percentOfPriceChangeToReact = 0.6f;
+                    float percentOfPriceChangeToReact, stopLossValue, multiplier, stopLimitPrice;
 
-                    float stopLossValue = 0.65f;
-                    if ((percentNow >= 1.15 && percentNow < 2) || (percentNow <= -1.15 && percentNow > -2)) {
-                        stopLossValue = 0.5f;
-                    } else if ((percentNow >= 2) || (percentNow <= -2)) {
-                        stopLossValue = 0.35f;
-                    }
+                    if ( strategyNr == 2) {
 
-                    float multiplier;
-                    float stopLimitPrice;
+                        percentOfPriceChangeToReact = 0.75f;
+                        stopLossValue = 1.15f;
+                        if ((percentNow >= 1.45 && percentNow < 4) || (percentNow <= -1.45 && percentNow > -4)) {
+                            stopLossValue = 1f;
+                        } else if ((percentNow >= 4) || (percentNow <= -5)) {
+                            stopLossValue = 0.75f;
+                        }
 
-                    if (returnList.get(i).getIsItShort() == 1) {
+//                        stopLossValue = 1f;
+//                        if ((percentNow >= 3) || (percentNow <= -3)) {
+//                            stopLossValue = 0.75f;
+//                        }
 
-                        multiplier = 1 + stopLossValue / 100;
-                        stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
+                        if (returnList.get(i).getIsItShort() == 1) {
 
-                        if (price > returnList.get(i).getStopLimitPrice()) {
-                            whatToDoWithSL = 1;
-                        } else if (price < returnList.get(i).getTakeProfitPrice()) {
-                            whatToDoWithSL = 2;
-                        } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
-                            whatToDoWithSL = 3;
-                        } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
-                            whatToDoWithSL = 4;
-                        } else if (((orderTime + eightHours) < currentTime) && returnList.get(i).getEntryPrice() * 1.005 < returnList.get(i).getCurrentPrice()) {
-                            whatToDoWithSL = 9;
+                            multiplier = 1 + stopLossValue / 100;
+                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
+
+                            if (price > returnList.get(i).getStopLimitPrice()) {
+                                whatToDoWithSL = 1;
+                            } else if (price < returnList.get(i).getTakeProfitPrice()) {
+                                whatToDoWithSL = 2;
+                            }  else if (percentNow < -20 && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
+                                whatToDoWithSL = 3;
+                            } else if (percentNow < -20 && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
+                                whatToDoWithSL = 4;
+                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > eightHours && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
+                                whatToDoWithSL = 3;
+                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > eightHours && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
+                                whatToDoWithSL = 4;
+                            }
+
+                        } else {
+
+                            multiplier = 1 - stopLossValue / 100;
+                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
+
+                            if (price < returnList.get(i).getStopLimitPrice()) {
+                                whatToDoWithSL = 1;
+                            } else if (price > returnList.get(i).getTakeProfitPrice()) {
+                                whatToDoWithSL = 2;
+                            }  else if (percentNow > 20 && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
+                                whatToDoWithSL = 3;
+                            } else if (percentNow > 20 && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
+                                whatToDoWithSL = 4;
+                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > eightHours && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
+                                whatToDoWithSL = 3;
+                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > eightHours && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
+                                whatToDoWithSL = 4;
+                            }
+                        }
+
+                    } else if (strategyNr == 6 || strategyNr == 4) {
+
+                        percentOfPriceChangeToReact = 1.5f;
+                        stopLossValue = 2f;
+                        if ((percentNow > 1.5 && percentNow < 2) || (percentNow < -1.5 && percentNow > -2)) {
+                            stopLossValue = 1.75f;
+                        } else if ((percentNow >= 2 && percentNow < 3) || (percentNow <= -2 && percentNow > -3)) {
+                            stopLossValue = 1.25f;
+                        } else if ((percentNow >= 3) || (percentNow <= -3)) {
+                            stopLossValue = 1f;
+                        }
+
+                        if (returnList.get(i).getIsItShort() == 1) {
+
+                            multiplier = 1 + stopLossValue / 100;
+                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
+
+                            if (price > returnList.get(i).getStopLimitPrice()) {
+                                whatToDoWithSL = 1;
+                            } else if (price < returnList.get(i).getTakeProfitPrice()) {
+                                whatToDoWithSL = 2;
+                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
+                                whatToDoWithSL = 3;
+                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
+                                whatToDoWithSL = 4;
+                            }
+
+                        } else {
+
+                            multiplier = 1 - stopLossValue / 100;
+                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
+
+                            if (price < returnList.get(i).getStopLimitPrice()) {
+                                whatToDoWithSL = 1;
+                            } else if (price > returnList.get(i).getTakeProfitPrice()) {
+                                whatToDoWithSL = 2;
+                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious < percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
+                                whatToDoWithSL = 3;
+                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious < percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
+                                whatToDoWithSL = 4;
+                            }
+                        }
+
+                    } else if (strategyNr == 5) {
+
+                        List<Kline> coinKlines3m = new ArrayList<>();
+                        data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol);
+                        data.moveToFirst();
+                        if (data.getCount() > 0) {
+
+                            do {
+                                Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
+                                        data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
+
+                                String interval = tempKline.gettKlineInterval();
+                                if ("3m".equals(interval)) {
+                                    coinKlines3m.add(tempKline);
+                                }
+                            } while (data.moveToNext());
+                        }
+                        data.close();
+
+                        float offset = 1.0f;
+                        percentOfPriceChangeToReact = 1f;
+
+                        if (returnList.get(i).getIsItShort() == 1) {
+
+                            stopLimitPrice =  (float) ServiceFunctionsStrategyTa4J.getSARValue(coinKlines3m) * ((100f + offset)/100);
+
+                            if (price > returnList.get(i).getStopLimitPrice()) {
+                                whatToDoWithSL = 1;
+                            } else if (price < returnList.get(i).getTakeProfitPrice()) {
+                                whatToDoWithSL = 2;
+                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice > returnList.get(i).getCurrentPrice() && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                whatToDoWithSL = 3;
+                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice > returnList.get(i).getCurrentPrice() && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                whatToDoWithSL = 4;
+                            }
+
+                        } else {
+
+                            stopLimitPrice =  (float) ServiceFunctionsStrategyTa4J.getSARValue(coinKlines3m)  * ((100f - offset)/100);
+
+                            if (price < returnList.get(i).getStopLimitPrice()) {
+                                whatToDoWithSL = 1;
+                            } else if (price > returnList.get(i).getTakeProfitPrice()) {
+                                whatToDoWithSL = 2;
+                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice < returnList.get(i).getCurrentPrice() && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                whatToDoWithSL = 3;
+                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice < returnList.get(i).getCurrentPrice() && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                whatToDoWithSL = 4;
+                            }
                         }
 
                     } else {
 
-                        multiplier = 1 - stopLossValue / 100;
-                        stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
+                        percentOfPriceChangeToReact = 0.6f;
+                        stopLossValue = 0.65f;
+                        if ((percentNow >= 1.15 && percentNow < 2) || (percentNow <= -1.15 && percentNow > -2)) {
+                            stopLossValue = 0.5f;
+                        } else if ((percentNow >= 2) || (percentNow <= -2)) {
+                            stopLossValue = 0.35f;
+                        }
 
-                        if (price < returnList.get(i).getStopLimitPrice()) {
-                            whatToDoWithSL = 1;
-                        } else if (price > returnList.get(i).getTakeProfitPrice()) {
-                            whatToDoWithSL = 2;
-                        } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
-                            whatToDoWithSL = 3;
-                        } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
-                            whatToDoWithSL = 4;
-                        } else if (((orderTime + eightHours) < currentTime) && returnList.get(i).getEntryPrice() * 0.995 > returnList.get(i).getCurrentPrice()) {
-                            whatToDoWithSL = 9;
+                        if (returnList.get(i).getIsItShort() == 1) {
+
+                            multiplier = 1 + stopLossValue / 100;
+                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
+
+                            if (price > returnList.get(i).getStopLimitPrice()) {
+                                whatToDoWithSL = 1;
+                            } else if (price < returnList.get(i).getTakeProfitPrice()) {
+                                whatToDoWithSL = 2;
+                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
+                                whatToDoWithSL = 3;
+                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
+                                whatToDoWithSL = 4;
+                            } else if (((orderTime + eightHours) < currentTime) && returnList.get(i).getEntryPrice() * 1.005 < returnList.get(i).getCurrentPrice()) {
+                                whatToDoWithSL = 5;
+                            }
+
+                        } else {
+
+                            multiplier = 1 - stopLossValue / 100;
+                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
+
+                            if (price < returnList.get(i).getStopLimitPrice()) {
+                                whatToDoWithSL = 1;
+                            } else if (price > returnList.get(i).getTakeProfitPrice()) {
+                                whatToDoWithSL = 2;
+                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
+                                whatToDoWithSL = 3;
+                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
+                                whatToDoWithSL = 4;
+                            } else if (((orderTime + eightHours) < currentTime) && returnList.get(i).getEntryPrice() * 0.995 > returnList.get(i).getCurrentPrice()) {
+                                whatToDoWithSL = 5;
+                            }
                         }
                     }
 
@@ -278,159 +443,7 @@ public class OrdersService extends Service implements CallbackButton {
                             break;
                         default:
                             break;
-
                     }
-
-//                if (returnList.get(i).getIsItShort() == 1) {
-//
-//                    if (price > returnList.get(i).getStopLimitPrice()) {
-//                        returnList.get(i).setCurrentPrice(returnList.get(i).getStopLimitPrice());
-//
-//                        Log.e(TAG, "LEVEL8 STOP (SHORT): " + infoOfOrder);
-//                        ServiceFunctionsOther.writeToFile("LEVEL8 STOP (SHORT): " + infoOfOrder, getApplicationContext(), "result");
-//                        ServiceFunctionsOther.writeToFile("LEVEL8 STOP (SHORT): " + infoOfOrder, getApplicationContext(), "orders");
-//                        closeOrder(i, returnList);
-//
-//                    }
-//                    if (price < returnList.get(i).getTakeProfitPrice()) {
-//                        returnList.get(i).setCurrentPrice(returnList.get(i).getTakeProfitPrice());
-//
-//                        Log.e(TAG, "LEVEL8 TAKE (SHORT): " + infoOfOrder);
-//                        ServiceFunctionsOther.writeToFile("LEVEL8 TAKE (SHORT): " + infoOfOrder, getApplicationContext(), "result");
-//                        ServiceFunctionsOther.writeToFile("LEVEL8 TAKE (SHORT): " + infoOfOrder, getApplicationContext(), "orders");
-//                        closeOrder(i, returnList);
-//
-//                    }
-//                } else {
-//                    if (price < returnList.get(i).getStopLimitPrice()) {
-//                        returnList.get(i).setCurrentPrice(returnList.get(i).getStopLimitPrice());
-//
-//                        Log.e(TAG, "LEVEL8 STOP (LONG): " + infoOfOrder);
-//                        ServiceFunctionsOther.writeToFile("LEVEL8 STOP (LONG): " + infoOfOrder, getApplicationContext(), "result");
-//                        ServiceFunctionsOther.writeToFile("LEVEL8 STOP (LONG): " + infoOfOrder, getApplicationContext(), "orders");
-//                        closeOrder(i, returnList);
-//
-//                    }
-//                    if (price > returnList.get(i).getTakeProfitPrice()) {
-//                        returnList.get(i).setCurrentPrice(returnList.get(i).getTakeProfitPrice());
-//
-//                        Log.e(TAG, "LEVEL8 TAKE (LONG): " + infoOfOrder);
-//                        ServiceFunctionsOther.writeToFile("LEVEL8 TAKE (LONG): " + infoOfOrder, getApplicationContext(), "result");
-//                        ServiceFunctionsOther.writeToFile("LEVEL8 TAKE (LONG): " + infoOfOrder, getApplicationContext(), "orders");
-//                        closeOrder(i, returnList);
-//
-//
-//                    }
-//                }
-
-//                long timeSinceEntry = System.currentTimeMillis() - returnList.get(i).getTimeWhenPlaced();
-//                if (percentNow > 0.65 && timeSinceEntry > oneHour && returnList.get(i).getIsItShort() == 0 && returnList.get(i).getOrderType().equals("MARKET")) { //&& percentNow > percentPrevious
-//
-//                    Log.e(TAG, "LEVEL7(Previous SL - LONG): " + returnList.get(i).getStopLimitPrice());
-//                    float multiplier = 1 - stopLossValue / 100;
-//                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
-//
-//                    if (returnList.get(i).getIsItReal() == 0 && stopLimitPrice > returnList.get(i).getStopLimitPrice()) {
-//
-//                        returnList.get(i).setStopLimitPrice(stopLimitPrice);
-//                        databaseDB.updatePricesOfCryptoInOrder(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
-//                        Log.e(TAG, "LEVEL7(New SL - LONG - TEST): " + returnList.get(i).getStopLimitPrice());
-//
-//                    }
-//
-//                    if (returnList.get(i).getIsItReal() == 1 && stopLimitPrice > returnList.get(i).getStopLimitPrice()) {
-//
-//                        returnList.get(i).setStopLimitPrice(stopLimitPrice);
-//                        databaseDB.updatePricesOfCryptoInOrder(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
-//                        Log.e(TAG, "LEVEL7(New SL - LONG - REAL): " + returnList.get(i).getStopLimitPrice());
-//
-//                        boolean isThereStopLimitForThatSymbol = false;
-//                        long stopLimitOrderId = 0;
-//                        long timeOfStopLimitOrderPlacement = 0;
-//
-//                        for (int j = 0; j < returnList.size(); j++) {
-//
-//
-//                            if (returnList.get(j).getSymbol().equals(symbol) && returnList.get(j).getOrderType().equals("STOP_MARKET") && returnList.get(j).getIsItReal() == 1) {
-//                                isThereStopLimitForThatSymbol = true;
-//                                stopLimitOrderId = returnList.get(j).getOrderID();
-//                                timeOfStopLimitOrderPlacement = returnList.get(j).getTimeWhenPlaced();
-//                            }
-//
-//                        }
-//
-//                        if (isThereStopLimitForThatSymbol) {
-//                            Log.e(TAG, "LEVEL7(SL - NEW - START): " + stopLimitPrice);
-//                            ServiceFunctionsAPI.updateStopLimitForOrder(returnList.get(i).getSymbol(), stopLimitOrderId, "SELL", "STOP_MARKET", "RESULT", stopLimitPrice, "true", timeOfStopLimitOrderPlacement, System.currentTimeMillis(), 0, getApplicationContext(), returnList.get(i), null);
-//
-//                        } else {
-//                            Log.e(TAG, "LEVEL7(SL - NEW - START): " + stopLimitPrice);
-//                            ServiceFunctionsAPI.setStopLimitOrTakeProfitMarket(returnList.get(i).getSymbol(), "SELL", "STOP_MARKET", "RESULT", stopLimitPrice, "true", System.currentTimeMillis(), 0, returnList.get(i), getApplicationContext(), null);
-//
-//                        }
-//
-//                    }
-//                } else if (percentNow < -0.65 && timeSinceEntry > oneHour && percentPrevious > percentNow && returnList.get(i).getIsItShort() == 1 && returnList.get(i).getOrderType().equals("MARKET")) { //0.75
-//
-//                    Log.e(TAG, "LEVEL7(Previous SL - SHORT):" + returnList.get(i).getStopLimitPrice());
-//                    float multiplier = 1 + stopLossValue / 100;
-//                    float stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
-//
-//                    if (returnList.get(i).getIsItReal() == 0 && stopLimitPrice < returnList.get(i).getStopLimitPrice()) {
-//
-//                        returnList.get(i).setStopLimitPrice(stopLimitPrice);
-//                        databaseDB.updatePricesOfCryptoInOrder(returnList.get(i).getSymbol(), STOP_LIMIT, stopLimitPrice, returnList.get(i).getTimeWhenPlaced());
-//                        Log.e(TAG, "LEVEL7(New SL - SHORT - TEST): " + returnList.get(i).getStopLimitPrice());
-//
-//                    }
-//
-//                    if (returnList.get(i).getIsItReal() == 1 && stopLimitPrice < returnList.get(i).getStopLimitPrice()) {
-//
-//                        returnList.get(i).setStopLimitPrice(stopLimitPrice);
-//                        Log.e(TAG, "LEVEL7(New SL - SHORT - REAL): " + stopLimitPrice);
-//
-//                        boolean isThereStopLimitForThatSymbol = false;
-//                        long stopLimitOrderId = 0;
-//                        long timeOfStopLimitOrderPlacement = 0;
-//
-//                        for (int j = 0; j < returnList.size(); j++) {
-//
-//                            if (returnList.get(j).getSymbol().equals(symbol) && returnList.get(j).getOrderType().equals("STOP_MARKET") && returnList.get(j).getIsItReal() == 1) {
-//                                isThereStopLimitForThatSymbol = true;
-//                                stopLimitOrderId = returnList.get(j).getOrderID();
-//                                timeOfStopLimitOrderPlacement = returnList.get(j).getTimeWhenPlaced();
-//                            }
-//
-//                        }
-//
-//                        if (isThereStopLimitForThatSymbol) {
-//                            Log.e(TAG, "LEVEL7(SL - NEW - START): " + stopLimitPrice + " orderID: " + stopLimitOrderId);
-//                            ServiceFunctionsAPI.updateStopLimitForOrder(returnList.get(i).getSymbol(), stopLimitOrderId, "BUY", "STOP_MARKET", "RESULT", stopLimitPrice, "true", timeOfStopLimitOrderPlacement, System.currentTimeMillis(), 0, getApplicationContext(), returnList.get(i), null);
-//
-//                        } else {
-//                            Log.e(TAG, "LEVEL7(SL - NEW - START): " + stopLimitPrice + " orderID: " + stopLimitOrderId);
-//                            ServiceFunctionsAPI.setStopLimitOrTakeProfitMarket(returnList.get(i).getSymbol(), "BUY", "STOP_MARKET", "RESULT", stopLimitPrice, "true", System.currentTimeMillis(), 0, returnList.get(i), getApplicationContext(), null);
-//
-//                        }
-//                    }
-//                } else if (((orderTime + eightHours) < currentTime)
-//                        && returnList.get(i).getIsItShort() == 0
-//                        && returnList.get(i).getEntryPrice() * 0.995 > returnList.get(i).getCurrentPrice()
-//                ) {
-//                    Log.e(TAG, "LEVEL8 PASSED(LONG) " + infoOfOrder);
-//                    ServiceFunctionsOther.writeToFile("LEVEL8 PASSED(LONG) " + infoOfOrder, getApplicationContext(), "result");
-//                    ServiceFunctionsOther.writeToFile("LEVEL8 PASSED(LONG) " + infoOfOrder, getApplicationContext(), "orders");
-//                    closeOrder(i, returnList);
-//
-//                } else if (((orderTime + eightHours) < currentTime)
-//                        && returnList.get(i).getIsItShort() == 1
-//                        && returnList.get(i).getEntryPrice() * 1.005 < returnList.get(i).getCurrentPrice()
-//                ) {
-//                    Log.e(TAG, "LEVEL8 PASSED(SHORT) " + infoOfOrder);
-//                    ServiceFunctionsOther.writeToFile("LEVEL8 PASSED(SHORT) " + infoOfOrder, getApplicationContext(), "result");
-//                    ServiceFunctionsOther.writeToFile("LEVEL8 PASSED(SHORT) " + infoOfOrder, getApplicationContext(), "orders");
-//                    closeOrder(i, returnList);
-//                }
                 }
             }
             data2.close();

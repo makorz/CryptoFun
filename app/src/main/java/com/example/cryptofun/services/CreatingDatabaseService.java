@@ -89,7 +89,7 @@ public class CreatingDatabaseService extends Service {
 
         int LIMIT3m = 40;
         int LIMIT15m = 60;
-        int LIMIT4h = 20;
+        int LIMIT4h = 40;
         for (int i = 0; i < listOfSymbols.size(); i++) {
             // Make a collection of all requests you need to call at once, there can be any number of requests, not only 3. You can have 2 or 5, or 100.
             request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT15m, "15m"),
@@ -227,57 +227,7 @@ public class CreatingDatabaseService extends Service {
                             cryptoSymbolTickStep.add(new CryptoSymbolTickStep(tickSize, stepSize, tokenList.get(i).getSymbol()));
 
                         }
-
-                        if (tokenList.get(i).getSymbol().contains("BUSD") && tokenList.get(i).getStatus().equals("TRADING") && !tokenList.get(i).getSymbol().contains("USDT") && !tokenList.get(i).getSymbol().contains("_")  ) {
-                            List<FilterInfo> filters = tokenList.get(i).getFilters();
-
-                            // Iterate through the filters for each symbol
-                            for (FilterInfo filter : filters) {
-                                String filterType = filter.getFilterType();
-
-                                // Check if the filter type is what you're interested in
-                                if (filterType.equals("PRICE_FILTER")) {
-                                    tickSize = removeTrailingZeros(filter.getTickSize());
-                                } else if (filterType.equals("LOT_SIZE")) {
-                                    stepSize = removeTrailingZeros(filter.getStepSize());
-                                    // Do something with the stepSize, minQty, and maxQty data for this symbol
-                                }
-                            }
-
-                            cryptoSymbolTickStep.add(new CryptoSymbolTickStep(tickSize, stepSize, tokenList.get(i).getSymbol()));
-
-                        }
-
                     }
-
-                    ArrayList<CryptoSymbolTickStep> objectsToRemove = new ArrayList<>();
-                    Log.e(TAG, "List size before cut: " +  cryptoSymbolTickStep.size());
-
-                    for (CryptoSymbolTickStep cryptoSymbol : cryptoSymbolTickStep) {
-
-                        String symbol = cryptoSymbol.getSymbol();
-                        if (symbol.endsWith("BUSD")) {
-
-                            String symbolWithoutSuffix = symbol.substring(0, symbol.length() - 4); // Remove "BUSD" suffix
-
-                            // Check if there is a corresponding object with "BUSDT" suffix
-                            boolean hasCorrespondingObject = cryptoSymbolTickStep.stream()
-                                    .anyMatch(crypto -> crypto.getSymbol().equals(symbolWithoutSuffix + "USDT"));
-
-                            // If there is a corresponding object, add the current object to the objectsToRemove list
-                            if (hasCorrespondingObject) {
-                                objectsToRemove.add(cryptoSymbol);
-                            }
-                        }
-                    }
-
-                    cryptoSymbolTickStep.removeAll(objectsToRemove);
-
-                    Log.e(TAG, "List size after cut: " +  cryptoSymbolTickStep.size());
-
-//                    for (int i = 0; i < cryptoSymbolTickStep.size(); i++) {
-//                        Log.e(TAG, "2 " + cryptoSymbolTickStep.get(i).getSymbol() + " " + cryptoSymbolTickStep.get(i).getStepSize() + " " + cryptoSymbolTickStep.get(i).getTickSize());
-//                    }
 
                     for (int i = 0; i < cryptoSymbolTickStep.size(); i++) {
                         listOfSymbols.add(cryptoSymbolTickStep.get(i).getSymbol());

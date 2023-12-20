@@ -10,6 +10,7 @@ public class StrategyResultV2 {
     int passedEMA;
     int passedRSI;
 
+
     public StrategyResultV2(int passedMACD, int passedWT, int passedPPO, int passedADX, int passedAROON, int passedEMA, int passedRSI) {
         this.passedMACD = passedMACD;
         this.passedWT = passedWT;
@@ -19,7 +20,7 @@ public class StrategyResultV2 {
         this.passedEMA = passedEMA;
         this.passedRSI = passedRSI;
     }
-    
+
     public int getPassedMACD() {
         return passedMACD;
     }

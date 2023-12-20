@@ -25,12 +25,12 @@
         <TextView
             android:id="@+id/tv_real_number_balance"
             android:layout_width="match_parent"
-            android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
-            android:textAlignment="textEnd" />
+            android:layout_marginEnd="14dp"
+            android:textAlignment="textEnd"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:textSize="14sp" />
 
     </LinearLayout>
 
@@ -52,12 +52,12 @@
         <TextView
             android:id="@+id/tv_test_number_balance"
             android:layout_width="match_parent"
-            android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
-            android:textAlignment="textEnd" />
+            android:layout_marginEnd="14dp"
+            android:textAlignment="textEnd"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:textSize="14sp" />
 
     </LinearLayout>
 
@@ -80,12 +80,12 @@
         <TextView
             android:id="@+id/tv_test_number_balance1"
             android:layout_width="match_parent"
-            android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
-            android:textAlignment="textEnd" />
+            android:layout_marginEnd="14dp"
+            android:textAlignment="textEnd"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:textSize="14sp" />
 
     </LinearLayout>
 
@@ -107,12 +107,12 @@
         <TextView
             android:id="@+id/tv_test_number_balance2"
             android:layout_width="match_parent"
-            android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
-            android:textAlignment="textEnd" />
+            android:layout_marginEnd="14dp"
+            android:textAlignment="textEnd"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:textSize="14sp" />
 
 
     </LinearLayout>
@@ -135,12 +135,12 @@
         <TextView
             android:id="@+id/tv_test_number_balance3"
             android:layout_width="match_parent"
-            android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
-            android:textAlignment="textEnd" />
+            android:layout_marginEnd="14dp"
+            android:textAlignment="textEnd"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:textSize="14sp" />
 
 
     </LinearLayout>
@@ -163,12 +163,12 @@
         <TextView
             android:id="@+id/tv_test_number_balance4"
             android:layout_width="match_parent"
-            android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
-            android:textAlignment="textEnd" />
+            android:layout_marginEnd="14dp"
+            android:textAlignment="textEnd"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:textSize="14sp" />
 
 
     </LinearLayout>
@@ -191,12 +191,46 @@
         <TextView
             android:id="@+id/tv_test_number_balance5"
             android:layout_width="match_parent"
-            android:textAppearance="@style/TextAppearance.AppCompat.Title"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginEnd="14dp"
             android:layout_marginTop="14dp"
-            android:textAlignment="textEnd" />
+            android:layout_marginEnd="14dp"
+            android:textAlignment="textEnd"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            android:textSize="14sp" />
+
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_title_strategy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="14dp"
+            android:text="Available Strategies: "
+            android:textAlignment="center"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:textSize="14sp" />
+
+
+        <TextView
+            android:id="@+id/tv_strategiesList"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:layout_marginEnd="25dp"
+            android:ellipsize="marquee"
+            android:scrollHorizontally="true"
+            android:text="@string/strategyList"
+            android:textAlignment="textStart"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline5"
+            android:textSize="12sp" />
 
 
     </LinearLayout>
@@ -210,42 +244,42 @@
             android:id="@+id/title_log_real_orders"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAlignment="center"
-            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
             android:layout_marginStart="14dp"
             android:layout_marginTop="14dp"
             android:layout_marginEnd="14dp"
             android:text="Last 7 days order logs:"
+            android:textAlignment="center"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
             android:textSize="14sp" />
 
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="14dp"
-            android:layout_marginEnd="14dp"
-            android:layout_marginTop="14dp">
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="14dp">
 
             <ScrollView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content">
 
-            <TextView
-                android:id="@+id/tv_log_file"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="marquee"
-                android:scrollHorizontally="true"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Headline5"
-                android:textSize="12sp"
-                android:textAlignment="textStart" />
+                <TextView
+                    android:id="@+id/tv_log_file"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="marquee"
+                    android:scrollHorizontally="true"
+                    android:textAlignment="textStart"
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Headline5"
+                    android:textSize="12sp" />
 
-            </ScrollView>>
+            </ScrollView>
+            >
 
         </HorizontalScrollView>
 
 
     </LinearLayout>
-
 
 
 </LinearLayout>

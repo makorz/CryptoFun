@@ -1,9 +1,14 @@
 package com.example.cryptofun.data.database;
 
+import android.annotation.SuppressLint;
+
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 
 @Entity(tableName = "kline_data")
 public class Kline {
@@ -109,6 +114,16 @@ public class Kline {
 
     public String gettKlineInterval() {
         return tKlineInterval;
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+
+        @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("dd/MM/yyyy - HH:mm:ss");
+        return "Kline{symbol=" + tTokenSymbol + " openTime=" + df3.format(tOpenTime) + " openPrice=" + tOpenPrice + " highPrice=" + tHighPrice
+                + " lowPrice=" + tLowPrice + " closePrice=" + tClosePrice + " volume=" + tVolume
+                + " closePrice=" + tCloseTime + " nrOfTrades=" + tNumberOfTrades + '}';
     }
 
 }

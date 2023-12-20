@@ -36,6 +36,7 @@ import com.example.cryptofun.databinding.FragmentOrdersBinding;
 import com.example.cryptofun.services.CallbackButton;
 import com.example.cryptofun.services.ServiceFunctionsAPI;
 import com.example.cryptofun.retrofit.RetrofitClientFutures;
+import com.example.cryptofun.ui.home.GridViewElement;
 
 import java.util.ArrayList;
 
@@ -101,7 +102,8 @@ public class OrdersFragment extends Fragment implements CallbackButton {
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals("OrdersStatus")) {
                 Log.e(TAG, "APRVServiceReceived - Orders" + Thread.currentThread());
-                onReceiveNewList(adapter);
+                Bundle bundle = intent.getBundleExtra("bundleOrdersStatus");
+                onReceiveNewList(adapter, (ArrayList<OrderListViewElement>) bundle.getSerializable("ordersList"));
             }
         }
     };
@@ -288,32 +290,30 @@ public class OrdersFragment extends Fragment implements CallbackButton {
         }
     }
 
-    private boolean isMyServiceRunning(Class<?> serviceClass, Context context) {
-        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public void onReceiveNewList(OrderListAdapter adapter) {
+    public void onReceiveNewList(OrderListAdapter adapter, ArrayList<OrderListViewElement> receivedOrdersList) {
         ArrayList<OrderListViewElement> currentOrders = new ArrayList<>();
         DBHandler db = DBHandler.getInstance(getContext());
         Cursor data = db.retrieveAllFromTable(TABLE_NAME_ORDERS);
-        data.moveToFirst();
-        if (data.getCount() == 0) {
-            Log.e(TAG, "No active orders");
-        } else {
-            do {
-                OrderListViewElement tempToken = new OrderListViewElement(data.getString(1), data.getInt(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(9), data.getInt(8), data.getInt(11), data.getInt(10), data.getInt(12), data.getLong(13), data.getString(14), data.getFloat(15));
-                currentOrders.add(tempToken);
+        if (receivedOrdersList == null) {
+            data.moveToFirst();
+            if (data.getCount() == 0) {
+                Log.e(TAG, "No active orders, callback");
+            } else {
+                do {
+                    OrderListViewElement tempToken = new OrderListViewElement(data.getString(1), data.getInt(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(9), data.getInt(8), data.getInt(11), data.getInt(10), data.getInt(12), data.getLong(13), data.getString(14), data.getFloat(15));
+                    currentOrders.add(tempToken);
 
-            } while (data.moveToNext());
-            adapter.updateList(currentOrders);
+                } while (data.moveToNext());
+                Log.e(TAG, "Some active orders, callback " + currentOrders.size());
+                adapter.updateList(currentOrders);
+            }
+            data.close();
+        } else {
+            Log.e(TAG, "No callback " + receivedOrdersList.size());
+            adapter.updateList(receivedOrdersList);
         }
-        data.close();
+
+
     }
 
     private void showInfoForUser(Context context, String message) {
@@ -351,7 +351,7 @@ public class OrdersFragment extends Fragment implements CallbackButton {
             public void run() {
                 Log.e(TAG,"Callback returned");
                 setButtonEnabled(true);
-                onReceiveNewList(adapter);
+                onReceiveNewList(adapter, null);
 
             }
         });

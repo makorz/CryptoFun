@@ -15,15 +15,15 @@ public class ServiceFunctionsStrategyDefault {
 
         int volume = 0;
         float moneyInUSD = 0;
-        float openPriceSum = 0;
+        float closePriceSum = 0;
 
         for (int i = firstKline; i < lastKline; i++) {
-            openPriceSum += data.get(i).gettOpenPrice();
+            closePriceSum += data.get(i).gettClosePrice();
             volume += data.get(i).gettVolume();
         }
 
-        float averageOpenPrice = openPriceSum / (lastKline - firstKline);
-        moneyInUSD = averageOpenPrice * volume;
+        float averageClosePrice = closePriceSum / (lastKline - firstKline);
+        moneyInUSD = averageClosePrice * volume;
 
         return moneyInUSD;
 
@@ -124,18 +124,18 @@ public class ServiceFunctionsStrategyDefault {
         }
     }
 
-    public static double percentOfPriceChange(List<Kline> pastHourKlines) {
+    public static double percentOfPriceChange(List<Kline> klines) {
 
         // Compute the average price over the past hour
         double sumPrice = 0;
-        for (Kline kline : pastHourKlines) {
+        for (Kline kline : klines) {
             sumPrice += kline.gettClosePrice();
         }
-        double averagePrice = sumPrice / pastHourKlines.size();
+        double averagePrice = sumPrice / klines.size();
 
         // Compute the price change over the past hour as a percentage
-        double endPrice = pastHourKlines.get(0).gettClosePrice();
-        double startPrice = pastHourKlines.get(pastHourKlines.size() - 1).gettClosePrice();
+        double endPrice = klines.get(0).gettClosePrice();
+        double startPrice = klines.get(klines.size() - 1).gettClosePrice();
         double priceChange = ((endPrice - startPrice) / startPrice) * 100;
 
         //Log.e(TAG, "AVGPrice: " + averagePrice + " ENDPrice: " + endPrice + " PRICEChange: " + priceChange);
@@ -146,10 +146,8 @@ public class ServiceFunctionsStrategyDefault {
 
 
     // Function checks if provided status list function countBestCryptoToBuy matches required criteria / shortOrLong --> Long = 1, Short = 0
-    public static boolean isKlineApprovedForLongOrShort(List<Integer> sumOf3m, List<Integer> sumOf15m, int shortOrLong) {
-
-        int nrOfGreenKlines3m = 8; // 7
-        int nrOfGreenKlines15m = 3;  // 3
+    public static boolean isKlineApprovedForLongOrShort(List<Integer> sumOf3m, List<Integer> sumOf15m, int shortOrLong, int nrOfGreenKlines3m, int nrOfGreenKlines15m) {
+        // 3m - 7, 15m - 3
         boolean accepted3m = false;
         boolean accepted15m = false;
         int temp = 0;

@@ -48,6 +48,8 @@ public class ApprovingService extends Service {
     private static final String ID = "id";
     private static final String TABLE_NAME_CONFIG = "config";
     private static final String TABLE_NAME_ORDERS = "current_orders";
+    private static final String TABLE_NAME_APPROVED = "approved_tokens";
+    private static final String TABLE_NAME_APPROVED_HISTORIC = "historic_approved_tokens";
 
     int howManyNeedsToDo = 6;
     int serviceFinishedEverything = 0;
@@ -94,6 +96,12 @@ public class ApprovingService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.i(TAG, "DESTROY");
     }
 
     private void sendMessageToActivity() {
@@ -144,9 +152,10 @@ public class ApprovingService extends Service {
         //Wait two minutes before entering
         long halfMinute = 30000;
         long fourMinutes = 240000;
+        long twoMinutes = 120000;
 
-        last14HoursTokensStat = getListOfSymbolsAccordingToProvidedTime(fourteenHours, halfMinute); //oneMinute
-        last3MinutesTokensStat = getListOfSymbolsAccordingToProvidedTime(fourMinutes, halfMinute); //oneMinute
+        last14HoursTokensStat = getListOfSymbolsAccordingToProvidedTime(fourteenHours, 0, TABLE_NAME_APPROVED_HISTORIC); //oneMinute
+        last3MinutesTokensStat = getListOfSymbolsAccordingToProvidedTime(twoMinutes, 0, TABLE_NAME_APPROVED); //oneMinute
 
         Log.e(TAG, "list3mTokensSize: " + last3MinutesTokensStat.size());
 
@@ -320,14 +329,14 @@ public class ApprovingService extends Service {
 
     }
 
-    private ArrayList<ListViewElement> getListOfSymbolsAccordingToProvidedTime(long timeFrom, long timeTo) {
+    private ArrayList<ListViewElement> getListOfSymbolsAccordingToProvidedTime(long timeFrom, long timeTo, String tableName) {
 
         long currentTime = System.currentTimeMillis();
         ArrayList<ListViewElement> returnList = new ArrayList<>();
         @SuppressLint("SimpleDateFormat") DateFormat df = new SimpleDateFormat("HH:mm:ss - EEE, dd");
         @SuppressLint("SimpleDateFormat") DateFormat df2 = new SimpleDateFormat("HH:mm");
 
-        Cursor data = databaseDB.firstAppearOfTokenInCertainTimeV1(currentTime - timeFrom, currentTime - timeTo);
+        Cursor data = databaseDB.firstAppearOfTokenInCertainTimeV1(currentTime - timeFrom, currentTime - timeTo, tableName);
         data.moveToFirst();
         if (data.getCount() == 0) {
             Log.e(TAG, "Nothing in [historic_approved_tokens 1]");
@@ -350,13 +359,16 @@ public class ApprovingService extends Service {
                 long closeTimeMaxMin = 0;
 
                 Log.e(TAG, "1 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
-                        + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin));
+                        + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin) + " CurrentTime - ApprovedTime: " + (currentTime-approveTime));
+
+                long twoHours = 3600000;
+
                 // Because we are taking open_time ant interval 15 m, we need to take at least one Kline for start from approvetime
                 Cursor data2;
-                if (currentTime - approveTime < 900000) {
-                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime - 300000, currentTime - timeTo, isItLong, "3m");
+                if (currentTime - approveTime < twoHours) { //900000
+                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime, currentTime - timeTo, isItLong, "3m"); //approveTime - 300000
                 } else {
-                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime, currentTime - timeTo, isItLong, "15m");
+                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime + 900000, currentTime - timeTo, isItLong, "15m"); //Without + 900000
                 }
 
                 data2.moveToFirst();
@@ -371,10 +383,10 @@ public class ApprovingService extends Service {
                 Log.e(TAG, "2 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
                         + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin));
 
-                if (currentTime - approveTime < 900000) {
-                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime - 300000, closeTimeMaxMin, !isItLong, "3m");
+                if (currentTime - approveTime < twoHours) {
+                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime, closeTimeMaxMin, !isItLong, "3m");
                 } else {
-                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime, closeTimeMaxMin, !isItLong, "15m");
+                    data2 = databaseDB.maxOrMinPriceForSymbolInCertainTimeAndInterval(symbol, approveTime + 900000, closeTimeMaxMin, !isItLong, "15m"); //Without + 900000
                 }
 
                 data2.moveToFirst();
@@ -390,6 +402,8 @@ public class ApprovingService extends Service {
                     String date = df2.format(new Date(stamp.getTime()));
                     float percentOfChange = ((maxMinPrice / approvedPrice) * 100) - 100;
                     float percentOfChange2 = ((maxMinPrice2 / approvedPrice) * 100) - 100;
+
+                    //symbol = symbol.replace("USDT", "");
 
                     if (isItLong) {
                         returnList.add(new ListViewElement(symbol, percentOfChange, percentOfChange2, approvedPrice, date, isItLong));
@@ -410,7 +424,8 @@ public class ApprovingService extends Service {
         } else {
             returnList.sort(new Comparator<ListViewElement>() {
                 public int compare(ListViewElement o1, ListViewElement o2) {
-                    return Float.compare(o1.getPercentChange(), o2.getPercentChange());
+                    return o1.getTime().compareTo(o2.getTime());
+                    //return Float.compare(o1.getPercentChange(), o2.getPercentChange());
                 }
             });
         }
@@ -658,31 +673,18 @@ public class ApprovingService extends Service {
 
 
         //Check how many orders can Ybe according to account balance
-        int nrOfOrders;
-        float multiplierOfAccountBalance;
-        if (realAccountBalance > 12 && realAccountBalance <= 21){
-            nrOfOrders = 2;
-            multiplierOfAccountBalance = 0.48f;
-        } else if (realAccountBalance > 21 && realAccountBalance <= 100) {
-            nrOfOrders = 3;
-            multiplierOfAccountBalance = 0.33f;
-        } else if (realAccountBalance > 100 && realAccountBalance <= 750) {
+        int nrOfOrders = 3;
+        float multiplierOfAccountBalance = 0.65f;
+        if (realAccountBalance > 21 && realAccountBalance <= 100) {
             nrOfOrders = 4;
-            multiplierOfAccountBalance = 0.24f;
-        } else if (realAccountBalance > 750 && realAccountBalance <= 4000) {
+            multiplierOfAccountBalance = 0.5f;
+        } else if (realAccountBalance > 100 && realAccountBalance <= 750) {
             nrOfOrders = 5;
-            multiplierOfAccountBalance = 0.19f;
-        } else if (realAccountBalance > 4000 && realAccountBalance <= 12500) {
+            multiplierOfAccountBalance = 0.4f;
+        } else if (realAccountBalance > 750) {
             nrOfOrders = 6;
-            multiplierOfAccountBalance = 0.15f;
-        } else if (realAccountBalance > 12500) {
-            nrOfOrders = 7;
-            multiplierOfAccountBalance = 0.13f;
-        } else {
-            nrOfOrders = 1;
-            multiplierOfAccountBalance = 0.98f;
+            multiplierOfAccountBalance = 0.3f;
         }
-
 
         data = databaseDB.retrieveActiveOrdersOnAccount(1, "MARKET", 1);
         if (data.getCount() <= nrOfOrders && isAutomaticRealEnabled == 1) { ///!!!!!!!
@@ -831,10 +833,5 @@ public class ApprovingService extends Service {
         return bigVolume;
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Log.i(TAG, "DESTROY");
-    }
 
 }

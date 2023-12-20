@@ -146,7 +146,7 @@ public class DBHandler extends SQLiteOpenHelper {
                 values.put(TICK_SIZE, crypto.get(i).getTickSize());
                 values.put(STEP_SIZE, crypto.get(i).getStepSize());
                 db.insert(TABLE_SYMBOL_AVG, null, values);
-               // Log.e(TAG, values.toString());
+                // Log.e(TAG, values.toString());
             }
             // Commit the transaction
             db.setTransactionSuccessful();
@@ -339,7 +339,7 @@ public class DBHandler extends SQLiteOpenHelper {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         String query = "SELECT " + SYMBOL_CRYPTO + " FROM " + TABLE_SYMBOL_AVG;
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
-    //    Log.i(TAG, query);
+        //    Log.i(TAG, query);
         return data;
     }
 
@@ -347,7 +347,7 @@ public class DBHandler extends SQLiteOpenHelper {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         String query = "SELECT * FROM " + tableName;
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
-    //    Log.i(TAG, query);
+        //    Log.i(TAG, query);
         return data;
     }
 
@@ -371,7 +371,7 @@ public class DBHandler extends SQLiteOpenHelper {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         String query = "SELECT * FROM " + tableName + " ORDER BY " + TIME_APPROVED + " DESC";
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
-     //   Log.i(TAG, query);
+        //   Log.i(TAG, query);
         return data;
     }
 
@@ -379,14 +379,14 @@ public class DBHandler extends SQLiteOpenHelper {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         String query = "SELECT * FROM " + tableName + " WHERE " + SYMBOL_CRYPTO + " = '" + tokenSymbol + "' ORDER BY " + OPEN_TIME + " DESC";
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
-     //   Log.i(TAG, query);
+        //   Log.i(TAG, query);
         return data;
 
     }
 
     public Cursor retrieveActiveOrdersOnAccount(int accountNumber, String orderType, int isReal) {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
-        String query = "SELECT * FROM " + TABLE_NAME_ORDERS + " WHERE " + WHAT_ACCOUNT + " = " + accountNumber + " AND " + ORDER_TYPE + " = '" + orderType + "' AND " + IS_IT_REAL + " = " + isReal ;
+        String query = "SELECT * FROM " + TABLE_NAME_ORDERS + " WHERE " + WHAT_ACCOUNT + " = " + accountNumber + " AND " + ORDER_TYPE + " = '" + orderType + "' AND " + IS_IT_REAL + " = " + isReal;
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
         //   Log.i(TAG, query);
         return data;
@@ -397,7 +397,7 @@ public class DBHandler extends SQLiteOpenHelper {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         String query = "SELECT * FROM " + TABLE_NAME_CONFIG + " WHERE " + ID + " = " + id;
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
-     //   Log.i(TAG, query);
+        //   Log.i(TAG, query);
         return data;
     }
 
@@ -405,7 +405,7 @@ public class DBHandler extends SQLiteOpenHelper {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         String query = "SELECT * FROM " + TABLE_SYMBOL_AVG + " WHERE " + SYMBOL_CRYPTO + " = '" + symbol + "'";
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
-     //   Log.i(TAG, query);
+        //   Log.i(TAG, query);
         return data;
     }
 
@@ -413,15 +413,15 @@ public class DBHandler extends SQLiteOpenHelper {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         String query = "SELECT count(*) FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' and " + SYMBOL_CRYPTO + " = '" + symbol + "'";
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
-     //   Log.i(TAG, query);
+        //   Log.i(TAG, query);
         return data;
     }
 
     public Cursor retrieveLastCloseTime(String interval) {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
-        String query = "SELECT * FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' ORDER BY " + CLOSE_TIME + " DESC";
+        String query = "SELECT * FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' ORDER BY " + CLOSE_TIME + " DESC LIMIT 1";
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
-       //Log.i(TAG, query);
+        //Log.i(TAG, query);
         return data;
     }
 
@@ -429,7 +429,7 @@ public class DBHandler extends SQLiteOpenHelper {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         String query = "SELECT * FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '3m' and " + SYMBOL_CRYPTO + " = '" + symbol + "' ORDER BY " + CLOSE_TIME + " DESC";
         @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
-       // Log.i(TAG, query);
+        // Log.i(TAG, query);
         return data;
     }
 
@@ -438,7 +438,7 @@ public class DBHandler extends SQLiteOpenHelper {
         Cursor data;
         String query = "SELECT " + SYMBOL_CRYPTO + "," + VOLUME + "," + NUMBER_OF_TRADES + ", max(" + CLOSE_TIME + "), " + CLOSE_PRICE + ", (volume*close_price) as Dollars FROM "
                 + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' GROUP BY " + SYMBOL_CRYPTO + " ORDER BY Dollars DESC";
-      //  Log.i(TAG,query);
+        //  Log.i(TAG,query);
         data = db.rawQuery(query, null);
         return data;
     }
@@ -455,11 +455,23 @@ public class DBHandler extends SQLiteOpenHelper {
 //        return data;
 //    }
 
-    public Cursor firstAppearOfTokenInCertainTimeV1(long time1, long time2) {
+    public Cursor checkIfSymbolWasApprovedInCertainTime(String symbol, long time) {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         Cursor data;
-        String query = "SELECT symbol, longOrShort, MIN(approve_time), price_when_approved FROM historic_approved_tokens where approve_time BETWEEN " + time1 + " AND " + time2 + " group by symbol, longOrShort order by symbol, approve_time asc";
-        Log.i(TAG,query);
+        String query = "SELECT symbol FROM historic_approved_tokens where approve_time > " + time + " AND symbol ='" + symbol + "'";
+        Log.i(TAG, query);
+        data = sqLiteDatabase.rawQuery(query, null);
+        return data;
+    }
+
+    public Cursor firstAppearOfTokenInCertainTimeV1(long time1, long time2, String tableName) {
+        SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
+        Cursor data;
+
+        String query = "SELECT symbol, longOrShort, approve_time, price_when_approved FROM " + tableName + " where approve_time BETWEEN " + time1 + " AND " + time2 + " order by symbol, approve_time asc";
+        //Sprawdzenie żeby pokazywać każde podejście do kupna
+//        String query = "SELECT symbol, longOrShort, MIN(approve_time), price_when_approved FROM historic_approved_tokens where approve_time BETWEEN " + time1 + " AND " + time2 + " group by symbol, longOrShort order by symbol, approve_time asc";
+        Log.i(TAG, query);
         data = sqLiteDatabase.rawQuery(query, null);
         return data;
     }
@@ -468,7 +480,7 @@ public class DBHandler extends SQLiteOpenHelper {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         Cursor data;
         String query = "SELECT symbol, MAX(high_price), MIN(low_price) FROM klines_data where open_time BETWEEN " + time1 + " AND " + time2 + " and interval = '15m' and symbol = '" + name + "'";
-        Log.i(TAG,query);
+        Log.i(TAG, query);
         data = sqLiteDatabase.rawQuery(query, null);
         return data;
     }
@@ -482,7 +494,7 @@ public class DBHandler extends SQLiteOpenHelper {
         } else {
             query = "SELECT symbol, MIN(low_price), close_time FROM klines_data where close_time BETWEEN " + time1 + " AND " + time2 + " and interval = '" + interval + "' and symbol = '" + name + "'";
         }
-        Log.i(TAG,query);
+        Log.i(TAG, query);
         data = sqLiteDatabase.rawQuery(query, null);
         return data;
     }
@@ -633,36 +645,43 @@ public class DBHandler extends SQLiteOpenHelper {
 
     }
 
-
-    public void deleteMostNewKlineForSymbolInterval(String interval, String symbol, int limit) {
-        SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
-
-        try {
-            // Begin a database transaction
-            db.beginTransaction();
-            String query = "DELETE FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + ID + " in (" + "SELECT " + ID + " FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' and " + SYMBOL_CRYPTO + " = '" + symbol + "' ORDER BY " + CLOSE_TIME + " DESC LIMIT " + limit + ")";
-            db.execSQL(query);
-            // Commit the transaction
-            db.setTransactionSuccessful();
-        } catch (Exception e) {
-            // Handle any exceptions that occur during the transaction
-            Log.e(TAG, "Error updating table " + e);
-        } finally {
-            // End the transaction
-            db.endTransaction();
-        }
-
-
+    public Cursor checkIfThereAreDuplicates(String symbol, String interval) {
+        SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
+        String query = "SELECT close_time, count(*) FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' and " + SYMBOL_CRYPTO + " = '" + symbol + "' GROUP BY close_time ORDER BY 2 desc";
+        @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
+        Log.i(TAG, query);
+        return data;
     }
 
-    public void deleteOldestKlinesForSymbolInterval(String interval, String symbol, int limit) {
+
+    public void deleteKlinesAndInsertNewKlinesForSymbolInterval(String interval, String symbol, int limitNew, int limitOld, List<rawTable_Kline> object) {
         SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
 
         try {
             // Begin a database transaction
             db.beginTransaction();
-            String query = "DELETE FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + ID + " in (" + "SELECT " + ID + " FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' and " + SYMBOL_CRYPTO + " = '" + symbol + "' ORDER BY " + CLOSE_TIME + " ASC LIMIT " + limit + ")";
+            String query = "DELETE FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + ID + " in (" + "SELECT " + ID + " FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' and " + SYMBOL_CRYPTO + " = '" + symbol + "' ORDER BY " + CLOSE_TIME + " DESC LIMIT " + limitNew + ")";
             db.execSQL(query);
+            query = "DELETE FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + ID + " in (" + "SELECT " + ID + " FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' and " + SYMBOL_CRYPTO + " = '" + symbol + "' ORDER BY " + CLOSE_TIME + " ASC LIMIT " + limitOld + ")";
+           // Log.i(TAG, query);
+            db.execSQL(query);
+            ContentValues values = new ContentValues();
+            int i = 0;
+            for (i = 0; i < object.size(); i++) {
+                values.put(SYMBOL_CRYPTO, object.get(i).getTokenSymbol());
+                values.put(OPEN_TIME, object.get(i).getOpenTime());
+                values.put(OPEN_PRICE, object.get(i).getOpenPrice());
+                values.put(HIGH_PRICE, object.get(i).getHighPrice());
+                values.put(LOW_PRICE, object.get(i).getLowPrice());
+                values.put(CLOSE_PRICE, object.get(i).getClosePrice());
+                values.put(VOLUME, object.get(i).getVolume());
+                values.put(CLOSE_TIME, object.get(i).getCloseTime());
+                values.put(NUMBER_OF_TRADES, object.get(i).getNumberOfTrades());
+                values.put(INTERVAL, object.get(i).getKlineInterval());
+                //Log.e(TAG, values.toString());
+                db.insert(TABLE_NAME_KLINES_DATA, null, values);
+            }
+
             // Commit the transaction
             db.setTransactionSuccessful();
         } catch (Exception e) {
@@ -719,16 +738,31 @@ public class DBHandler extends SQLiteOpenHelper {
     }
 
 
-
-    public void deleteAllKlinesForSymbolInterval(String interval, String symbol) {
+    public void deleteAllKlinesForSymbolInterval(String interval, String symbol, List<rawTable_Kline> object) {
         SQLiteDatabase db = getInstance(mContext).getWritableDatabase();
 
         try {
             // Begin a database transaction
             db.beginTransaction();
             String query = "DELETE FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' and " + SYMBOL_CRYPTO + " = '" + symbol + "'";
-//            Log.i(TAG, query);
+            //Log.i(TAG, query);
             db.execSQL(query);
+            ContentValues values = new ContentValues();
+            int i = 0;
+            for (i = 0; i < object.size(); i++) {
+                values.put(SYMBOL_CRYPTO, object.get(i).getTokenSymbol());
+                values.put(OPEN_TIME, object.get(i).getOpenTime());
+                values.put(OPEN_PRICE, object.get(i).getOpenPrice());
+                values.put(HIGH_PRICE, object.get(i).getHighPrice());
+                values.put(LOW_PRICE, object.get(i).getLowPrice());
+                values.put(CLOSE_PRICE, object.get(i).getClosePrice());
+                values.put(VOLUME, object.get(i).getVolume());
+                values.put(CLOSE_TIME, object.get(i).getCloseTime());
+                values.put(NUMBER_OF_TRADES, object.get(i).getNumberOfTrades());
+                values.put(INTERVAL, object.get(i).getKlineInterval());
+                //Log.e(TAG, values.toString());
+                db.insert(TABLE_NAME_KLINES_DATA, null, values);
+            }
             // Commit the transaction
             db.setTransactionSuccessful();
         } catch (Exception e) {
@@ -738,8 +772,6 @@ public class DBHandler extends SQLiteOpenHelper {
             // End the transaction
             db.endTransaction();
         }
-
-
     }
 
 
