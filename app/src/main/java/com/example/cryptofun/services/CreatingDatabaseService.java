@@ -86,17 +86,15 @@ public class CreatingDatabaseService extends Service {
         List<rawTable_Kline> klinesDataList = new ArrayList<>();
         List<KlineRequest> request = new ArrayList<>();
         Log.e(TAG, "LIST OF SYMBOLS -> " + listOfSymbols);
+        int LIMIT = 180;
 
-        int LIMIT3m = 40;
-        int LIMIT15m = 60;
-        int LIMIT4h = 40;
         for (int i = 0; i < listOfSymbols.size(); i++) {
             // Make a collection of all requests you need to call at once, there can be any number of requests, not only 3. You can have 2 or 5, or 100.
-            request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT15m, "15m"),
+            request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT, "15m"),
                     listOfSymbols.get(i), "15m"));
-            request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT3m, "3m"),
+            request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT, "3m"),
                     listOfSymbols.get(i), "3m"));
-            request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT4h, "4h"),
+            request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(listOfSymbols.get(i), LIMIT, "4h"),
                     listOfSymbols.get(i), "4h"));
 
         }

@@ -17,7 +17,15 @@ import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Properties;
 import java.util.Random;
+
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 
 public class ServiceFunctionsOther {
 
@@ -45,6 +53,31 @@ public class ServiceFunctionsOther {
             Log.e("Exception", "File write failed: " + e);
         }
     }
+
+    public static void deleteFile(Context context, String fileName) {
+
+        @SuppressLint("SimpleDateFormat") DateFormat df2 = new SimpleDateFormat("dd");
+
+        String nameOFLogFile;
+        Timestamp stamp = new Timestamp(System.currentTimeMillis());
+
+        if (fileName.equals("result")) {
+            nameOFLogFile = "result_" + df2.format(new Date(stamp.getTime())) + ".txt";
+        } else if (fileName.equals("strategy")){
+            nameOFLogFile = "StrategyTest.txt";
+        } else {
+            nameOFLogFile = "OrdersLog.txt";
+        }
+
+        boolean deleted = context.deleteFile(nameOFLogFile);
+
+        if (deleted) {
+            Log.e("File delete result", "File delete success.");
+        } else {
+            Log.e("File delete result", "File delete failed.");
+        }
+    }
+
 
 
     public static void createNotificationWithText(String notification, String tag, Context context) {
@@ -99,6 +132,41 @@ public class ServiceFunctionsOther {
                 .setPriority(NotificationCompat.PRIORITY_MIN);
 
         return builder.build();
+    }
+
+    public static void sendEmail(String topic, String body) {
+        final String username = "moquiteush@wp.pl"; // replace with your email
+        final String password = "DUdP^i&T#jz7!T4"; // replace with your password
+
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", "smtp.wp.pl"); // use your email provider's SMTP host
+        props.put("mail.smtp.port", "465"); // use your email provider's SMTP port
+
+        Log.e("MAIL", "start");
+        Session session = Session.getInstance(props,
+                new javax.mail.Authenticator() {
+                    protected javax.mail.PasswordAuthentication getPasswordAuthentication() {
+                        return new javax.mail.PasswordAuthentication(username, password);
+                    }
+                });
+
+        try {
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress("moquiteush@wp.pl")); // replace with your email
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse("mateusz.korzeniak@gmail.com")); // replace with recipient email
+            message.setSubject(topic);
+            message.setText(body);
+
+            Transport.send(message);
+            Log.e("MAIL", "email send");
+            System.out.println("Email sent successfully.");
+
+        } catch (MessagingException e) {
+            Log.e("MAIL", "File write failed: " + e);
+            throw new RuntimeException(e);
+        }
     }
 
 }

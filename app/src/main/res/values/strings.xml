@@ -5,5 +5,21 @@
     <string name="title_notifications">Results</string>
     <string name="title_settings">Settings</string>
     <string name="info">Info</string>
-    <string name="strategyList">1. strategyDefaultNr1_SERIES \n2. strategyNr2_WT_ATR_T4AJStrategy \n3. strategyNr3_WT_MACD \n4. strategyNr4_4h_MACD \n5. strategyNr5_WT_PPO_ADX \n6. strategyNr6B_WT_ADX_3m</string>
+    <string name="StrategiesNow">1.strategyNr1_quickTestStrategy_15m
+            2.strategyNr2_EMA_KlineSize_WT_4h
+            3.strategyNr3_EMA_KlineSize_WT_15m
+            4.strategyNr4_RSI_EMA_4h
+            5.strategyNr10_Ichimoku_4h
+            6.strategyNr10_Ichimoku_15m
+            7.strategyNr7_EMA_4h_WT_ADX_EMA_15m
+            8.strategyNr8_KlinesCrossEMA_RSI_Appear_15m</string>
+    <string-array name="ema_types">
+        <item>close</item>
+        <item>high</item>
+        <item>low</item>
+        <item>open</item>
+        <item>hl2</item>
+        <item>hlc3</item>
+    </string-array>
+
 </resources>

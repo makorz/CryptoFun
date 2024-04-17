@@ -10,10 +10,10 @@
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -162,7 +162,6 @@
                     android:inputType="number"
                     android:textSize="14sp" />
 
-
             </LinearLayout>
 
             <LinearLayout
@@ -173,7 +172,6 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/fourthLinear">
-
 
                 <TextView
                     android:id="@+id/tv_stop_loss"
@@ -199,7 +197,6 @@
                     android:hint="Enter SL (%)"
                     android:inputType="numberDecimal"
                     android:textSize="14sp" />
-
 
             </LinearLayout>
 
@@ -248,18 +245,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/sixthLinear">
 
-<!--                <TextView-->
-<!--                    android:id="@+id/tv_set_params"-->
-<!--                    android:layout_width="0dp"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:layout_marginStart="20dp"-->
-<!--                    android:layout_marginTop="0dp"-->
-<!--                    android:layout_marginEnd="20dp"-->
-<!--                    android:layout_marginBottom="0dp"-->
-<!--                    android:layout_weight="2"-->
-<!--                    android:text="Update params:"-->
-<!--                    android:textSize="14sp" />-->
-
                 <TextView
                     android:id="@+id/tv_switch_for_automatic_test"
                     android:layout_width="0dp"
@@ -297,17 +282,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/seventhLinear">
 
-<!--                <TextView-->
-<!--                    android:id="@+id/tv_show_keys_to_user"-->
-<!--                    android:layout_width="0dp"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:layout_marginStart="20dp"-->
-<!--                    android:layout_marginTop="0dp"-->
-<!--                    android:layout_marginEnd="20dp"-->
-<!--                    android:layout_marginBottom="0dp"-->
-<!--                    android:layout_weight="2"-->
-<!--                    android:text="Current configuration:"-->
-<!--                    android:textSize="14sp" />-->
                 <TextView
                     android:id="@+id/tv_switch_for_automatic_real"
                     android:layout_width="0dp"
@@ -333,9 +307,22 @@
                     android:thumbTint="@color/dark_green"
                     android:trackTint="@color/dark_green" />
 
-
-
             </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/linear_space_1"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:background="@color/orange_700"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/eightLinear"/>
+
 
             <LinearLayout
                 android:id="@+id/ninthLinear"
@@ -344,8 +331,7 @@
                 android:orientation="horizontal"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/eightLinear">
-
+                app:layout_constraintTop_toBottomOf="@id/linear_space_1">
 
                 <TextView
                     android:id="@+id/tv_choose_strategy"
@@ -356,7 +342,7 @@
                     android:layout_marginEnd="20dp"
                     android:layout_marginBottom="0dp"
                     android:layout_weight="2"
-                    android:text="Choose strategy (default -> 1):"
+                    android:text="Strategy (def -> 1):"
                     android:textSize="14sp" />
 
                 <EditText
@@ -368,13 +354,504 @@
                     android:layout_marginEnd="20dp"
                     android:layout_marginBottom="0dp"
                     android:layout_weight="1"
-                    android:hint="(from 1 to 4)"
+                    android:hint="(1 to 8)"
                     android:inputType="number"
+                    android:textAlignment="center"
                     android:textSize="14sp" />
 
+            </LinearLayout>
 
+            <LinearLayout
+                android:id="@+id/infoLinear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthLinear">
+
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/infoFloating"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_margin="10dp"
+                    android:clickable="true"
+                    android:contentDescription="@string/info"
+                    android:foreground="@drawable/info4"
+                    android:tint="@null"
+                    app:backgroundTint="@color/dark_green"
+                    app:elevation="5dp"
+                    app:fabSize="mini" />
 
             </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/linear_space_2"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:background="@color/orange_700"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/infoLinear"/>
+
+
+            <LinearLayout
+                android:id="@+id/ninthPoint1Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/linear_space_2">
+
+                <TextView
+                    android:id="@+id/tv_choose_stopLossStrategy"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="2"
+                    android:text="SL strategy (def -> 1):"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_stopLossStrategy"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="(1 to 3)"
+                    android:inputType="number"
+                    android:textAlignment="center"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/ninthPoint2Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthPoint1Linear">
+
+                <TextView
+                    android:id="@+id/tv_choose_lengthForEma"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="2"
+                    android:text="Length of EMA for SL (def -> 31):"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_lengthForEma"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="(10 to 200)"
+                    android:inputType="number"
+                    android:textAlignment="center"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:id="@+id/ninthPoint3Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthPoint2Linear">
+
+                <TextView
+                    android:id="@+id/tv_choose_emaType"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="8dp"
+                    android:layout_weight="2"
+                    android:text="What EMA for SL:"
+                    android:textSize="14sp" />
+
+                <Spinner
+                    android:id="@+id/spinner_emaType"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="8dp"
+                    android:textAlignment="textEnd"
+                    android:layout_weight="1"
+                    android:entries="@array/ema_types"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:id="@+id/ninthPoint4Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthPoint3Linear">
+
+                <TextView
+                    android:id="@+id/tv_choose_offsetSAR"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="2"
+                    android:text="Offset for SAR: (def -> 1):"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_offsetSAR"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="(0.1 to 25)"
+                    android:inputType="numberDecimal"
+                    android:textAlignment="center"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/linear_space_3"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:background="@color/orange_700"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthPoint4Linear"/>
+
+
+            <LinearLayout
+                android:id="@+id/ninthPoint5Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/linear_space_3">
+
+                <TextView
+                    android:id="@+id/tv_switch_for_usingGlobalTokenTrends"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="2"
+                    android:text="Turn on global criteria:"
+                    android:textSize="14sp" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_usingGlobalTokenTrends"
+                    style="@style/MySwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:checked="false"
+                    android:thumbTint="@color/dark_green"
+                    android:trackTint="@color/dark_green" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/ninthPoint6Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthPoint5Linear">
+
+                <TextView
+                    android:id="@+id/tv_choose_howManyHoursToLookBackForGlobal"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="5dp"
+                    android:layout_weight="2"
+                    android:text="How many hours to look back for global criteria (def -> 4):"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_howManyHoursToLookBackForGlobal"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="(1 to 12)"
+                    android:inputType="number"
+                    android:textAlignment="center"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/ninthPoint7Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthPoint8Linear">
+
+                <TextView
+                    android:id="@+id/tv_choose_firstPercentThreshold"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="2"
+                    android:text="First % threshold (def -> 1):"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_firstPercentThreshold"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="(1 to 10)"
+                    android:inputType="number"
+                    android:textAlignment="center"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/ninthPoint8Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthPoint7Linear">
+
+                <TextView
+                    android:id="@+id/tv_choose_secondPercentThreshold"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="2"
+                    android:text="Second % threshold (def -> 2):"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_secondPercentThreshold"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="(2 to 20)"
+                    android:inputType="number"
+                    android:textAlignment="center"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/linear_space_4"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:background="@color/orange_700"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthPoint8Linear"/>
+
+            <LinearLayout
+                android:id="@+id/tenthPoint1Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ninthPoint8Linear">
+
+                <TextView
+                    android:id="@+id/tv_switch_for_grouping_historic_approved"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="10dp"
+                    android:layout_weight="2"
+                    android:text="Show only first time token appeared for approve in last 8 hours:"
+                    android:textSize="14sp" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_grouping_historic_approved"
+                    style="@style/MySwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="5dp"
+                    android:checked="false"
+                    android:thumbTint="@color/dark_green"
+                    android:trackTint="@color/dark_green" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tenthPoint2Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tenthPoint1Linear">
+
+                <TextView
+                    android:id="@+id/tv_choose_howLongShowHistoricApproved"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="5dp"
+                    android:layout_weight="2"
+                    android:text="Hours Since Now For Approved (def -> 12):"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_howLongShowHistoricApproved"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="(6 to 24)"
+                    android:inputType="number"
+                    android:textAlignment="center"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+
+
+            <LinearLayout
+                android:id="@+id/tenthPoint3Linear"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tenthPoint2Linear">
+
+                <TextView
+                    android:id="@+id/tv_howOftenAlarmMustRun"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="10dp"
+                    android:layout_weight="2"
+                    android:text="How often update kline data (def -> 1 min.):"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_howOftenAlarmMustRun"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_weight="1"
+                    android:hint="(1 to 60)"
+                    android:inputType="number"
+                    android:textAlignment="center"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/linear_space_5"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp"
+                android:background="@color/orange_700"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tenthPoint3Linear"/>
+
 
             <LinearLayout
                 android:id="@+id/tenthLinear"
@@ -383,8 +860,7 @@
                 android:orientation="horizontal"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/ninthLinear">
-
+                app:layout_constraintTop_toBottomOf="@id/linear_space_5">
 
                 <Button
                     android:id="@+id/bt_show_keys"
@@ -411,7 +887,6 @@
                     android:layout_weight="1"
                     android:text="UPDATE PARAMS"
                     android:textSize="12sp" />
-
 
             </LinearLayout>
 
@@ -461,13 +936,11 @@
                 android:orientation="horizontal"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/eleventhLinear"
-                app:layout_constraintBottom_toTopOf="@id/lastLinear">
+                app:layout_constraintTop_toBottomOf="@id/eleventhLinear">
 
                 <Button
                     android:id="@+id/bt_checkAccountInfo"
                     style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
-                    android:visibility="gone"
                     android:layout_width="0dp"
                     android:layout_height="50dp"
                     android:layout_marginStart="10dp"
@@ -476,43 +949,54 @@
                     android:layout_marginBottom="4dp"
                     android:layout_weight="1"
                     android:text="ACCOUNT INFO"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/bt_otherReset"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:textColor="@color/red"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_marginStart="50dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="50dp"
+                    android:layout_marginBottom="4dp"
+                    android:layout_weight="1"
+                    android:text="Log, Real and Approved List Reset"
                     android:textSize="12sp" />
 
             </LinearLayout>
-
-
-
 
         </LinearLayout>
 
     </ScrollView>
 
-    <LinearLayout
-        android:id="@+id/lastLinear"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+<!--    <LinearLayout-->
+<!--        android:id="@+id/lastLinear"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:orientation="vertical"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent">-->
 
+<!--        <com.google.android.material.floatingactionbutton.FloatingActionButton-->
+<!--            android:id="@+id/infoFloating"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_gravity="right"-->
+<!--            android:layout_marginTop="10dp"-->
+<!--            android:layout_marginEnd="20dp"-->
+<!--            android:layout_marginBottom="20dp"-->
+<!--            android:clickable="true"-->
+<!--            android:contentDescription="@string/info"-->
+<!--            android:foreground="@drawable/info4"-->
+<!--            android:tint="@null"-->
+<!--            app:backgroundTint="@color/dark_green"-->
+<!--            app:elevation="5dp"-->
+<!--            app:fabSize="mini" />-->
 
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/infoFloating"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="right"
-            android:layout_marginBottom="20dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="20dp"
-            android:clickable="true"
-            android:contentDescription="@string/info"
-            android:foreground="@drawable/info4"
-            android:tint="@null"
-            app:backgroundTint="@color/dark_green"
-            app:elevation="5dp"
-            app:fabSize="mini" />
-
-    </LinearLayout>
+<!--    </LinearLayout>-->
 
 </androidx.constraintlayout.widget.ConstraintLayout>

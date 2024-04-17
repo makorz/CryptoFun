@@ -12,10 +12,10 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.example.cryptofun.data.MarkPrice;
 import com.example.cryptofun.data.PercentagesOfChanges;
 import com.example.cryptofun.data.database.DBHandler;
-import com.example.cryptofun.data.database.Kline;
 import com.example.cryptofun.retrofit.RetrofitClientFutures;
 import com.example.cryptofun.ui.home.GridViewElement;
 import com.example.cryptofun.ui.home.ListViewElement;
@@ -45,6 +45,7 @@ public class ApprovingService extends Service {
     private static final String TABLE_HISTORIC_PERCENTAGES = "history_percentages";
     private static final String TABLE_NAME_KLINES_DATA = "klines_data";
     private static final String TABLE_SYMBOL_AVG = "crypto_avg_price";
+    private static final String VALUE_INT = "value_int";
     private static final String ID = "id";
     private static final String TABLE_NAME_CONFIG = "config";
     private static final String TABLE_NAME_ORDERS = "current_orders";
@@ -57,8 +58,7 @@ public class ApprovingService extends Service {
     int isAutomaticForRealEnabled = 0;
     private DBHandler databaseDB;
     private Handler handler;
-    private final List<String> listOfSymbols = new ArrayList<>();
-    ArrayList<ListViewElement> last14HoursTokensStat = new ArrayList<>();
+    ArrayList<ListViewElement> lastChosenHoursTokensStat = new ArrayList<>();
     ArrayList<ListViewElement> last3MinutesTokensStat = new ArrayList<>();
     ArrayList<GridViewElement> cryptoGridViewList = new ArrayList<>();
     ArrayList<ListViewElement> cryptoForLONGOrders = new ArrayList<>();
@@ -74,6 +74,7 @@ public class ApprovingService extends Service {
                     public void run() {
 
                         Log.e(TAG, "START of Service Thread");
+
                         // It's for foreground services, because in newest Android, background are not working. Foreground need to inform user that it is running
                         Notification notification = ServiceFunctionsOther.createNotificationSimple("Calculating what's best.", TAG, getApplicationContext());
                         // Notification ID cannot be 0.
@@ -129,7 +130,7 @@ public class ApprovingService extends Service {
             Bundle bundle = new Bundle();
             // 1 - 30min, 2 - 2h, 3 - 6h
             bundle.putSerializable("list1", (Serializable) last3MinutesTokensStat);
-            bundle.putSerializable("list3", (Serializable) last14HoursTokensStat);
+            bundle.putSerializable("list3", (Serializable) lastChosenHoursTokensStat);
             bundle.putSerializable("cryptoGridViewList", (Serializable) cryptoGridViewList);
             intent.putExtra("bundleApprovedCrypto", bundle);
             LocalBroadcastManager.getInstance(ApprovingService.this).sendBroadcast(intent);
@@ -148,25 +149,66 @@ public class ApprovingService extends Service {
 
     public void approvingCryptos() {
 
-        long fourteenHours = 50400000;
         //Wait two minutes before entering
-        long halfMinute = 30000;
-        long fourMinutes = 240000;
-        long twoMinutes = 120000;
+        long howManyHours, twoMinutes = 120000;
 
-        last14HoursTokensStat = getListOfSymbolsAccordingToProvidedTime(fourteenHours, 0, TABLE_NAME_APPROVED_HISTORIC); //oneMinute
-        last3MinutesTokensStat = getListOfSymbolsAccordingToProvidedTime(twoMinutes, 0, TABLE_NAME_APPROVED); //oneMinute
+        Cursor data = databaseDB.retrieveParam(22);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 22");
+            howManyHours = 12 * 60 * 60 * 1000L;
+        } else {
+            data.moveToFirst();
+            howManyHours = (data.getInt(3)) * 60 * 60 * 1000L;
+        }
+        data.close();
+
+        boolean shouldApprovedHistoricBeGrouped;
+
+        data = databaseDB.retrieveParam(23);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 23");
+            shouldApprovedHistoricBeGrouped = false;
+        } else {
+            data.moveToFirst();
+            int value = data.getInt(3);
+            shouldApprovedHistoricBeGrouped = value != 0;
+        }
+        data.close();
+
+        lastChosenHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(howManyHours, 0, TABLE_NAME_APPROVED_HISTORIC, shouldApprovedHistoricBeGrouped);
+        last3MinutesTokensStat = getListOfSymbolsAccordingToProvidedTime(twoMinutes, 0, TABLE_NAME_APPROVED, false);
 
         Log.e(TAG, "list3mTokensSize: " + last3MinutesTokensStat.size());
 
         if (last3MinutesTokensStat.size() > 0) {
+            String topic = "NEW TOKENS";
+            StringBuilder body = new StringBuilder();
+            String shortOrNot= "";
             for (int i = 0; i < last3MinutesTokensStat.size(); i++) {
+
                 if (last3MinutesTokensStat.get(i).isItLONG()) {
                     cryptoForLONGOrders.add(last3MinutesTokensStat.get(i));
+                    shortOrNot = "LONG";
                 } else {
                     cryptoForSHORTOrders.add(last3MinutesTokensStat.get(i));
+                    shortOrNot = "SHORT";
                 }
+
+                body.append(i + 1).append(". ").append(shortOrNot).append(" for token ").append(last3MinutesTokensStat.get(i).getText()).append(" found at ").append(last3MinutesTokensStat.get(i).getTime()).append(" with price ").append(last3MinutesTokensStat.get(i).getPriceWhenCaught());
+
             }
+
+//            new Thread(
+//                    new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            ServiceFunctionsOther.sendEmail(topic, String.valueOf(body));
+//                        }
+//                    }
+//            ).start();
+
+
+
         }
         setMainParametersOnView();
 
@@ -176,85 +218,48 @@ public class ApprovingService extends Service {
 
         // First array list for grid view, other two need to calculate changes in percents hour after hour
         // ArrayList<GridViewElement> cryptoPercentageListGrid3hours = new ArrayList<>();
-        ArrayList<GridViewElement> cryptoPercentageList = new ArrayList<>();
-        float percentU2 = 0;
-        float percentU1 = 0;
-        float percentU0 = 0;
-        float percentO0 = 0;
-        float percentO1 = 0;
-        float percentO2 = 0;
+        float percentUnderSecondThreshold = 0, percentUnderFirstThreshold = 0, percentUnderZero = 0, percentOverZero = 0, percentOverFirstThreshold = 0, percentOverSecondThreshold = 0;
+        int firstThreshold, secondThreshold, howManyHoursGlobal;
+        int underSecondThreshold = 0, underFirstThreshold = 0, underZero = 0, overZero = 0, overFirstThreshold = 0, overSecondThreshold = 0;
+        boolean doWeUseGlobalCriteria;
+        int nrOfGridElements = 30;
+        List<String> biggestSymbols = new ArrayList<>();
+        List<Float> percentChange = new ArrayList<>();
 
-        Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
-        data.moveToFirst();
+        Cursor data = databaseDB.retrieveParam(24);
         if (data.getCount() == 0) {
-            Log.e(TAG, "Table " + TABLE_SYMBOL_AVG + " is empty");
+            Log.e(TAG, "There is no param nr 24");
+            doWeUseGlobalCriteria = false;
         } else {
-            listOfSymbols.clear();
-            do {
-                listOfSymbols.add(data.getString(0));
-            } while (data.moveToNext());
-            int nrOfGridElements = 30;
-            List<String> biggestNrOfTradesSymbols = getBiggestNrOfTradesSymbols("4h", nrOfGridElements);
-
-            for (int i = 0; i < listOfSymbols.size(); i++) {
-                cryptoPercentageList.add(getTimePercentChangeForCrypto(listOfSymbols.get(i), 16));
-                if (cryptoPercentageList.get(i) == null) {
-                    cryptoPercentageList.remove(i);
-                }
-            }
-
-            int under2 = 0;
-            int under1 = 0;
-            int under0 = 0;
-            int over0 = 0;
-            int over1 = 0;
-            int over2 = 0;
-
-            for (int i = 0; i < cryptoPercentageList.size(); i++) {
-
-                if (cryptoPercentageList.get(i).getPercent() < -2) {
-                    under2++;
-                } else if (cryptoPercentageList.get(i).getPercent() >= -2 && cryptoPercentageList.get(i).getPercent() < -1) {
-                    under1++;
-                } else if (cryptoPercentageList.get(i).getPercent() >= -1 && cryptoPercentageList.get(i).getPercent() < 0) {
-                    under0++;
-                } else if (cryptoPercentageList.get(i).getPercent() >= 0 && cryptoPercentageList.get(i).getPercent() < 1) {
-                    over0++;
-                } else if (cryptoPercentageList.get(i).getPercent() >= 1 && cryptoPercentageList.get(i).getPercent() <= 2) {
-                    over1++;
-                } else if (cryptoPercentageList.get(i).getPercent() > 2) {
-                    over2++;
-                }
-            }
-
-            percentU2 = (float) under2 / cryptoPercentageList.size() * 100;
-            percentU1 = (float) under1 / cryptoPercentageList.size() * 100;
-            percentU0 = (float) under0 / cryptoPercentageList.size() * 100;
-            percentO0 = (float) over0 / cryptoPercentageList.size() * 100;
-            percentO1 = (float) over1 / cryptoPercentageList.size() * 100;
-            percentO2 = (float) over2 / cryptoPercentageList.size() * 100;
-
-            PercentagesOfChanges changes = new PercentagesOfChanges(percentU2, percentU1, percentU0, percentO0, percentO1, percentO2, System.currentTimeMillis());
-            databaseDB.addPercentages(changes);
-
-            if (biggestNrOfTradesSymbols.size() > 1) {
-                cryptoGridViewList.add(new GridViewElement("< -2%", percentU2, under2));
-                cryptoGridViewList.add(new GridViewElement("-2% - -1%", percentU1, under1));
-                cryptoGridViewList.add(new GridViewElement("-1% - 0%", percentU0, under0));
-                cryptoGridViewList.add(new GridViewElement("0% - 1%", percentO0, over0));
-                cryptoGridViewList.add(new GridViewElement("1% - 2%", percentO1, over1));
-                cryptoGridViewList.add(new GridViewElement("> 2%", percentO2, over2));
-
-                if (biggestNrOfTradesSymbols.size() < nrOfGridElements) {
-                    nrOfGridElements = biggestNrOfTradesSymbols.size();
-                }
-
-                for (int i = 0; i < nrOfGridElements; i++) {
-                    cryptoGridViewList.add(getTimePercentChangeForCrypto(biggestNrOfTradesSymbols.get(i), 3));
-                }
-            }
-
-
+            data.moveToFirst();
+            doWeUseGlobalCriteria = data.getInt(3) != 0;
+        }
+        data.close();
+        data = databaseDB.retrieveParam(25);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 25");
+            howManyHoursGlobal = 4;
+        } else {
+            data.moveToFirst();
+            howManyHoursGlobal = data.getInt(3);
+        }
+        data.close();
+        data = databaseDB.retrieveParam(26);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 26");
+            firstThreshold = 1;
+        } else {
+            data.moveToFirst();
+            firstThreshold = data.getInt(3);
+        }
+        data.close();
+        data = databaseDB.retrieveParam(27);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 27");
+            secondThreshold = 2;
+        } else {
+            data.moveToFirst();
+            secondThreshold = data.getInt(3);
         }
         data.close();
 
@@ -277,15 +282,127 @@ public class ApprovingService extends Service {
         }
         data.close();
 
+        //Get symbols that will be showed for gridview
+        data = databaseDB.getBiggestNrOfTradesSymbolsToCertainTime(howManyHoursGlobal, nrOfGridElements);
+        data.moveToFirst();
+        if (data.getCount() == 0) {
+            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty");
+        } else {
+            do {
+                biggestSymbols.add(data.getString(0));
+            } while (data.moveToNext());
+        }
+
+        //Get percent change of crypto between certain time
+        ArrayList<GridViewElement> tempList = new ArrayList<>();
+        data = databaseDB.getCryptoPercentChangeAccordingToCertainTime(howManyHoursGlobal, true, 1);
+        data.moveToFirst();
+        if (data.getCount() == 0) {
+            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty");
+        } else {
+            do {
+                //Log.e(TAG, "Percentages: " +  data.getString(0) + " " + data.getFloat(1) + " " +  data.getFloat(2) + " " + data.getFloat(3));
+                percentChange.add(data.getFloat(3));
+                tempList.add(new GridViewElement(data.getString(0), data.getFloat(3), data.getFloat(1)));
+            } while (data.moveToNext());
+        }
+        data.close();
+
+        for (int i = 0; i < percentChange.size(); i++) {
+
+            if (percentChange.get(i) < secondThreshold * -1) {
+                underSecondThreshold++;
+            } else if (percentChange.get(i) >= secondThreshold * -1 && percentChange.get(i) < firstThreshold * -1) {
+                underFirstThreshold++;
+            } else if (percentChange.get(i) >= firstThreshold * -1 && percentChange.get(i) < 0) {
+                underZero++;
+            } else if (percentChange.get(i) >= 0 && percentChange.get(i) < firstThreshold) {
+                overZero++;
+            } else if (percentChange.get(i) >= firstThreshold && percentChange.get(i) <= secondThreshold) {
+                overFirstThreshold++;
+            } else if (percentChange.get(i) > secondThreshold) {
+                overSecondThreshold++;
+            }
+        }
+
+        percentUnderSecondThreshold = (float) underSecondThreshold / percentChange.size() * 100;
+        percentUnderFirstThreshold = (float) underFirstThreshold / percentChange.size() * 100;
+        percentUnderZero = (float) underZero / percentChange.size() * 100;
+        percentOverZero = (float) overZero / percentChange.size() * 100;
+        percentOverFirstThreshold = (float) overFirstThreshold / percentChange.size() * 100;
+        percentOverSecondThreshold = (float) overSecondThreshold / percentChange.size() * 100;
+
+        cryptoGridViewList.add(new GridViewElement("< -" + secondThreshold + "%", percentUnderSecondThreshold, underSecondThreshold));
+        cryptoGridViewList.add(new GridViewElement("-" + secondThreshold + "% - -" + firstThreshold + "%", percentUnderFirstThreshold, underFirstThreshold));
+        cryptoGridViewList.add(new GridViewElement("-" + firstThreshold + "% - 0%", percentUnderZero, underZero));
+        cryptoGridViewList.add(new GridViewElement("0% - " + firstThreshold + "%", percentOverZero, overZero));
+        cryptoGridViewList.add(new GridViewElement(firstThreshold + "% - " + secondThreshold + "%", percentOverFirstThreshold, overFirstThreshold));
+        cryptoGridViewList.add(new GridViewElement("> " + secondThreshold + "%", percentOverSecondThreshold, overSecondThreshold));
+
+        for (int i = 0; i < biggestSymbols.size(); i++) {
+            for (int j = 0; j < tempList.size(); j++) {
+                if (tempList.get(j).getSymbol().equals(biggestSymbols.get(i))) {
+                    cryptoGridViewList.add(new GridViewElement(biggestSymbols.get(i), tempList.get(j).getPercent(), tempList.get(j).getValue()));
+                }
+            }
+        }
+
+        //Verification of percentages global table
+        data = databaseDB.retrieveParam(30);
+        data.moveToFirst();
+        long timeOfPercentagesUpdate = 0;
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 30");
+            databaseDB.addParam(30, "Time when global percentages were last updated.", "", 0, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 30);
+            databaseDB.addParam(30, "Time when global percentages were last updated.", "", 0, 0);
+        } else {
+            timeOfPercentagesUpdate = data.getInt(3);
+        }
+        data.close();
+
+        //Verification of last value of param hours for global
+        data = databaseDB.retrieveParam(31);
+        data.moveToFirst();
+        int valueHoursPrevious = 0;
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 31");
+            databaseDB.addParam(31, "Global hours check.", "", howManyHoursGlobal, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 31);
+            databaseDB.addParam(1, "Global hours check.", "", howManyHoursGlobal, 0);
+        } else {
+            valueHoursPrevious = data.getInt(3);
+        }
+        data.close();
+
+
+        //Check if last entry in percentages was over 30 minutes ago - then complete calculation again
+        if (valueHoursPrevious == howManyHoursGlobal) {
+
+            if (System.currentTimeMillis() - 30 * 60 * 1000L > timeOfPercentagesUpdate) {
+                Log.e(TAG, "GLOBAL A hours previous" + valueHoursPrevious + " how many hours " + howManyHoursGlobal);
+                globalCriteriaCalculating(howManyHoursGlobal, firstThreshold, secondThreshold);
+            } else if (System.currentTimeMillis() - 15 * 60 * 1000L > timeOfPercentagesUpdate) {
+                Log.e(TAG, "GLOBAL B hours previous" + valueHoursPrevious + " how many hours " + howManyHoursGlobal);
+                PercentagesOfChanges changes = new PercentagesOfChanges(percentUnderSecondThreshold, percentUnderFirstThreshold, percentUnderZero, percentOverZero, percentOverFirstThreshold, percentOverSecondThreshold, System.currentTimeMillis());
+                databaseDB.addPercentages(changes);
+            } else {
+                Log.e(TAG, "GLOBAL C hours previous" + valueHoursPrevious + " how many hours " + howManyHoursGlobal);
+                databaseDB.clearTable(TABLE_HISTORIC_PERCENTAGES);
+            }
+        } else {
+            Log.e(TAG, "GLOBAL D hours previous" + valueHoursPrevious + " how many hours " + howManyHoursGlobal);
+            globalCriteriaCalculating(howManyHoursGlobal, firstThreshold, secondThreshold);
+            databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, howManyHoursGlobal, ID, "31");
+        }
+
         //If it is on => go on
         if (isAutomaticForTestEnabled == 1 || isAutomaticForRealEnabled == 1) {
 
             ArrayList<PercentagesOfChanges> percentages = new ArrayList<>();
-            long now = System.currentTimeMillis();
-            long tenMinutes = 600000;
-            long halfHour = 1800000;
-
-            data = databaseDB.retrievePercentages(now - tenMinutes, now);
+            data = databaseDB.retrievePercentages(System.currentTimeMillis() - howManyHoursGlobal * 60 * 60 * 1000L, System.currentTimeMillis());
             data.moveToFirst();
             if (data.getCount() == 0) {
                 Log.e(TAG, "Table " + TABLE_HISTORIC_PERCENTAGES + " is empty");
@@ -295,33 +412,58 @@ public class ApprovingService extends Service {
                 } while (data.moveToNext());
             }
             data.close();
+            boolean isItGoodForShort;
+            boolean isItGoodForLong;
+            isItGoodForShort = isPercentageInFavorV2(percentages,1,2);
+            isItGoodForLong = isPercentageInFavorV2(percentages,0,2);
 
-            boolean isItGoodForShort = false;
-            boolean isItGoodForLong = false;
-            if (percentages.size() > 6) {
-                isItGoodForLong = isPercentageInFavor(percentages, 0);
-                isItGoodForShort = isPercentageInFavor(percentages, 1);
-                databaseDB.clearHistoricPercentages(now - halfHour);
-            }
+//            isItGoodForLong = isPercentageInFavorV3(percentages, 0);
+//            isItGoodForShort = isPercentageInFavorV3(percentages, 1);
+            databaseDB.clearHistoricPercentages(System.currentTimeMillis() - 12 * 60 * 60 * 1000L);
 
-            String infoOfOrder = "LEVEL 3 AutomaticTest: " + isAutomaticForTestEnabled + " AutomaticReal: " + isAutomaticForRealEnabled + " Percentage Favor(long, short): " + isItGoodForLong + " " + isItGoodForShort + " ListSize(Long, Short): " + cryptoForLONGOrders.size() + " " + cryptoForSHORTOrders.size() + " Under: " + percentU0 + "% " + percentU1 + "% " + percentU2 + " Over: " + percentO0 + "% " + percentO1 + "% " + percentO2 + "%";
+
+            String infoOfOrder = "LEVEL 3 AutomaticTest: " + isAutomaticForTestEnabled + " AutomaticReal: " + isAutomaticForRealEnabled + " Percentage Favor(long, short, size): " + isItGoodForLong + " " + isItGoodForShort + " " + percentages.size() + " ListSize(Long, Short): " + cryptoForLONGOrders.size() + " " + cryptoForSHORTOrders.size() + " Under: " + percentUnderZero + "% " + percentUnderFirstThreshold + "% " + percentUnderSecondThreshold + " Over: " + percentOverZero + "% " + percentOverFirstThreshold + "% " + percentOverSecondThreshold + "%";
             Log.e(TAG, infoOfOrder);
             ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
 
-            if (cryptoForSHORTOrders.size() > cryptoForLONGOrders.size()){ //&& isItGoodForShort) { // && isItGoodForShort       && percentU5 < 20 && percentU2 > 5 && underPercentage > overPercentage + 10  && percentU2 < 10 && underPercentage2 > 58 //cryptoForLONGOrders.size() + 1
-                serviceFinishedEverything++;
-                automaticOrdersFunction(cryptoForSHORTOrders, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
+            if (doWeUseGlobalCriteria) {
+                if (isItGoodForShort && cryptoForSHORTOrders.size() > 0) { //cryptoForSHORTOrders.size() > cryptoForLONGOrders.size()
+                    serviceFinishedEverything++;
+                    makeOrdersFunction(cryptoForSHORTOrders, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
 
+                } else if (isItGoodForLong && cryptoForLONGOrders.size() > 0) { //cryptoForLONGOrders.size() > cryptoForSHORTOrders.size() &&
+                    serviceFinishedEverything++;
+                    makeOrdersFunction(cryptoForLONGOrders, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
 
-            } else if (cryptoForLONGOrders.size() > cryptoForSHORTOrders.size()){ //&& isItGoodForLong) { //   // && isItGoodForLong      && percentO5 < 20 && percentO2 > 5 && underPercentage + 10 < overPercentage && percentO2 < 10 && overPercentage2 > 58
-                serviceFinishedEverything++;
-                automaticOrdersFunction(cryptoForLONGOrders, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
-
+                } else {
+                    serviceFinishedEverything = 6;
+                    sendMessageToActivity();
+                }
             } else {
-                serviceFinishedEverything = 6;
-                sendMessageToActivity();
-            }
+                ArrayList<ListViewElement> combinedList = new ArrayList<>(cryptoForSHORTOrders);
+                combinedList.addAll(cryptoForLONGOrders);
+                Collections.shuffle(combinedList);
 
+                if (combinedList.size() > 0) {
+                    serviceFinishedEverything++;
+                    makeOrdersFunction(combinedList, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
+                } else  {
+                    serviceFinishedEverything = 6;
+                    sendMessageToActivity();
+                }
+
+
+//                if (cryptoForSHORTOrders.size() > cryptoForLONGOrders.size()) {
+//                    serviceFinishedEverything++;
+//                    makeOrdersFunction(cryptoForSHORTOrders, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
+//                } else if (cryptoForLONGOrders.size() > cryptoForSHORTOrders.size()) {
+//                    serviceFinishedEverything++;
+//                    makeOrdersFunction(cryptoForLONGOrders, isAutomaticForTestEnabled, isAutomaticForRealEnabled);
+//                } else {
+//                    serviceFinishedEverything = 6;
+//                    sendMessageToActivity();
+//                }
+            }
         } else {
             serviceFinishedEverything = 6;
             sendMessageToActivity();
@@ -329,14 +471,70 @@ public class ApprovingService extends Service {
 
     }
 
-    private ArrayList<ListViewElement> getListOfSymbolsAccordingToProvidedTime(long timeFrom, long timeTo, String tableName) {
+    private void globalCriteriaCalculating(int howManyHoursGlobal, int firstThreshold, int secondThreshold) {
+
+        databaseDB.clearTable(TABLE_HISTORIC_PERCENTAGES);
+
+        for (int i = 1; i <= 48; i++) {
+
+            float percentUnderSecondThreshold = 0, percentUnderFirstThreshold = 0, percentUnderZero = 0, percentOverZero = 0, percentOverFirstThreshold = 0, percentOverSecondThreshold = 0;
+            int underSecondThreshold = 0, underFirstThreshold = 0, underZero = 0, overZero = 0, overFirstThreshold = 0, overSecondThreshold = 0;
+            List<Float> percentChange = new ArrayList<>();
+            //Get percent change of crypto between certain time
+            Cursor data = databaseDB.getCryptoPercentChangeAccordingToCertainTime(howManyHoursGlobal, false, i);
+            data.moveToFirst();
+            if (data.getCount() == 0) {
+                Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty");
+            } else {
+                do {
+                    // Log.e(TAG, "Percentages: " +  data.getString(0) + " " + data.getFloat(1) + " " +  data.getFloat(2) + " " + data.getFloat(3));
+                    percentChange.add(data.getFloat(3));
+                } while (data.moveToNext());
+            }
+            data.close();
+
+            for (int j = 0; j < percentChange.size(); j++) {
+
+                if (percentChange.get(j) < secondThreshold * -1) {
+                    underSecondThreshold++;
+                } else if (percentChange.get(j) >= secondThreshold * -1 && percentChange.get(j) < firstThreshold * -1) {
+                    underFirstThreshold++;
+                } else if (percentChange.get(j) >= firstThreshold * -1 && percentChange.get(j) < 0) {
+                    underZero++;
+                } else if (percentChange.get(j) >= 0 && percentChange.get(j) < firstThreshold) {
+                    overZero++;
+                } else if (percentChange.get(j) >= firstThreshold && percentChange.get(j) <= secondThreshold) {
+                    overFirstThreshold++;
+                } else if (percentChange.get(j) > secondThreshold) {
+                    overSecondThreshold++;
+                }
+            }
+
+            percentUnderSecondThreshold = (float) underSecondThreshold / percentChange.size() * 100;
+            percentUnderFirstThreshold = (float) underFirstThreshold / percentChange.size() * 100;
+            percentUnderZero = (float) underZero / percentChange.size() * 100;
+            percentOverZero = (float) overZero / percentChange.size() * 100;
+            percentOverFirstThreshold = (float) overFirstThreshold / percentChange.size() * 100;
+            percentOverSecondThreshold = (float) overSecondThreshold / percentChange.size() * 100;
+
+            PercentagesOfChanges changes = new PercentagesOfChanges(percentUnderSecondThreshold, percentUnderFirstThreshold, percentUnderZero, percentOverZero, percentOverFirstThreshold, percentOverSecondThreshold, System.currentTimeMillis() - 15 * 60 * 1000L * (i - 1));
+            databaseDB.addPercentages(changes);
+
+            if (i == 1) {
+                databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, System.currentTimeMillis(), ID, "30");
+            }
+
+        }
+    }
+
+    private ArrayList<ListViewElement> getListOfSymbolsAccordingToProvidedTime(long timeFrom, long timeTo, String tableName, boolean groupSymbols) {
 
         long currentTime = System.currentTimeMillis();
         ArrayList<ListViewElement> returnList = new ArrayList<>();
         @SuppressLint("SimpleDateFormat") DateFormat df = new SimpleDateFormat("HH:mm:ss - EEE, dd");
         @SuppressLint("SimpleDateFormat") DateFormat df2 = new SimpleDateFormat("HH:mm");
 
-        Cursor data = databaseDB.firstAppearOfTokenInCertainTimeV1(currentTime - timeFrom, currentTime - timeTo, tableName);
+        Cursor data = databaseDB.firstAppearOfTokenInCertainTimeV1(currentTime - timeFrom, currentTime - timeTo, tableName, groupSymbols);
         data.moveToFirst();
         if (data.getCount() == 0) {
             Log.e(TAG, "Nothing in [historic_approved_tokens 1]");
@@ -359,7 +557,7 @@ public class ApprovingService extends Service {
                 long closeTimeMaxMin = 0;
 
                 Log.e(TAG, "1 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
-                        + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin) + " CurrentTime - ApprovedTime: " + (currentTime-approveTime));
+                        + df.format((currentTime - timeTo)) + " ApprovedPrice: " + approvedPrice + " MaxMinPrice: " + maxMinPrice + " MaxMinPrice2: " + maxMinPrice2 + " CloseTimeMaxMin: " + df.format(closeTimeMaxMin) + " CurrentTime - ApprovedTime: " + (currentTime - approveTime));
 
                 long twoHours = 3600000;
 
@@ -433,6 +631,71 @@ public class ApprovingService extends Service {
         return returnList;
     }
 
+    public boolean isPercentageInFavorV2(ArrayList<PercentagesOfChanges> percents, int isItForShort, int howManyToCheckFromStart) {
+
+        boolean accepted = false;
+        int temp = 0;
+        float nextNumberShort = percents.get(0).getUnderFirstThreshold() + percents.get(0).getUnderSecondThreshold();
+        float nextNumberLong = percents.get(0).getOverFirstThreshold() + percents.get(0).getOverSecondThreshold();
+
+        if (isItForShort == 1 && nextNumberShort > 10) {
+            temp++;
+        } else if (isItForShort == 0 && nextNumberLong > 10){
+            temp++;
+        } else {
+            return false;
+        }
+
+        if (howManyToCheckFromStart <= percents.size()) {
+            for (int i = 1; i <= howManyToCheckFromStart; i++) {
+
+                float prevNumberShort = percents.get(i).getUnderFirstThreshold() + percents.get(i).getUnderSecondThreshold();
+                float prevNumberLong = percents.get(i).getOverFirstThreshold() + percents.get(i).getOverSecondThreshold();
+
+                if (isItForShort == 1) {
+                    if (prevNumberShort * 0.9 < nextNumberShort && nextNumberShort > nextNumberLong * 1.25) {
+                        temp++;
+                    }
+                } else {
+                    if (prevNumberLong * 0.9 < nextNumberLong && nextNumberLong > nextNumberShort * 1.25) {
+                        temp++;
+                    }
+                }
+
+                if (temp >= howManyToCheckFromStart) {
+                    accepted = true;
+                    break;
+                }
+                nextNumberShort = prevNumberShort;
+                nextNumberLong = prevNumberLong;
+            }
+            Log.e(TAG, "HowMany to reach: " + howManyToCheckFromStart + " result: " + temp);
+            return accepted;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean isPercentageInFavorV3(ArrayList<PercentagesOfChanges> percents, int isItForShort) {
+
+        if (isItForShort == 1) {
+
+            if ((percents.get(0).getOverSecondThreshold() + percents.get(0).getOverFirstThreshold() + percents.get(0).getOverZero()) < 10 && (percents.get(0).getUnderSecondThreshold() + percents.get(0).getUnderFirstThreshold()) > percents.get(0).getUnderZero()) {
+                return true;
+            } else {
+                return false;
+            }
+
+        } else {
+
+            if ((percents.get(0).getUnderSecondThreshold() + percents.get(0).getUnderFirstThreshold() + percents.get(0).getUnderZero()) < 10 && (percents.get(0).getOverSecondThreshold() + percents.get(0).getOverFirstThreshold()) > percents.get(0).getOverZero()) { // && (percents.get(1).getOverSecondThreshold() + percents.get(1).getOverFirstThreshold()) < percents.get(1).getOverZero()
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+    }
 
     public boolean isPercentageInFavor(ArrayList<PercentagesOfChanges> percents, int isItShort) {
 
@@ -442,17 +705,17 @@ public class ApprovingService extends Service {
 
         float prevNumber = 0;
         if (isItShort == 1) {
-            prevNumber = percents.get(0).getUnder1() + percents.get(0).getUnder2() + percents.get(0).getUnder3();
+            prevNumber = percents.get(0).getUnderZero() + percents.get(0).getUnderFirstThreshold() + percents.get(0).getUnderSecondThreshold();
         } else {
-            prevNumber = percents.get(0).getOver1() + percents.get(0).getOver2() + percents.get(0).getOver3();
+            prevNumber = percents.get(0).getOverZero() + percents.get(0).getOverFirstThreshold() + percents.get(0).getOverSecondThreshold();
         }
 
         for (int i = 1; i < percents.size(); i++) {
             float currentNumber = 0;
             if (isItShort == 1) {
-                currentNumber = percents.get(i).getUnder1() + percents.get(i).getUnder2() + percents.get(i).getUnder3();
+                currentNumber = percents.get(i).getUnderZero() + percents.get(i).getUnderFirstThreshold() + percents.get(i).getUnderSecondThreshold();
             } else {
-                currentNumber = percents.get(i).getOver1() + percents.get(i).getOver2() + percents.get(i).getOver3();
+                currentNumber = percents.get(i).getOverZero() + percents.get(i).getOverFirstThreshold() + percents.get(i).getOverSecondThreshold();
             }
 
             if (currentNumber > prevNumber + 2) {
@@ -463,7 +726,7 @@ public class ApprovingService extends Service {
                 temp++;
             }
 
-            //Log.e(TAG, "Value: " + currentNumber + " previous number: " + prevNumber + " index: " + i + " howMany to reach: " + howManyTendencies + " result: " + temp);
+            Log.e(TAG, "Value: " + currentNumber + " previous number: " + prevNumber + " index: " + i + " howMany to reach: " + howManyTendencies + " result: " + temp);
 
             if (temp >= howManyTendencies) {
                 accepted = true;
@@ -475,7 +738,7 @@ public class ApprovingService extends Service {
         return accepted;
     }
 
-    public void automaticOrdersFunction(ArrayList<ListViewElement> listOfCryptosToTry, int isAutomaticTestEnabled, int isAutomaticRealEnabled) {
+    public void makeOrdersFunction(ArrayList<ListViewElement> listOfCryptosToTry, int isAutomaticTestEnabled, int isAutomaticRealEnabled) {
 
         // Retrieve test accounts balances to prepare for making orders
         ArrayList<Float> testAccountBalances = new ArrayList<>();
@@ -488,6 +751,7 @@ public class ApprovingService extends Service {
         Cursor data;
         for (int i = 6; i < 11; i++) {
             data = databaseDB.retrieveParam(i);
+            data.moveToFirst();
             if (data.getCount() == 0) {
                 Log.e(TAG, "There is no param for test account " + (i - 5));
                 databaseDB.addParam(i, "Test account nr " + (i - 5) + " balance", "", 0, 100);
@@ -497,7 +761,6 @@ public class ApprovingService extends Service {
                 databaseDB.addParam(i, "Test account nr " + (i - 5) + " balance", "", 0, 100);
                 testAccountBalances.add(100f);
             } else {
-                data.moveToFirst();
                 testAccountBalances.add(data.getFloat(4));
             }
             data.close();
@@ -577,20 +840,19 @@ public class ApprovingService extends Service {
         ArrayList<String> currentMadeOrders = new ArrayList<>();
         //For each test account try to make order if balance is good
         for (int i = 0; i < 5; i++) {
-            //Log.e(TAG, listOfCryptosToTry.toString());
+            Log.e(TAG, "AAAAA" + listOfCryptosToTry.toString());
             data = databaseDB.retrieveActiveOrdersOnAccount(i + 6, "MARKET", 0);
-            if (data.getCount() == 0 && isAutomaticTestEnabled == 1) {
 
-                Log.e(TAG, "No order for account nr " + (i + 6));
+            if (data.getCount() == 0 && isAutomaticTestEnabled == 1) {
 
                 if (testAccountBalances.get(i) > 30) {
 
                     Random random = new Random();
                     // Generate a random index that has not been used before
                     int index = random.nextInt(listOfCryptosToTry.size());
-//                    String indexText = "Random test index: " + index + " size: " + listOfCryptosToTry.size();
-//                    Log.e(TAG, indexText);
-//                    ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "orders");
+                    String indexText = "No order for account nr " + (i + 6) + " Random test index: " + index + " size: " + listOfCryptosToTry.size();
+                    Log.e(TAG, indexText);
+                    ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "results");
 
                     // Get the element at the random index
                     ListViewElement randomElement = listOfCryptosToTry.get(index);
@@ -639,7 +901,7 @@ public class ApprovingService extends Service {
                                     public void onNext(@NonNull MarkPrice markPrice) {
 
                                         // handle the MarkPrice object returned by the API
-                                        String infoOfOrder = "LEVEL 4 [" + randomElement.getText() + "] " + " MarkPrice: " + markPrice.getMarkPrice() + " EntryAmount$: " + entryAmount + " AccountNr: " + (finalI + 1) + " Leverage: " + margin + " isItShort: " + isItShort ;
+                                        String infoOfOrder = "LEVEL 4 [" + randomElement.getText() + "] " + " MarkPrice: " + markPrice.getMarkPrice() + " EntryAmount$: " + entryAmount + " AccountNr: " + (finalI + 1) + " Leverage: " + margin + " isItShort: " + isItShort;
                                         Log.e(TAG, infoOfOrder);
                                         ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
                                         ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "orders");
@@ -665,7 +927,9 @@ public class ApprovingService extends Service {
 
                 }
             } else {
-                Log.e(TAG, "There are active orders on account " + (i + 6));
+                String indexText = "There are active orders on account " + (i + 6);
+                Log.e(TAG, indexText);
+                ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "results");
             }
             serviceFinishedEverything++;
             data.close();
@@ -688,17 +952,16 @@ public class ApprovingService extends Service {
 
         data = databaseDB.retrieveActiveOrdersOnAccount(1, "MARKET", 1);
         if (data.getCount() <= nrOfOrders && isAutomaticRealEnabled == 1) { ///!!!!!!!
-            //Log.e(TAG, "No order for REAL account.");
+            Log.e(TAG, "No order for REAL account.");
             Log.e(TAG, currentOrders.toString());
-
-            if (realAccountBalance > 5) {
+              if (realAccountBalance > 5) {
 
                 //Generate a random index that has not been used before
                 Random random = new Random();
                 int index = random.nextInt(listOfCryptosToTry.size());
-//                String indexText = "Random real index: " + index + " size: " + listOfCryptosToTry.size();
-//                Log.e(TAG, indexText);
-//                ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "orders");
+                String indexText = "No order for account nr REAL, Random test index: " + index + " size: " + listOfCryptosToTry.size();
+                Log.e(TAG, indexText);
+                ServiceFunctionsOther.writeToFile(indexText, getApplicationContext(), "results");
 
                 // Get the element at the random index
                 ListViewElement randomElement = listOfCryptosToTry.get(index);
@@ -709,11 +972,12 @@ public class ApprovingService extends Service {
                     if (currentOrders.get(i).getIsItReal() == 1 && currentOrders.get(i).getSymbol().equals(randomElement.getText())) {
                         isThereSuchOrderForRandomizedSymbolOnRealAccount = true;
                         Log.e(TAG, "Random symbol: " + randomElement.getText() + " Current orders symbol: " + currentOrders.get(i).getSymbol() + " is it real: " + currentOrders.get(i).getIsItReal());
+
                     }
 
                 }
 
-                int entryAmount = (int) (realAccountBalance * (multiplierOfAccountBalance * 1 + (data.getCount()/10)));
+                int entryAmount = (int) (realAccountBalance * (multiplierOfAccountBalance * 1 + (data.getCount() / 10)));
                 boolean isItShort;
                 isItShort = !randomElement.isItLONG();
 
@@ -731,7 +995,7 @@ public class ApprovingService extends Service {
                                 @Override
                                 public void onNext(@NonNull MarkPrice markPrice) {
                                     // handle the MarkPrice object returned by the API
-                                    String infoOfOrder = "LEVEL 4 [" + randomElement.getText() + "] " + " MarkPrice: " + markPrice.getMarkPrice() + " EntryAmount$: " + entryAmount + " AccountNr: REAL Leverage: " + margin + " isItShort: " + isItShort ;
+                                    String infoOfOrder = "LEVEL 4 [" + randomElement.getText() + "] " + " MarkPrice: " + markPrice.getMarkPrice() + " EntryAmount$: " + entryAmount + " AccountNr: REAL Leverage: " + margin + " isItShort: " + isItShort;
                                     Log.e(TAG, infoOfOrder);
                                     ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
                                     ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "orders");
@@ -770,68 +1034,5 @@ public class ApprovingService extends Service {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
     }
-
-    // Calculate 3h change of price in %
-    public GridViewElement getTimePercentChangeForCrypto(String symbol, int nrOf15mKlinesBack) {
-
-        List<Kline> coinKlines15m = new ArrayList<>();
-        Cursor data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol);
-        data.moveToFirst();
-        if (data.getCount() == 0) {
-            Log.e(TAG, "24hPercentCount-Table " + TABLE_NAME_KLINES_DATA + " Empty");
-        } else {
-            do {
-                if (data.getString(10).equals("15m")) {
-
-                    coinKlines15m.add(new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4), data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10)));
-
-                }
-            } while (data.moveToNext());
-
-            if (coinKlines15m.size() >= nrOf15mKlinesBack) {
-
-                float closePriceYesterday = coinKlines15m.get(nrOf15mKlinesBack - 1).gettClosePrice();
-                float percentOfChange = 0;
-                float closePriceToday = coinKlines15m.get(0).gettClosePrice();
-                percentOfChange = ((closePriceToday / closePriceYesterday) * 100) - 100;
-                data.close();
-                return new GridViewElement(symbol, percentOfChange, closePriceToday);
-
-            }
-        }
-        data.close();
-        return new GridViewElement(symbol, 0, 0);
-
-    }
-
-    public List<String> getBiggestNrOfTradesSymbols(String interval, int nrOfResults) {
-
-        List<String> bigVolume = new ArrayList<>();
-        Cursor data = databaseDB.checkVolumeOfKlineInterval(interval);
-        data.moveToFirst();
-        if (data.getCount() == 0) {
-            Log.e(TAG, "BiggestNrOfTrades-Table " + TABLE_NAME_KLINES_DATA + " Empty");
-        } else {
-            int all = data.getCount();
-            if (nrOfResults < all) {
-                for (int i = 0; i < nrOfResults; i++) {
-                    if (!data.getString(0).contains("BUSDUSDT")) {
-                        bigVolume.add(data.getString(0));
-                    }
-                    data.moveToNext();
-                }
-
-            } else {
-                do {
-                    if (!data.getString(0).contains("BUSDUSDT")) {
-                        bigVolume.add(data.getString(0));
-                    }
-                } while (data.moveToNext());
-            }
-        }
-        data.close();
-        return bigVolume;
-    }
-
 
 }

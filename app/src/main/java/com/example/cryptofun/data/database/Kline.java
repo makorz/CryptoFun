@@ -52,15 +52,6 @@ public class Kline {
         this.tKlineInterval = tKlineInterval;
     }
 
-//    public Kline(String tTokenSymbol, float tVolume, long tNumberOfTrades, long tCloseTime, float tClosePrice) {
-//        this.tTokenSymbol = tTokenSymbol;
-//        this.tVolume = tVolume;
-//        this.tNumberOfTrades = tNumberOfTrades;
-//        this.tCloseTime = tCloseTime;
-//        this.tClosePrice = tClosePrice;
-//
-//    }
-
     public int getStatusOfKline() {
         float redOrGreen = this.tOpenPrice - this.tClosePrice;
         if ( redOrGreen < 0 ) {

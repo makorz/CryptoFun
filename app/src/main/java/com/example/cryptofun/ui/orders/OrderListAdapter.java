@@ -22,6 +22,8 @@ import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.CardViewOrderBinding;
 import com.example.cryptofun.services.CallbackButton;
 import com.example.cryptofun.services.ServiceFunctionsAPI;
+import com.example.cryptofun.services.ServiceFunctionsOther;
+import com.example.cryptofun.ui.results.ResultsListElement;
 
 import java.text.DateFormat;
 import java.text.DecimalFormat;
@@ -147,7 +149,12 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
             holder.longOrShort.setTextColor(Color.BLACK);
             holder.isolatedOrCrossed.setTextColor(Color.BLACK);
         } else {
-            holder.testOrReal.setText("TEST");
+            if (items.get(position).getAccountNumber() > 5) {
+                holder.testOrReal.setText("TEST " + (items.get(position).getAccountNumber() - 5));
+            } else {
+                holder.testOrReal.setText("TEST 0");
+            }
+
             holder.testOrReal.setTextColor(testBlue);
             holder.margin.setTextColor(testBlue);
             holder.time.setTextColor(testBlue);
@@ -252,7 +259,7 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
             holder.percentOfPriceChange.setTextColor(testBlue);
         }
 
-        if (percentOfAmountChange > 0.1 ) {
+        if (percentOfAmountChange > 0.1) {
             holder.percentOfAmountChange.setTextColor(darkGreenColor);
         } else if (percentOfAmountChange < -0.1) {
             holder.percentOfAmountChange.setTextColor(darkRedColor);
@@ -299,6 +306,7 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
     }
 
     private void showDeleteConfirmationDialog(Context context, int position) {
+        Log.e(TAG, "DELETED FOR ACCOUNT NR " + items.get(position).getAccountNumber());
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setMessage("Are you sure you want to close this position?");
         builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
@@ -307,14 +315,15 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
 
                 DBHandler databaseDB = DBHandler.getInstance(builder.getContext());
 
+                deleteData = new DeleteOrderData(items.get(position).getSymbol(), items.get(position).getTimeWhenPlaced(), items.get(position).getIsItReal(), items.get(position).getIsItShort(), items.get(position).getMargin(), position);
+
                 float balance = 0;
                 if (items.get(position).getIsItReal() == 1) {
 
-                    deleteData = new DeleteOrderData(items.get(position).getSymbol(), items.get(position).getTimeWhenPlaced(), items.get(position).getIsItReal(), items.get(position).getIsItShort(), items.get(position).getMargin(), position);
 
-                    if(items.get(position).getOrderType().equals("TAKE_PROFIT_MARKET") || items.get(position).getOrderType().equals("STOP_MARKET")) {
+                    if (items.get(position).getOrderType().equals("TAKE_PROFIT_MARKET") || items.get(position).getOrderType().equals("STOP_MARKET")) {
                         Log.e(TAG, items.get(position).toString());
-                        ServiceFunctionsAPI.deleteOrder(items.get(position), System.currentTimeMillis(),  context, callbackButton);
+                        ServiceFunctionsAPI.deleteOrder(items.get(position), System.currentTimeMillis(), context, callbackButton);
                     } else if (items.get(position).getOrderType().equals("MARKET")) {
                         Log.e(TAG, "GetPositionToCancelStarted: " + items.get(position).toString() + " " + callbackButton.toString());
                         ServiceFunctionsAPI.getPositions(items.get(position).getSymbol(), System.currentTimeMillis(), context, items.get(position), callbackButton, false);
@@ -322,16 +331,24 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
 
                 } else {
                     Cursor data = databaseDB.retrieveParam(items.get(position).getAccountNumber());
+                    data.moveToFirst();
                     if (data.getCount() == 0) {
-                        Log.e(TAG, "There is no param nr " + items.get(position).getAccountNumber() );
+                        Log.e(TAG, "There is no param nr " + items.get(position).getAccountNumber());
                     } else {
-                        data.moveToFirst();
                         balance = data.getFloat(4);
                     }
                     data.close();
 
                     float newBalance = balance + items.get(position).getCurrentAmount();
-                    Log.e(TAG, "DELETED FOR ACCOUNT NR " + items.get(position).getAccountNumber() + " previousBalance: " + balance + " current balance: " + newBalance);
+                    String info = "LEVEL 8 " + items.get(position).toString() + " previousBalance: " + balance + " newMoney: " + items.get(position).getCurrentAmount();
+                    Log.e(TAG, info);
+                    ServiceFunctionsOther.writeToFile(info, context, "result");
+                    ServiceFunctionsOther.writeToFile(info, context, "orders");
+
+                    float exitAmount = items.get(deleteData.getPosition()).getCurrentAmount();
+                    float moneyEarned = exitAmount - items.get(deleteData.getPosition()).getEntryAmount();
+                    ResultsListElement historicOrder = new ResultsListElement(items.get(deleteData.getPosition()).getSymbol(), items.get(deleteData.getPosition()).getEntryPrice(), items.get(deleteData.getPosition()).getCurrentPrice(), items.get(deleteData.getPosition()).getPercentOfPriceChange(), items.get(deleteData.getPosition()).getAccountNumber(), items.get(deleteData.getPosition()).getMargin(), moneyEarned, items.get(deleteData.getPosition()).getEntryAmount(), exitAmount, items.get(deleteData.getPosition()).getPercentOfAmountChange(), items.get(deleteData.getPosition()).getTimeWhenPlaced(), System.currentTimeMillis(), items.get(deleteData.getPosition()).getIsItShort(), items.get(deleteData.getPosition()).getIsItReal());
+                    databaseDB.addNewHistoricOrder(historicOrder);
                     databaseDB.deleteOrder(items.get(position).getSymbol(), items.get(position).getTimeWhenPlaced(), items.get(position).getIsItReal(), items.get(position).getIsItShort(), items.get(position).getMargin());
                     databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_REAL, newBalance, ID, String.valueOf(items.get(position).getAccountNumber()));
                     deleteItem(position);
@@ -346,6 +363,10 @@ public class OrderListAdapter extends RecyclerView.Adapter<OrderListAdapter.View
     public void onSuccess() {
         if (deleteData != null) {
             Log.e(TAG, "DELETED FOR REAL ACCOUNT: " + deleteData);
+            float exitAmount = items.get(deleteData.getPosition()).getCurrentAmount();
+            float moneyEarned = exitAmount - items.get(deleteData.getPosition()).getEntryAmount();
+            ResultsListElement historicOrder = new ResultsListElement(items.get(deleteData.getPosition()).getSymbol(), items.get(deleteData.getPosition()).getEntryPrice(), items.get(deleteData.getPosition()).getCurrentPrice(), items.get(deleteData.getPosition()).getPercentOfPriceChange(), items.get(deleteData.getPosition()).getAccountNumber(), items.get(deleteData.getPosition()).getMargin(), moneyEarned, items.get(deleteData.getPosition()).getEntryAmount(), exitAmount, items.get(deleteData.getPosition()).getPercentOfAmountChange(), items.get(deleteData.getPosition()).getTimeWhenPlaced(), System.currentTimeMillis(), items.get(deleteData.getPosition()).getIsItShort(), items.get(deleteData.getPosition()).getIsItReal());
+            databaseDB.addNewHistoricOrder(historicOrder);
             databaseDB.deleteOrder(deleteData.getSymbol(), deleteData.getTime(), deleteData.getIsItReal(), deleteData.getIsItShort(), deleteData.getIsItMargin());
             deleteItem(deleteData.getPosition());
         } else {

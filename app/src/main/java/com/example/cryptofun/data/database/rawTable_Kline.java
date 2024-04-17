@@ -1,5 +1,12 @@
 package com.example.cryptofun.data.database;
 
+import android.annotation.SuppressLint;
+
+import androidx.annotation.NonNull;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+
 public class rawTable_Kline {
 
 //            1499040000000,      // Kline open time
@@ -118,5 +125,16 @@ public class rawTable_Kline {
 
     public void setNumberOfTrades(long numberOfTrades) {
         this.numberOfTrades = numberOfTrades;
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+
+        return "RawKline{symbol=" + tokenSymbol + " openTime=" + openTime + " openPrice=" + openPrice + " highPrice=" + highPrice
+                + " lowPrice=" + lowPrice + " closePrice=" + closePrice + " volume=" + volume
+                + " closePrice=" + closeTime + " nrOfTrades=" + numberOfTrades + '}';
+
+
     }
 }

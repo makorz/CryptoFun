@@ -16,6 +16,7 @@ import com.example.cryptofun.data.ResponseMargin;
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.retrofit.RetrofitClientSecretTestnet;
 import com.example.cryptofun.ui.orders.OrderListViewElement;
+import com.example.cryptofun.ui.results.ResultsListElement;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -88,7 +89,6 @@ public class ServiceFunctionsAPI {
 
         } else {
             Log.e("F: makeOrderFunction", "TEST");
-//            Log.e("F: makeOrderFunction", isItCrossed + " " + isItShort);
             float stopLimitPrice = currentPrice * (1 - (float) stopLimit / 100);
             float takeProfitPrice = currentPrice * (1 + (float) takeProfit / 100);
             int isItShortValue = 0;
@@ -467,6 +467,13 @@ public class ServiceFunctionsAPI {
                             callbackButton.onSuccess();
                         } else {
 
+                            String info = "MARKET ORDER TEST TO DELETE D: ExitA: " + orderToCheckAndDelete.getCurrentAmount() + ": EntryA: " + orderToCheckAndDelete.getEntryAmount() + " EntryP: " + orderToCheckAndDelete.getEntryPrice() + " ExitP: "  +  orderToCheckAndDelete.getStopLimitPrice();
+                            ServiceFunctionsOther.writeToFile(info, context, "orders");
+
+                            float exitAmount = orderToCheckAndDelete.getCurrentAmount();
+                            float moneyEarned = exitAmount - orderToCheckAndDelete.getEntryAmount();
+                            ResultsListElement historicOrder = new ResultsListElement(orderToCheckAndDelete.getSymbol(), orderToCheckAndDelete.getEntryPrice(), orderToCheckAndDelete.getStopLimitPrice(), orderToCheckAndDelete.getPercentOfPriceChange(), orderToCheckAndDelete.getAccountNumber(), orderToCheckAndDelete.getMargin(), moneyEarned, orderToCheckAndDelete.getEntryAmount(), exitAmount, orderToCheckAndDelete.getPercentOfAmountChange(), orderToCheckAndDelete.getTimeWhenPlaced(), System.currentTimeMillis(),orderToCheckAndDelete.getIsItShort(), orderToCheckAndDelete.getIsItReal());
+                            databaseDB.addNewHistoricOrder(historicOrder);
                             databaseDB.deleteOrder(symbol, orderToCheckAndDelete.getTimeWhenPlaced(), 1,
                                     orderToCheckAndDelete.getIsItShort(), orderToCheckAndDelete.getMargin());
                         }
@@ -659,6 +666,15 @@ public class ServiceFunctionsAPI {
                         if (callbackButton != null) {
                             callbackButton.onSuccess();
                         } else {
+
+                            if (orderElement.getOrderType().equals("MARKET")) {
+                                String info = "MARKET ORDER TEST TO DELETE C: ExitA: " + orderElement.getCurrentAmount() + ": EntryA: " + orderElement.getEntryAmount() + " EntryP: " + orderElement.getEntryPrice() + " ExitP: " + orderElement.getStopLimitPrice() + " ExitPsss: " + orderElement.getCurrentAmount();
+                                ServiceFunctionsOther.writeToFile(info, context, "orders");
+                                float exitAmount = orderElement.getCurrentAmount();
+                                float moneyEarned = exitAmount - orderElement.getEntryAmount();
+                                ResultsListElement historicOrder = new ResultsListElement(orderElement.getSymbol(), orderElement.getEntryPrice(), orderElement.getStopLimitPrice(), orderElement.getPercentOfPriceChange(), orderElement.getAccountNumber(), orderElement.getMargin(), moneyEarned, orderElement.getEntryAmount(), exitAmount, orderElement.getPercentOfAmountChange(), orderElement.getTimeWhenPlaced(), System.currentTimeMillis(), orderElement.getIsItShort(), orderElement.getIsItReal());
+                                databaseDB.addNewHistoricOrder(historicOrder);
+                            }
                             databaseDB.deleteOrder(orderElement.getSymbol(), orderElement.getTimeWhenPlaced(), 1,
                                     orderElement.getIsItShort(), orderElement.getMargin());
                         }
@@ -839,7 +855,7 @@ public class ServiceFunctionsAPI {
 
                                             Log.e("F: getAllOrders", "UPDATE LOCAL ORDERS for missing REMOTE: " + wrongOrder);
                                             databaseDB.addNewOrder(new OrderListViewElement(wrongOrder.getSymbol(), 1, 0, wrongOrder.getStopPrice(), wrongOrder.getStopPrice(), wrongOrder.getStopPrice(),
-                                                    wrongOrder.getStopPrice(), wrongOrder.getUpdateTime(), 0, isItShort, 0, 1, wrongOrder.getOrderId(), wrongOrder.getType(), 0));
+                                                    wrongOrder.getStopPrice(), wrongOrder.getUpdateTime(), 0, isItShort, 0, 1, wrongOrder.getOrderId(), wrongOrder.getType(), wrongOrder.getOrigQty()));
                                         }
                                     }
                                 }
@@ -923,15 +939,32 @@ public class ServiceFunctionsAPI {
                             } else if (orderToCheckAndDelete != null) {
                                 Log.e("F: getPositions", orderToCheckAndDelete + " MARKET ORDER TEST TO DELETE");
 
+                                String info = "MARKET ORDER TO DELETE A: ExitA: " + orderToCheckAndDelete.getCurrentAmount() + ": EntryA: " + orderToCheckAndDelete.getEntryAmount() + " EntryP: " + orderToCheckAndDelete.getEntryPrice() + " ExitP: "  +  orderToCheckAndDelete.getStopLimitPrice();
+                                ServiceFunctionsOther.writeToFile(info, context, "orders");
+
+
                                 if (callbackButton != null) {
                                     callbackButton.onSuccess();
                                 } else {
+                                    float exitAmount = orderToCheckAndDelete.getCurrentAmount();
+                                    float moneyEarned = exitAmount - orderToCheckAndDelete.getEntryAmount();
+                                    ResultsListElement historicOrder = new ResultsListElement(orderToCheckAndDelete.getSymbol(), orderToCheckAndDelete.getEntryPrice(), orderToCheckAndDelete.getStopLimitPrice(), orderToCheckAndDelete.getPercentOfPriceChange(), orderToCheckAndDelete.getAccountNumber(), orderToCheckAndDelete.getMargin(), moneyEarned, orderToCheckAndDelete.getEntryAmount(), exitAmount, orderToCheckAndDelete.getPercentOfAmountChange(), orderToCheckAndDelete.getTimeWhenPlaced(), System.currentTimeMillis(),orderToCheckAndDelete.getIsItShort(), orderToCheckAndDelete.getIsItReal());
+                                    databaseDB.addNewHistoricOrder(historicOrder);
                                     databaseDB.deleteOrder(symbol, orderToCheckAndDelete.getTimeWhenPlaced(), 1,
                                             orderToCheckAndDelete.getIsItShort(), orderToCheckAndDelete.getMargin());
                                 }
                             }
 
                         } else if (positionForSymbol.getPositionAmt() == 0) {
+
+                            String info = "MARKET ORDER TEST TO DELETE B: ExitA: " + orderToCheckAndDelete.getCurrentAmount() + ": EntryA: " + orderToCheckAndDelete.getEntryAmount() + " EntryP: " + orderToCheckAndDelete.getEntryPrice() + " ExitP: "  +  orderToCheckAndDelete.getStopLimitPrice();
+                            ServiceFunctionsOther.writeToFile(info, context, "orders");
+
+
+                            float exitAmount = orderToCheckAndDelete.getCurrentAmount();
+                            float moneyEarned = exitAmount - orderToCheckAndDelete.getEntryAmount();
+                            ResultsListElement historicOrder = new ResultsListElement(orderToCheckAndDelete.getSymbol(), orderToCheckAndDelete.getEntryPrice(), orderToCheckAndDelete.getStopLimitPrice(), orderToCheckAndDelete.getPercentOfPriceChange(), orderToCheckAndDelete.getAccountNumber(), orderToCheckAndDelete.getMargin(), moneyEarned, orderToCheckAndDelete.getEntryAmount(), exitAmount, orderToCheckAndDelete.getPercentOfAmountChange(), orderToCheckAndDelete.getTimeWhenPlaced(), System.currentTimeMillis(),orderToCheckAndDelete.getIsItShort(), orderToCheckAndDelete.getIsItReal());
+                            databaseDB.addNewHistoricOrder(historicOrder);
                             databaseDB.deleteOrder(symbol, orderToCheckAndDelete.getTimeWhenPlaced(), 1,
                                     orderToCheckAndDelete.getIsItShort(), orderToCheckAndDelete.getMargin());
                         }

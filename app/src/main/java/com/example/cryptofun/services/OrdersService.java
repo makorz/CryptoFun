@@ -14,6 +14,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.data.database.Kline;
 import com.example.cryptofun.ui.orders.OrderListViewElement;
+import com.example.cryptofun.ui.results.ResultsListElement;
 
 import java.io.Serializable;
 import java.text.DecimalFormat;
@@ -160,243 +161,248 @@ public class OrdersService extends Service implements CallbackButton {
                     long minutes15 = 900000;
                     long halfHour = 1800000;
 
-                    String infoOfOrder = "LEVEL 5 [" + symbol + "] CurrentPrice: " + price + " PreviousPrice: " + previousPrice + " NowPriceChange%: " + percentNow
-                            + " PreviousPriceChange%: " + percentPrevious + " " + returnList.get(i).toString();
-                    Log.e(TAG, infoOfOrder);
-                    ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
 
-                    int strategyNr;
-                    data = databaseDB.retrieveParam(17);
+                    int stopLossStrategy, strategy;
+                    int lengthOfEMA;
+                    String whatEMA;
+                    float offsetSAR;
+
+                    data = databaseDB.retrieveParam(18);
                     if (data.getCount() == 0) {
-                        Log.e(TAG, "There is no param nr 17");
-                        strategyNr = 1;
+                        Log.e(TAG, "There is no param nr 18");
+                        stopLossStrategy = 1;
                     } else {
                         data.moveToFirst();
-                        strategyNr = data.getInt(3);
+                        stopLossStrategy = data.getInt(3);
                     }
                     data.close();
+
+                    data = databaseDB.retrieveParam(18);
+                    if (data.getCount() == 0) {
+                        Log.e(TAG, "There is no param nr 18");
+                        strategy = 1;
+                    } else {
+                        data.moveToFirst();
+                        strategy = data.getInt(3);
+                    }
+                    data.close();
+
+                    data = databaseDB.retrieveParam(19);
+                    if (data.getCount() == 0) {
+                        Log.e(TAG, "There is no param nr 19");
+                        lengthOfEMA = 31;
+                    } else {
+                        data.moveToFirst();
+                        lengthOfEMA = data.getInt(3);
+                    }
+                    data.close();
+                    data = databaseDB.retrieveParam(20);
+                    if (data.getCount() == 0) {
+                        Log.e(TAG, "There is no param nr 20");
+                        whatEMA = "close";
+                    } else {
+                        data.moveToFirst();
+                        whatEMA = data.getString(2);
+                    }
+                    data.close();
+                    data = databaseDB.retrieveParam(21);
+                    if (data.getCount() == 0) {
+                        Log.e(TAG, "There is no param nr 21");
+                        offsetSAR = 1;
+                    } else {
+                        data.moveToFirst();
+                        offsetSAR = data.getFloat(4);
+                    }
+                    data.close();
+
 
                     int whatToDoWithSL = 0;
                     long timeSinceEntry = System.currentTimeMillis() - returnList.get(i).getTimeWhenPlaced();
                     float percentOfPriceChangeToReact, stopLossValue, multiplier, stopLimitPrice;
+                    List<Kline> coinKlines15m = new ArrayList<>();
 
-                    if ( strategyNr == 2) {
+                    String infoOfOrder = "LEVEL 5 [" + symbol + "] CurrentPrice: " + price + " PreviousPrice: " + previousPrice + " NowPriceChange%: " + percentNow + " PreviousPriceChange%: " + percentPrevious + " SL Strategy: " + stopLossStrategy + " typeEMA: " + whatEMA + " lengthEMA: " + lengthOfEMA + " offsetSAR: " + offsetSAR + " " + returnList.get(i).toString();
+                    Log.e(TAG, infoOfOrder);
+                    ServiceFunctionsOther.writeToFile(infoOfOrder, getApplicationContext(), "result");
 
-                        percentOfPriceChangeToReact = 0.75f;
-                        stopLossValue = 1.15f;
-                        if ((percentNow >= 1.45 && percentNow < 4) || (percentNow <= -1.45 && percentNow > -4)) {
-                            stopLossValue = 1f;
-                        } else if ((percentNow >= 4) || (percentNow <= -5)) {
-                            stopLossValue = 0.75f;
-                        }
+                    switch (stopLossStrategy) {
 
-//                        stopLossValue = 1f;
-//                        if ((percentNow >= 3) || (percentNow <= -3)) {
-//                            stopLossValue = 0.75f;
-//                        }
+                        case 2:
+                            // EMA
+                            data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol, "15m");
+                            data.moveToFirst();
+                            if (data.getCount() > 0) {
 
-                        if (returnList.get(i).getIsItShort() == 1) {
+                                do {
+                                    Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
+                                            data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
+                                    coinKlines15m.add(tempKline);
 
-                            multiplier = 1 + stopLossValue / 100;
-                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
-
-                            if (price > returnList.get(i).getStopLimitPrice()) {
-                                whatToDoWithSL = 1;
-                            } else if (price < returnList.get(i).getTakeProfitPrice()) {
-                                whatToDoWithSL = 2;
-                            }  else if (percentNow < -20 && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
-                                whatToDoWithSL = 3;
-                            } else if (percentNow < -20 && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
-                                whatToDoWithSL = 4;
-                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > eightHours && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
-                                whatToDoWithSL = 3;
-                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > eightHours && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
-                                whatToDoWithSL = 4;
+                                } while (data.moveToNext());
                             }
+                            data.close();
 
-                        } else {
+                            percentOfPriceChangeToReact = 1f;
 
-                            multiplier = 1 - stopLossValue / 100;
-                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
+                            if (returnList.get(i).getIsItShort() == 1) {
 
-                            if (price < returnList.get(i).getStopLimitPrice()) {
-                                whatToDoWithSL = 1;
-                            } else if (price > returnList.get(i).getTakeProfitPrice()) {
-                                whatToDoWithSL = 2;
-                            }  else if (percentNow > 20 && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
-                                whatToDoWithSL = 3;
-                            } else if (percentNow > 20 && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
-                                whatToDoWithSL = 4;
-                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > eightHours && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
-                                whatToDoWithSL = 3;
-                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > eightHours && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
-                                whatToDoWithSL = 4;
-                            }
-                        }
+                                stopLimitPrice = (float) ServiceFunctionsStrategyTa4J.getEMAValue(coinKlines15m, lengthOfEMA, whatEMA);
 
-                    } else if (strategyNr == 6 || strategyNr == 4) {
-
-                        percentOfPriceChangeToReact = 1.5f;
-                        stopLossValue = 2f;
-                        if ((percentNow > 1.5 && percentNow < 2) || (percentNow < -1.5 && percentNow > -2)) {
-                            stopLossValue = 1.75f;
-                        } else if ((percentNow >= 2 && percentNow < 3) || (percentNow <= -2 && percentNow > -3)) {
-                            stopLossValue = 1.25f;
-                        } else if ((percentNow >= 3) || (percentNow <= -3)) {
-                            stopLossValue = 1f;
-                        }
-
-                        if (returnList.get(i).getIsItShort() == 1) {
-
-                            multiplier = 1 + stopLossValue / 100;
-                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
-
-                            if (price > returnList.get(i).getStopLimitPrice()) {
-                                whatToDoWithSL = 1;
-                            } else if (price < returnList.get(i).getTakeProfitPrice()) {
-                                whatToDoWithSL = 2;
-                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
-                                whatToDoWithSL = 3;
-                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
-                                whatToDoWithSL = 4;
-                            }
-
-                        } else {
-
-                            multiplier = 1 - stopLossValue / 100;
-                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
-
-                            if (price < returnList.get(i).getStopLimitPrice()) {
-                                whatToDoWithSL = 1;
-                            } else if (price > returnList.get(i).getTakeProfitPrice()) {
-                                whatToDoWithSL = 2;
-                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious < percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
-                                whatToDoWithSL = 3;
-                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious < percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
-                                whatToDoWithSL = 4;
-                            }
-                        }
-
-                    } else if (strategyNr == 5) {
-
-                        List<Kline> coinKlines3m = new ArrayList<>();
-                        data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol);
-                        data.moveToFirst();
-                        if (data.getCount() > 0) {
-
-                            do {
-                                Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
-                                        data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
-
-                                String interval = tempKline.gettKlineInterval();
-                                if ("3m".equals(interval)) {
-                                    coinKlines3m.add(tempKline);
+                                if (price > returnList.get(i).getStopLimitPrice()) {
+                                    whatToDoWithSL = 1;
+                                } else if (price < returnList.get(i).getTakeProfitPrice()) {
+                                    whatToDoWithSL = 2;
+                                } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice > returnList.get(i).getCurrentPrice() && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                    whatToDoWithSL = 3;
+                                } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice > returnList.get(i).getCurrentPrice() && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                    whatToDoWithSL = 4;
                                 }
-                            } while (data.moveToNext());
-                        }
-                        data.close();
 
-                        float offset = 1.0f;
-                        percentOfPriceChangeToReact = 1f;
+                            } else {
 
-                        if (returnList.get(i).getIsItShort() == 1) {
 
-                            stopLimitPrice =  (float) ServiceFunctionsStrategyTa4J.getSARValue(coinKlines3m) * ((100f + offset)/100);
+                                stopLimitPrice = (float) ServiceFunctionsStrategyTa4J.getEMAValue(coinKlines15m, lengthOfEMA, whatEMA);
 
-                            if (price > returnList.get(i).getStopLimitPrice()) {
-                                whatToDoWithSL = 1;
-                            } else if (price < returnList.get(i).getTakeProfitPrice()) {
-                                whatToDoWithSL = 2;
-                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice > returnList.get(i).getCurrentPrice() && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1 && returnList.get(i).getOrderType().equals("MARKET")) {
-                                whatToDoWithSL = 3;
-                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice > returnList.get(i).getCurrentPrice() && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0 && returnList.get(i).getOrderType().equals("MARKET")) {
-                                whatToDoWithSL = 4;
+                                if (price < returnList.get(i).getStopLimitPrice()) {
+                                    whatToDoWithSL = 1;
+                                } else if (price > returnList.get(i).getTakeProfitPrice()) {
+                                    whatToDoWithSL = 2;
+                                } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice < returnList.get(i).getCurrentPrice() && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                    whatToDoWithSL = 3;
+                                } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice < returnList.get(i).getCurrentPrice() && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                    whatToDoWithSL = 4;
+                                }
+                            }
+                            break;
+                        case 3:
+                            //Manual Limits
+                            percentOfPriceChangeToReact = 1.5f;
+                            stopLossValue = 2f;
+                            if ((percentNow > 1.5 && percentNow < 2) || (percentNow < -1.5 && percentNow > -2)) {
+                                stopLossValue = 1.75f;
+                            } else if ((percentNow >= 2 && percentNow < 3) || (percentNow <= -2 && percentNow > -3)) {
+                                stopLossValue = 1.25f;
+                            } else if ((percentNow >= 3) || (percentNow <= -3)) {
+                                stopLossValue = 1f;
                             }
 
-                        } else {
+                            if (returnList.get(i).getIsItShort() == 1) {
 
-                            stopLimitPrice =  (float) ServiceFunctionsStrategyTa4J.getSARValue(coinKlines3m)  * ((100f - offset)/100);
+                                multiplier = 1 + stopLossValue / 100;
+                                stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
 
-                            if (price < returnList.get(i).getStopLimitPrice()) {
-                                whatToDoWithSL = 1;
-                            } else if (price > returnList.get(i).getTakeProfitPrice()) {
-                                whatToDoWithSL = 2;
-                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice < returnList.get(i).getCurrentPrice() && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1 && returnList.get(i).getOrderType().equals("MARKET")) {
-                                whatToDoWithSL = 3;
-                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice < returnList.get(i).getCurrentPrice() && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0 && returnList.get(i).getOrderType().equals("MARKET")) {
-                                whatToDoWithSL = 4;
-                            }
-                        }
+                                if (price > returnList.get(i).getStopLimitPrice()) {
+                                    whatToDoWithSL = 1;
+                                } else if (price < returnList.get(i).getTakeProfitPrice()) {
+                                    whatToDoWithSL = 2;
+                                } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
+                                    whatToDoWithSL = 3;
+                                } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
+                                    whatToDoWithSL = 4;
+                                }
 
-                    } else {
+                            } else {
 
-                        percentOfPriceChangeToReact = 0.6f;
-                        stopLossValue = 0.65f;
-                        if ((percentNow >= 1.15 && percentNow < 2) || (percentNow <= -1.15 && percentNow > -2)) {
-                            stopLossValue = 0.5f;
-                        } else if ((percentNow >= 2) || (percentNow <= -2)) {
-                            stopLossValue = 0.35f;
-                        }
+                                multiplier = 1 - stopLossValue / 100;
+                                stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
 
-                        if (returnList.get(i).getIsItShort() == 1) {
-
-                            multiplier = 1 + stopLossValue / 100;
-                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
-
-                            if (price > returnList.get(i).getStopLimitPrice()) {
-                                whatToDoWithSL = 1;
-                            } else if (price < returnList.get(i).getTakeProfitPrice()) {
-                                whatToDoWithSL = 2;
-                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
-                                whatToDoWithSL = 3;
-                            } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
-                                whatToDoWithSL = 4;
-                            } else if (((orderTime + eightHours) < currentTime) && returnList.get(i).getEntryPrice() * 1.005 < returnList.get(i).getCurrentPrice()) {
-                                whatToDoWithSL = 5;
+                                if (price < returnList.get(i).getStopLimitPrice()) {
+                                    whatToDoWithSL = 1;
+                                } else if (price > returnList.get(i).getTakeProfitPrice()) {
+                                    whatToDoWithSL = 2;
+                                } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious < percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
+                                    whatToDoWithSL = 3;
+                                } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious < percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
+                                    whatToDoWithSL = 4;
+                                }
                             }
 
-                        } else {
-
-                            multiplier = 1 - stopLossValue / 100;
-                            stopLimitPrice = returnList.get(i).getCurrentPrice() * multiplier;
-
-                            if (price < returnList.get(i).getStopLimitPrice()) {
-                                whatToDoWithSL = 1;
-                            } else if (price > returnList.get(i).getTakeProfitPrice()) {
-                                whatToDoWithSL = 2;
-                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1) {
-                                whatToDoWithSL = 3;
-                            } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > minutes45 && percentPrevious > percentNow && returnList.get(i).getOrderType().equals("MARKET") && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0) {
-                                whatToDoWithSL = 4;
-                            } else if (((orderTime + eightHours) < currentTime) && returnList.get(i).getEntryPrice() * 0.995 > returnList.get(i).getCurrentPrice()) {
-                                whatToDoWithSL = 5;
+                            break;
+                        default:
+                            //SAR
+                            if (strategy == 20) {
+                                data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol,"4h");
+                            } else {
+                                data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol,"15m");
                             }
-                        }
+                            data.moveToFirst();
+                            if (data.getCount() > 0) {
+
+                                do {
+                                    Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
+                                            data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
+                                    coinKlines15m.add(tempKline);
+
+                                } while (data.moveToNext());
+                            }
+                            data.close();
+
+                            percentOfPriceChangeToReact = 1f;
+
+                            if (returnList.get(i).getIsItShort() == 1) {
+
+                                stopLimitPrice = (float) ServiceFunctionsStrategyTa4J.getSARValue(coinKlines15m) * ((100f + offsetSAR) / 100);
+
+                                if (price > returnList.get(i).getStopLimitPrice()) {
+                                    whatToDoWithSL = 1;
+                                } else if (price < returnList.get(i).getTakeProfitPrice()) {
+                                    whatToDoWithSL = 2;
+                                } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice > returnList.get(i).getCurrentPrice() && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                    whatToDoWithSL = 3;
+                                } else if (percentNow < -percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice > returnList.get(i).getCurrentPrice() && stopLimitPrice < returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                    whatToDoWithSL = 4;
+                                }
+
+                            } else {
+
+                                stopLimitPrice = (float) ServiceFunctionsStrategyTa4J.getSARValue(coinKlines15m) * ((100f - offsetSAR) / 100);
+
+                                if (price < returnList.get(i).getStopLimitPrice()) {
+                                    whatToDoWithSL = 1;
+                                } else if (price > returnList.get(i).getTakeProfitPrice()) {
+                                    whatToDoWithSL = 2;
+                                } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice < returnList.get(i).getCurrentPrice() && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 1 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                    whatToDoWithSL = 3;
+                                } else if (percentNow > percentOfPriceChangeToReact && timeSinceEntry > halfHour && stopLimitPrice < returnList.get(i).getCurrentPrice() && stopLimitPrice > returnList.get(i).getStopLimitPrice() && returnList.get(i).getIsItReal() == 0 && returnList.get(i).getOrderType().equals("MARKET")) {
+                                    whatToDoWithSL = 4;
+                                }
+                            }
+                            break;
                     }
 
                     String info, type;
                     boolean isThereStopLimitForThatSymbol = false;
                     long stopLimitOrderId = 0;
                     long timeOfStopLimitOrderPlacement = 0;
+                    float exitAmount, moneyEarned;
+                    ResultsListElement historicOrder;
 
                     switch (whatToDoWithSL) {
 
                         case 1: // SHORT/LONG - SL made // We don't take stop limit price when closing test order - we take amount when we check prices, so it can be lower if big move was made, stop limit would prevent of that
                             type = ((returnList.get(i).getIsItShort() == 1) ? "SHORT" : "LONG");
                             returnList.get(i).setCurrentPrice(returnList.get(i).getStopLimitPrice());
-                            info = "LEVEL 7 [" + symbol + "] STOP LIMIT " + type + ": CurrentPrice: " + price + " StopLimitPrice: " + returnList.get(i).getStopLimitPrice();
+                            info = "LEVEL 7 [" + symbol + "] STOP LIMIT " + type + ": CurrentPrice: " + price + " StopLimitPrice: " + returnList.get(i).getStopLimitPrice() + " " + returnList.get(i).getAccountNumber();
                             Log.e(TAG, info);
                             ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
                             ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "orders");
+                            exitAmount = returnList.get(i).getCurrentAmount();
+                            moneyEarned = exitAmount - returnList.get(i).getEntryAmount();
+                            historicOrder = new ResultsListElement(symbol, returnList.get(i).getEntryPrice(), returnList.get(i).getStopLimitPrice(), returnList.get(i).getPercentOfPriceChange(), returnList.get(i).getAccountNumber(), returnList.get(i).getMargin(), moneyEarned, returnList.get(i).getEntryAmount(), exitAmount, returnList.get(i).getPercentOfAmountChange(), returnList.get(i).getTimeWhenPlaced(), System.currentTimeMillis(), returnList.get(i).getIsItShort(), returnList.get(i).getIsItReal());
+                            databaseDB.addNewHistoricOrder(historicOrder);
                             closeOrder(i, returnList);
                             break;
                         case 2: // SHORT/LONG - TP made
                             type = ((returnList.get(i).getIsItShort() == 1) ? "SHORT" : "LONG");
                             returnList.get(i).setCurrentPrice(returnList.get(i).getTakeProfitPrice());
-                            info = "LEVEL 7 [" + symbol + "] TAKE PROFIT " + type + ": CurrentPrice: " + price + " TakeProfitPrice: " + returnList.get(i).getTakeProfitPrice();
+                            info = "LEVEL 7 [" + symbol + "] TAKE PROFIT " + type + ": CurrentPrice: " + price + " TakeProfitPrice: " + returnList.get(i).getTakeProfitPrice() + " " + returnList.get(i).getAccountNumber();
                             Log.e(TAG, info);
                             ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
                             ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "orders");
+                            exitAmount = returnList.get(i).getCurrentAmount();
+                            moneyEarned = exitAmount - returnList.get(i).getEntryAmount();
+                            historicOrder = new ResultsListElement(symbol, returnList.get(i).getEntryPrice(), returnList.get(i).getTakeProfitPrice(), returnList.get(i).getPercentOfPriceChange(), returnList.get(i).getAccountNumber(), returnList.get(i).getMargin(), moneyEarned, returnList.get(i).getEntryAmount(), exitAmount, returnList.get(i).getPercentOfAmountChange(), returnList.get(i).getTimeWhenPlaced(), System.currentTimeMillis(), returnList.get(i).getIsItShort(), returnList.get(i).getIsItReal());
+                            databaseDB.addNewHistoricOrder(historicOrder);
                             closeOrder(i, returnList);
                             break;
                         case 3: // SHORT/LONG - Set new SL for REAL order
@@ -464,6 +470,7 @@ public class OrdersService extends Service implements CallbackButton {
     private void closeOrder(int position, ArrayList<OrderListViewElement> returnList) {
 
         Log.e(TAG, "Order was closed for: " + returnList.get(position).toString());
+
         if (returnList.get(position).getIsItReal() == 1) {
             if (returnList.get(position).getOrderType().equals("TAKE_PROFIT_MARKET") || returnList.get(position).getOrderType().equals("STOP_MARKET")) {
                 boolean areStopOrTakeRelevant = false;
@@ -492,6 +499,10 @@ public class OrdersService extends Service implements CallbackButton {
             }
             data.close();
             String nrOfParameterForAccount = String.valueOf(returnList.get(position).getAccountNumber());
+            String info = "LEVEL 8 " + returnList.get(position).toString() + " balance: " + balance + " newMoney: " + returnList.get(position).getCurrentAmount();
+            Log.e(TAG, info);
+            ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
+            ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "orders");
             databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_REAL, balance + returnList.get(position).getCurrentAmount(), ID, nrOfParameterForAccount);
         }
     }
@@ -531,6 +542,7 @@ public class OrdersService extends Service implements CallbackButton {
 
         for (int i = 6; i < 11; i++) {
             Cursor data = databaseDB.retrieveParam(i);
+            data.moveToFirst();
             if (data.getCount() == 0) {
                 Log.e(TAG, "There is no param for test account " + (i - 5));
                 databaseDB.addParam(i, "Test account nr " + (i - 5) + " balance", "", 0, 100);
@@ -540,7 +552,6 @@ public class OrdersService extends Service implements CallbackButton {
                 databaseDB.addParam(i, "Test account nr " + (i - 5) + " balance", "", 0, 100);
                 automaticBalance.add("100.00");
             } else {
-                data.moveToFirst();
                 float balance = data.getFloat(4);
                 DecimalFormat dfNr = new DecimalFormat("0.00");
                 automaticBalance.add(dfNr.format(balance));

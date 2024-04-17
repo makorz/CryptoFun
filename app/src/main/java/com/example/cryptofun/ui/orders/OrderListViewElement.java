@@ -65,9 +65,7 @@ public class OrderListViewElement implements Serializable, Comparable<OrderListV
         this.orderID = orderID;
     }
 
-    public int getAccountNumber() {
-        return accountNumber;
-    }
+    public int getAccountNumber() { return accountNumber; }
 
     public void setAccountNumber(int accountNumber) {
         this.accountNumber = accountNumber;

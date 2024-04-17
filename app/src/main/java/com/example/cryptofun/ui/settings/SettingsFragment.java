@@ -19,9 +19,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -51,14 +53,18 @@ public class SettingsFragment extends Fragment {
     private static final String VALUE_STRING = "value_string";
     private static final String VALUE_INT = "value_int";
     private static final String VALUE_REAL = "value_real";
+    private static final String IS_IT_REAL = "isReal";
+    private static final String WHAT_ACCOUNT = "account_nr";
+    private static final String TABLE_NAME_APPROVED_HISTORIC = "historic_approved_tokens";
     private static final String ID = "id";
 
     private FragmentSettingsBinding binding;
-    private Button resetTestBalanceButton, resetAutomaticTestBalanceButton, showKeysButton, updateParamsButton, accountInfoButton;
-    private EditText apikeyET, secretET, marginET, takeProfitET, stopLossET, windowET, strategyET;
+    private Button resetTestBalanceButton, resetAutomaticTestBalanceButton, resetApprovedListTableAndLogFilesButton, showKeysButton, updateParamsButton, accountInfoButton;
+    private EditText apikeyET, secretET, marginET, takeProfitET, stopLossET, windowET, strategyET, stopLossStrategyET, emaLengthET, offsetSarET, hoursForApprovedET, globalHoursET, firstThresholdET, secondThresholdET, howOftenAlarmET;
+    private Spinner emaTypeSpinner;
     private FloatingActionButton infoButton;
     private DBHandler databaseDB;
-    private SwitchCompat switchTest, switchReal;
+    private SwitchCompat switchTest, switchReal, switchGroupingApproved, switchGlobal;
     View root;
     InputMethodManager imm;
 
@@ -89,14 +95,36 @@ public class SettingsFragment extends Fragment {
         windowET = binding.etRecvWindow;
         accountInfoButton = binding.btCheckAccountInfo;
         strategyET = binding.etStrategy;
-
+        stopLossStrategyET = binding.etStopLossStrategy;
+        emaLengthET = binding.etLengthForEma;
+        offsetSarET = binding.etOffsetSAR;
+        emaTypeSpinner = binding.spinnerEmaType;
+        resetApprovedListTableAndLogFilesButton = binding.btOtherReset;
+        switchGroupingApproved = binding.switchGroupingHistoricApproved;
+        hoursForApprovedET = binding.etHowLongShowHistoricApproved;
+        switchGlobal = binding.switchUsingGlobalTokenTrends;
+        globalHoursET = binding.etHowManyHoursToLookBackForGlobal;
+        firstThresholdET = binding.etFirstPercentThreshold;
+        secondThresholdET = binding.etSecondPercentThreshold;
+        howOftenAlarmET = binding.etHowOftenAlarmMustRun;
         checkIfParamsArePresent();
         buttonsJob();
         return root;
     }
 
     private void checkIfParamsArePresent() {
-        Cursor data = databaseDB.retrieveParam(4);
+
+        Cursor data = databaseDB.retrieveParam(3);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 3");
+            databaseDB.addParam(3, "How often run alarm to update database.", "", 1, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 3);
+            databaseDB.addParam(3, "How often run alarm to update database.", "null", 1, 0);
+        }
+        data.close();
+
+        data = databaseDB.retrieveParam(4);
         if (data.getCount() == 0) {
             Log.e(TAG, "There is no param nr 4");
             databaseDB.addParam(4, "API-KEY", "null", 0, 0);
@@ -106,15 +134,15 @@ public class SettingsFragment extends Fragment {
         }
         data.close();
 
-        Cursor data2 = databaseDB.retrieveParam(5);
-        if (data2.getCount() == 0) {
+        data = databaseDB.retrieveParam(5);
+        if (data.getCount() == 0) {
             Log.e(TAG, "There is no param nr 5");
             databaseDB.addParam(5, "SECRET", "null", 0, 0);
-        } else if (data2.getCount() >= 2) {
+        } else if (data.getCount() >= 2) {
             databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 5);
             databaseDB.addParam(5, "SECRET", "null", 0, 0);
         }
-        data2.close();
+        data.close();
 
         data = databaseDB.retrieveParam(11);
         if (data.getCount() == 0) {
@@ -126,15 +154,15 @@ public class SettingsFragment extends Fragment {
         }
         data.close();
 
-        data2 = databaseDB.retrieveParam(12);
-        if (data2.getCount() == 0) {
+        data = databaseDB.retrieveParam(12);
+        if (data.getCount() == 0) {
             Log.e(TAG, "There is no param nr 12");
             databaseDB.addParam(12, "Automatic SL", "", 0, 1);
-        } else if (data2.getCount() >= 2) {
+        } else if (data.getCount() >= 2) {
             databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 12);
             databaseDB.addParam(12, "Automatic SL", "", 0, 1);
         }
-        data2.close();
+        data.close();
 
         data = databaseDB.retrieveParam(13);
         if (data.getCount() == 0) {
@@ -146,15 +174,15 @@ public class SettingsFragment extends Fragment {
         }
         data.close();
 
-        data2 = databaseDB.retrieveParam(14);
-        if (data2.getCount() == 0) {
+        data = databaseDB.retrieveParam(14);
+        if (data.getCount() == 0) {
             Log.e(TAG, "There is no param nr 14");
             databaseDB.addParam(14, "recvWindow", "", 1000, 0);
-        } else if (data2.getCount() >= 2) {
+        } else if (data.getCount() >= 2) {
             databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 14);
             databaseDB.addParam(14, "recvWindow", "", 1000, 0);
         }
-        data2.close();
+        data.close();
 
         data = databaseDB.retrieveParam(15);
         if (data.getCount() == 0) {
@@ -170,19 +198,19 @@ public class SettingsFragment extends Fragment {
         }
         data.close();
 
-        data2 = databaseDB.retrieveParam(16);
-        if (data2.getCount() == 0) {
+        data = databaseDB.retrieveParam(16);
+        if (data.getCount() == 0) {
             Log.e(TAG, "There is no param nr 16");
             databaseDB.addParam(16, "Stop automatic for TEST", "", 0, 0);
-        } else if (data2.getCount() >= 2) {
+        } else if (data.getCount() >= 2) {
             databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 16);
             databaseDB.addParam(16, "Stop automatic for TEST", "", 0, 0);
         } else {
-            data2.moveToFirst();
-            int value = data2.getInt(3);
+            data.moveToFirst();
+            int value = data.getInt(3);
             switchTest.setChecked(value == 1);
         }
-        data2.close();
+        data.close();
 
         data = databaseDB.retrieveParam(17);
         if (data.getCount() == 0) {
@@ -194,27 +222,172 @@ public class SettingsFragment extends Fragment {
         }
         data.close();
 
+        data = databaseDB.retrieveParam(18);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 18");
+            databaseDB.addParam(18, "Active SL Strategy Nr:", "", 1, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 18);
+            databaseDB.addParam(18, "Active SL Strategy Nr:", "", 1, 0);
+        }
+        data.close();
+
+        data = databaseDB.retrieveParam(19);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 19");
+            databaseDB.addParam(19, "Length of EMA for SL:", "", 31, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 19);
+            databaseDB.addParam(19, "Length of EMA for SL:", "", 31, 0);
+        }
+        data.close();
+
+        data = databaseDB.retrieveParam(20);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 20");
+            databaseDB.addParam(20, "What EMA for SL:", "hlc3", 0, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 20);
+            databaseDB.addParam(20, "What EMA for SL:", "hlc3", 0, 0);
+        }
+        data.close();
+
+        data = databaseDB.retrieveParam(21);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 21");
+            databaseDB.addParam(21, "Offset for SAR: ", "", 0, 1);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 21);
+            databaseDB.addParam(21, "Offset for SAR: ", "", 0, 1);
+        }
+        data.close();
+
+        data = databaseDB.retrieveParam(22);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 22");
+            databaseDB.addParam(22, "How many hours back to show historic approved tokens.", "", 12, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 22);
+            databaseDB.addParam(22, "How many hours back to show historic approved tokens.", "", 12, 0);
+        }
+        data.close();
+
+        data = databaseDB.retrieveParam(23);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 23");
+            databaseDB.addParam(23, "Group historic approved token on home screen?", "", 0, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 23);
+            databaseDB.addParam(23, "Group historic approved token on home screen?", "", 0, 0);
+        } else {
+            data.moveToFirst();
+            int value = data.getInt(3);
+            switchGroupingApproved.setChecked(value == 1);
+        }
+        data.close();
+
+        data = databaseDB.retrieveParam(24);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 24");
+            databaseDB.addParam(24, "Global criteria turn on.", "", 0, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 24);
+            databaseDB.addParam(24, "Global criteria turn on", "", 0, 0);
+        } else {
+            data.moveToFirst();
+            int value = data.getInt(3);
+            switchGlobal.setChecked(value == 1);
+        }
+        data.close();
+
+        data = databaseDB.retrieveParam(25);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 25");
+            databaseDB.addParam(25, "How many hours back for global criteria.", "", 4, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 25);
+            databaseDB.addParam(25, "How many hours back for global criteria.", "", 4, 0);
+        }
+        data.close();
+
+        data = databaseDB.retrieveParam(26);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 26");
+            databaseDB.addParam(26, "First % threshold.", "", 1, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 26);
+            databaseDB.addParam(26, "First % threshold.", "", 1, 0);
+        }
+        data.close();
+
+        data = databaseDB.retrieveParam(27);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 27");
+            databaseDB.addParam(27, "Second % threshold.", "", 2, 0);
+        } else if (data.getCount() >= 2) {
+            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 27);
+            databaseDB.addParam(27, "Second % threshold.", "", 2, 0);
+        }
+        data.close();
+
     }
 
     private void buttonsJob() {
 
-        accountInfoButton.setOnClickListener(v -> {
+//        accountInfoButton.setOnClickListener(v -> {
+//
+//            Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
+//            List<String> listOfSymbols = new ArrayList<>();
+//            data.moveToFirst();
+//            if (data.getCount() == 0) {
+//                Log.e(TAG, "Table " + TABLE_SYMBOL_AVG + " is empty. [settingsFragment]");
+//            } else {
+//                data.moveToFirst();
+//                do {
+//                    listOfSymbols.add(data.getString(0));
+//                } while (data.moveToNext());
+//                for (int i = 0; i < listOfSymbols.size(); i++) {
+//                    countBestCryptoToBuy(listOfSymbols.get(i));
+//                }
+//            }
+//            data.close();
+//        });
 
-            Cursor data = databaseDB.retrieveCryptoSymbolsToListView();
-            List<String> listOfSymbols = new ArrayList<>();
-            data.moveToFirst();
-            if (data.getCount() == 0) {
-                Log.e(TAG, "Table " + TABLE_SYMBOL_AVG + " is empty. [settingsFragment]");
-            } else {
-                data.moveToFirst();
-                do {
-                    listOfSymbols.add(data.getString(0));
-                } while (data.moveToNext());
-                for (int i = 0; i < listOfSymbols.size(); i++) {
-                    countBestCryptoToBuy(listOfSymbols.get(i));
-                }
+        emaTypeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_STRING, emaTypeSpinner.getSelectedItem().toString(), ID, "20");
             }
-            data.close();
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+
+        resetApprovedListTableAndLogFilesButton.setOnClickListener(v -> {
+
+            // Hide the keyboard
+            imm.hideSoftInputFromWindow(root.getWindowToken(), 0);
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+            builder.setTitle("RESET TEST BALANCE");
+            builder.setMessage("Are You sure You want reset approved tokens and logs");
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                    resetRealBalance();
+                    databaseDB.clearTable(TABLE_NAME_APPROVED_HISTORIC);
+                    ServiceFunctionsOther.deleteFile(getContext(), "orders");
+                }
+            });
+            builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                }
+            });
+            AlertDialog dialog = builder.create();
+            dialog.show();
+
         });
 
 
@@ -276,9 +449,28 @@ public class SettingsFragment extends Fragment {
             String secret = secretET.getText().toString();
             String recvWindow = windowET.getText().toString();
             String strategy = strategyET.getText().toString();
+            String stopLossStrategy = stopLossStrategyET.getText().toString();
+            String offsetSAR = offsetSarET.getText().toString();
+            String lengthEMA = emaLengthET.getText().toString();
+            String howManyHours = hoursForApprovedET.getText().toString();
+            String howManyHoursGlobal = globalHoursET.getText().toString();
+            String firstThreshold = firstThresholdET.getText().toString();
+            String secondThreshold = secondThresholdET.getText().toString();
+            String howOftenAlarm = howOftenAlarmET.getText().toString();
+
 
             String finalMessage = "Are You sure You want update params of automatic to following values:\n\n";
             int nrOfParams = 0;
+
+            if (!howOftenAlarm.equals("")) {
+                if (Integer.parseInt(howOftenAlarm) > 60 || Integer.parseInt(howOftenAlarm) < 1) {
+                    Toast.makeText(getContext(), "Update database between 1 and 60min.", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "DB update alarm: " + howOftenAlarm + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
 
             if (!margin.equals("") && margin.matches("\\d+")) {
                 if (Integer.parseInt(margin) >= 25 || Integer.parseInt(margin) < 2) {
@@ -299,8 +491,8 @@ public class SettingsFragment extends Fragment {
                 }
             }
             if (!takeP.equals("")) {
-                if (Float.parseFloat(takeP) > 50 || Float.parseFloat(takeP) < 0) {
-                    Toast.makeText(getContext(), "TakeProfit should be between 0 and 50", Toast.LENGTH_SHORT).show();
+                if (Float.parseFloat(takeP) > 1000 || Float.parseFloat(takeP) < 0) {
+                    Toast.makeText(getContext(), "TakeProfit should be between 0 and 1000", Toast.LENGTH_SHORT).show();
                 } else {
                     String add = "TakeProfit: " + takeP + "\n\n";
                     finalMessage += add;
@@ -327,10 +519,81 @@ public class SettingsFragment extends Fragment {
                 }
             }
             if (!strategy.equals("")) {
-                if (Float.parseFloat(strategy) > 6 || Float.parseFloat(strategy) < 1) {
-                    Toast.makeText(getContext(), "Strategy between 1 and 6", Toast.LENGTH_SHORT).show();
+                if (Float.parseFloat(strategy) > 8 || Float.parseFloat(strategy) < 1) {
+                    Toast.makeText(getContext(), "Strategy between 1 and 8", Toast.LENGTH_SHORT).show();
                 } else {
-                    String add = "Strategy: " + strategy + "\n\n";
+                    String add = "Main Strategy: " + strategy + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+            if (!stopLossStrategy.equals("")) {
+                if (Float.parseFloat(stopLossStrategy) > 3 || Float.parseFloat(stopLossStrategy) < 1) {
+                    Toast.makeText(getContext(), "SL Strategy between 1 and 3", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "SL Strategy: " + stopLossStrategy + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+              if (!offsetSAR.equals("")) {
+                if (Float.parseFloat(offsetSAR) > 25 || Float.parseFloat(offsetSAR) < 0.1) {
+                    Toast.makeText(getContext(), "Offset between 0.1 and 25", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "SL offset SAR: " + offsetSAR + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+            if (!lengthEMA.equals("")) {
+                if (Float.parseFloat(lengthEMA) > 200 || Float.parseFloat(lengthEMA) < 10) {
+                    Toast.makeText(getContext(), "SL EMA length between 10 and 200", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "SL EMA length: " + lengthEMA + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+            if (!howManyHours.equals("")) {
+                if (Integer.parseInt(howManyHours) > 24 || Integer.parseInt(howManyHours) < 6) {
+                    Toast.makeText(getContext(), "Hours should be between 6 and 24", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "Hours to show historic: " + howManyHours + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+            if (!howManyHoursGlobal.equals("")) {
+                if (Integer.parseInt(howManyHoursGlobal) > 12 || Integer.parseInt(howManyHoursGlobal) < 1) {
+                    Toast.makeText(getContext(), "Global Hours should be between 1 and 12", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "Hours global criteria: " + howManyHoursGlobal + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+            if (!firstThreshold.equals("")) {
+                if(secondThreshold.equals("")) {
+                    Toast.makeText(getContext(), "To fill thresholds enter value for second as well.", Toast.LENGTH_SHORT).show();
+                } else if (Integer.parseInt(firstThreshold) > 10 || Integer.parseInt(firstThreshold) < 1) {
+                    Toast.makeText(getContext(), "First % threshold should be between 1 and 10", Toast.LENGTH_SHORT).show();
+                } else if (Integer.parseInt(firstThreshold) > Integer.parseInt(secondThreshold)) {
+                    Toast.makeText(getContext(), "First % threshold should be lower than second % threshold.", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "First threshold: " + firstThreshold + "\n\n";
+                    finalMessage += add;
+                    nrOfParams++;
+                }
+            }
+            if (!secondThreshold.equals("")) {
+                if(firstThreshold.equals("")) {
+                    Toast.makeText(getContext(), "To fill thresholds enter value for first as well.", Toast.LENGTH_SHORT).show();
+                }else  if (Integer.parseInt(secondThreshold) > 20 || Integer.parseInt(secondThreshold) < 2) {
+                    Toast.makeText(getContext(), "Second % threshold should be between 1 and 10", Toast.LENGTH_SHORT).show();
+                } else if (Integer.parseInt(firstThreshold) > Integer.parseInt(secondThreshold)) {
+                    Toast.makeText(getContext(), "Second % threshold should be higher than second % threshold.", Toast.LENGTH_SHORT).show();
+                } else {
+                    String add = "Second threshold: " + secondThreshold + "\n\n";
                     finalMessage += add;
                     nrOfParams++;
                 }
@@ -347,6 +610,9 @@ public class SettingsFragment extends Fragment {
             builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int which) {
 
+                    if (finalMessage1.contains("DB update alarm:")) {
+                        databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(howOftenAlarm), ID, "3");
+                    }
                     if (finalMessage1.contains("Margin:")) {
                         databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(margin), ID, "11");
                     }
@@ -365,8 +631,29 @@ public class SettingsFragment extends Fragment {
                     if (finalMessage1.contains("RecvWindow:")) {
                         databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(recvWindow), ID, "14");
                     }
-                    if (finalMessage1.contains("Strategy:")) {
+                    if (finalMessage1.contains("Main Strategy:")) {
                         databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(strategy), ID, "17");
+                    }
+                    if (finalMessage1.contains("SL Strategy:")) {
+                        databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(stopLossStrategy), ID, "18");
+                    }
+                    if (finalMessage1.contains("SL EMA")) {
+                        databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(lengthEMA), ID, "19");
+                    }
+                    if (finalMessage1.contains("SL offset SAR:")) {
+                        databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_REAL, Float.parseFloat(offsetSAR), ID, "21");
+                    }
+                    if (finalMessage1.contains("Hours to show historic:")) {
+                        databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(howManyHours), ID, "22");
+                    }
+                    if (finalMessage1.contains("Hours global criteria:")) {
+                        databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(howManyHoursGlobal), ID, "25");
+                    }
+                    if (finalMessage1.contains("First threshold: ")) {
+                        databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(firstThreshold), ID, "26");
+                    }
+                    if (finalMessage1.contains("Second threshold:")) {
+                        databaseDB.updateWithWhereClauseREAL(TABLE_NAME_CONFIG, VALUE_INT, Integer.parseInt(secondThreshold), ID, "27");
                     }
 
                     marginET.setText("");
@@ -376,6 +663,14 @@ public class SettingsFragment extends Fragment {
                     secretET.setText("");
                     windowET.setText("");
                     strategyET.setText("");
+                    stopLossStrategyET.setText("");
+                    emaLengthET.setText("");
+                    offsetSarET.setText("");
+                    hoursForApprovedET.setText("");
+                    globalHoursET.setText("");
+                    firstThresholdET.setText("");
+                    secondThresholdET.setText("");
+                    howOftenAlarmET.setText("");
                 }
             });
             builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
@@ -401,6 +696,7 @@ public class SettingsFragment extends Fragment {
             // Hide the keyboard
             imm.hideSoftInputFromWindow(root.getWindowToken(), 0);
 
+            String alarm = "";
             String apikey = "";
             String secret = "";
             String margin = "";
@@ -408,8 +704,24 @@ public class SettingsFragment extends Fragment {
             String takeP = "";
             String window = "";
             String strategy = "";
+            String stopLossStrategy = "";
+            String offsetSAR = "";
+            String lengthEMA = "";
+            String emaType = "";
+            String howManyHours = "";
+            String howManyHoursGlobal = "";
+            String firstThreshold = "";
+            String secondThreshold = "";
 
-            Cursor data = databaseDB.retrieveParam(4);
+            Cursor data = databaseDB.retrieveParam(3);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 3");
+            } else {
+                data.moveToFirst();
+                alarm = String.valueOf(data.getInt(3));
+            }
+            data.close();
+            data = databaseDB.retrieveParam(4);
             if (data.getCount() == 0) {
                 Log.e(TAG, "There is no param nr 4");
             } else {
@@ -417,14 +729,14 @@ public class SettingsFragment extends Fragment {
                 apikey = data.getString(2);
             }
             data.close();
-            Cursor data2 = databaseDB.retrieveParam(5);
-            if (data2.getCount() == 0) {
+            data = databaseDB.retrieveParam(5);
+            if (data.getCount() == 0) {
                 Log.e(TAG, "There is no param nr 5");
             } else {
-                data2.moveToFirst();
-                secret = data2.getString(2);
+                data.moveToFirst();
+                secret = data.getString(2);
             }
-            data2.close();
+            data.close();
 
             data = databaseDB.retrieveParam(11);
             if (data.getCount() == 0) {
@@ -435,14 +747,14 @@ public class SettingsFragment extends Fragment {
             }
             data.close();
 
-            data2 = databaseDB.retrieveParam(12);
-            if (data2.getCount() == 0) {
+            data = databaseDB.retrieveParam(12);
+            if (data.getCount() == 0) {
                 Log.e(TAG, "There is no param nr 12");
             } else {
-                data2.moveToFirst();
-                stopL = String.valueOf(data2.getFloat(4));
+                data.moveToFirst();
+                stopL = String.valueOf(data.getFloat(4));
             }
-            data2.close();
+            data.close();
 
             data = databaseDB.retrieveParam(13);
             if (data.getCount() == 0) {
@@ -453,14 +765,14 @@ public class SettingsFragment extends Fragment {
             }
             data.close();
 
-            data2 = databaseDB.retrieveParam(14);
-            if (data2.getCount() == 0) {
+            data = databaseDB.retrieveParam(14);
+            if (data.getCount() == 0) {
                 Log.e(TAG, "There is no param nr 14");
             } else {
-                data2.moveToFirst();
-                window = String.valueOf(data2.getInt(3));
+                data.moveToFirst();
+                window = String.valueOf(data.getInt(3));
             }
-            data2.close();
+            data.close();
 
             data = databaseDB.retrieveParam(17);
             if (data.getCount() == 0) {
@@ -471,7 +783,86 @@ public class SettingsFragment extends Fragment {
             }
             data.close();
 
-            String toastMessage = "API-KEY: " + apikey + "\n\n" + "SECRET: " + secret + "\n\n" + "MARGIN: " + margin + "\n\n" + "SL: " + stopL + "\n\n" + "TP: " + takeP + "\n\n" + "recvWindow: " + window + "\n\n" + "Strategy: " + strategy;
+            data = databaseDB.retrieveParam(18);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 18");
+            } else {
+                data.moveToFirst();
+                stopLossStrategy = String.valueOf(data.getInt(3));
+            }
+            data.close();
+
+            data = databaseDB.retrieveParam(19);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 19");
+            } else {
+                data.moveToFirst();
+                lengthEMA = String.valueOf(data.getInt(3));
+            }
+            data.close();
+
+            data = databaseDB.retrieveParam(20);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 20");
+            } else {
+                data.moveToFirst();
+                emaType = data.getString(2);
+            }
+            data.close();
+
+            data = databaseDB.retrieveParam(21);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 21");
+            } else {
+                data.moveToFirst();
+                offsetSAR = String.valueOf(data.getFloat(4));
+            }
+            data.close();
+
+            data = databaseDB.retrieveParam(22);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 22");
+            } else {
+                data.moveToFirst();
+                howManyHours = String.valueOf(data.getInt(3));
+            }
+            data.close();
+
+            data = databaseDB.retrieveParam(25);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 25");
+            } else {
+                data.moveToFirst();
+                howManyHoursGlobal = String.valueOf(data.getInt(3));
+            }
+            data.close();
+
+            data = databaseDB.retrieveParam(26);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 26");
+            } else {
+                data.moveToFirst();
+                firstThreshold = String.valueOf(data.getInt(3));
+            }
+            data.close();
+
+            data = databaseDB.retrieveParam(27);
+            if (data.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 27");
+            } else {
+                data.moveToFirst();
+                secondThreshold = String.valueOf(data.getInt(3));
+            }
+            data.close();
+
+            String toastMessage;
+            if (switchGlobal.isChecked()) {
+                toastMessage = "API-KEY: " + apikey + "\n\n" + "SECRET: " + secret + "\n\n" + "MARGIN: " + margin + "\n\n" + "SL: " + stopL + "\n\n" + "TP: " + takeP + "\n\n" + "recvWindow: " + window + "\n\n" + "Strategy: " + strategy + "\n\n" + "How often update DB: " + alarm + "\n\n" + "SL Strategy: " + stopLossStrategy + "\n\n" + "SL EMA length: " + lengthEMA + "\n\n" + "SL EMA type: " + emaType + "\n\n" + "SL offset SAR: " + offsetSAR + "\n\n" + "Hours to show historic: " + howManyHours + "\n\n" + "Hours global criteria: " + howManyHoursGlobal + "\n\n" + "First % threshold: " + firstThreshold + "\n\n" + "Second % threshold: " + secondThreshold;
+
+            } else {
+                toastMessage = "API-KEY: " + apikey + "\n\n" + "SECRET: " + secret + "\n\n" + "MARGIN: " + margin + "\n\n" + "SL: " + stopL + "\n\n" + "TP: " + takeP + "\n\n" + "recvWindow: " + window + "\n\n" + "Strategy: " + strategy + "\n\n" + "How often update DB: " + alarm + "\n\n" + "SL Strategy: " + stopLossStrategy + "\n\n" + "SL EMA length: " + lengthEMA + "\n\n" + "SL EMA type: " + emaType + "\n\n" + "SL offset SAR: " + offsetSAR + "\n\n" + "Hours to show historic: " + howManyHours;
+
+            }
 
             View customLayout = getLayoutInflater().inflate(R.layout.custom_snackbar, null);
             Snackbar snackbar = Snackbar.make(root, "", Snackbar.LENGTH_SHORT);
@@ -506,10 +897,37 @@ public class SettingsFragment extends Fragment {
             }
         });
 
+        switchGroupingApproved.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if (b) {
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, 1, ID, "23");
+                } else {
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, 0, ID, "23");
+                }
+            }
+        });
+
+        switchGlobal.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if (b) {
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, 1, ID, "24");
+                } else {
+                    databaseDB.updateWithWhereClauseINT(TABLE_NAME_CONFIG, VALUE_INT, 0, ID, "24");
+                }
+            }
+        });
+
     }
 
     private void resetTestBalance() {
         databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_REAL, String.valueOf(100), ID, "2");
+        databaseDB.deleteResultsOfClosedOrders(0,false);
+    }
+
+    private void resetRealBalance() {
+        databaseDB.deleteResultsOfClosedOrders(1,false);
     }
 
     private void resetAutomaticTestBalance() {
@@ -518,6 +936,8 @@ public class SettingsFragment extends Fragment {
         databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_REAL, String.valueOf(100), ID, "8");
         databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_REAL, String.valueOf(100), ID, "9");
         databaseDB.updateWithWhereClause(TABLE_NAME_CONFIG, VALUE_REAL, String.valueOf(100), ID, "10");
+        databaseDB.deleteResultsOfClosedOrders(0,true);
+
     }
 
     // Create a custom dialog with a ViewPager
@@ -553,56 +973,6 @@ public class SettingsFragment extends Fragment {
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
         dialog.show();
-    }
-
-    // Function checks what crypto is going to run in green
-    private void countBestCryptoToBuy(String symbol) {
-
-        List<Kline> coinKlines3m = new ArrayList<>();
-        List<Kline> coinKlines15m = new ArrayList<>();
-        List<Kline> coinKlines4h = new ArrayList<>();
-
-        List<Integer> statusOf3mKlines = new ArrayList<>();
-        List<Integer> statusOf15mKlines = new ArrayList<>();
-        List<Integer> statusOf4hKlines = new ArrayList<>();
-
-        Cursor data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol);
-        data.moveToFirst();
-        if (data.getCount() > 0) {
-
-            do {
-
-                Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
-                        data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
-
-                String interval = tempKline.gettKlineInterval();
-                switch (interval) {
-                    case "3m":
-                        coinKlines3m.add(tempKline);
-                        statusOf3mKlines.add(tempKline.getStatusOfKline());
-                        break;
-                    case "15m":
-                        coinKlines15m.add(tempKline);
-                        statusOf15mKlines.add(tempKline.getStatusOfKline());
-                        break;
-                    case "4h":
-                        coinKlines4h.add(tempKline);
-                        statusOf4hKlines.add(tempKline.getStatusOfKline());
-                        break;
-                    default:
-                        break;
-                }
-            } while (data.moveToNext());
-        }
-
-        data.close();
-
-        StrategyResult strategy3m =  ServiceFunctionsStrategyTa4J.strategyTa4J_nr2(coinKlines3m, getContext());
-        StrategyResult strategy15m = ServiceFunctionsStrategyTa4J.strategyTa4J_nr2(coinKlines15m, getContext());
-
-        String info = "STRATEGY TESTS: " + symbol + " - " + "STRATEGY:\n" + strategy3m + "\n" + strategy15m;
-        Log.e(TAG, info);
-        ServiceFunctionsOther.writeToFile(info, getContext(), "strategy");
     }
 
     @Override

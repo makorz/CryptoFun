@@ -1,8 +1,10 @@
 package com.example.cryptofun.services;
 
 import android.annotation.SuppressLint;
+import android.app.IntentService;
 import android.app.Notification;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Handler;
@@ -12,12 +14,8 @@ import android.widget.Toast;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import com.example.cryptofun.data.ApprovedToken;
 import com.example.cryptofun.data.KlineRequest;
 import com.example.cryptofun.data.ObservableModel;
-import com.example.cryptofun.data.StrategyParameters;
-import com.example.cryptofun.data.StrategyResult;
-import com.example.cryptofun.data.StrategyResultV2;
 import com.example.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.data.database.Kline;
 import com.example.cryptofun.data.database.rawTable_Kline;
@@ -25,7 +23,6 @@ import com.example.cryptofun.retrofit.RetrofitClientFutures;
 
 import java.sql.Timestamp;
 import java.text.DateFormat;
-import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -56,6 +53,7 @@ public class UpdatingDatabaseService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
+
         new Thread(
                 new Runnable() {
                     @Override
@@ -78,6 +76,7 @@ public class UpdatingDatabaseService extends Service {
         return START_STICKY;
     }
 
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
@@ -96,8 +95,35 @@ public class UpdatingDatabaseService extends Service {
     }
 
     private void sendMessageToActivity(String date, boolean updateStart) {
+
+        String strategy = "STRATEGY: ";
+        Cursor data = databaseDB.retrieveParam(17);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 17");
+            databaseDB.addParam(17, "Active Strategy Nr:", "", 1, 0);
+            strategy += String.valueOf(1);
+        } else {
+            data.moveToFirst();
+            strategy += String.valueOf(data.getInt(3));
+        }
+        data.close();
+
+        String stopLimitStrategy = "SL STRATEGY: ";
+        data = databaseDB.retrieveParam(18);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 18");
+            databaseDB.addParam(18, "Active SL Strategy Nr:", "", 1, 0);
+            stopLimitStrategy += String.valueOf(1);
+        } else {
+            data.moveToFirst();
+            stopLimitStrategy += String.valueOf(data.getInt(3));
+        }
+        data.close();
+
         Intent intent = new Intent("DB_updated");
         intent.putExtra("updateDate", date);
+        intent.putExtra("currentStrategy", strategy);
+        intent.putExtra("currentStopLimitStrategy", stopLimitStrategy);
         intent.putExtra("updateStarted", updateStart);
         Log.e(TAG, "BROADCAST - UpdateDB Started in Background - " + updateStart);
         LocalBroadcastManager.getInstance(UpdatingDatabaseService.this).sendBroadcast(intent);
@@ -158,14 +184,17 @@ public class UpdatingDatabaseService extends Service {
             String date = "Update time:  " + df.format(new Date(stamp.getTime()));
             String date2 = df.format(new Date(stamp2.getTime()));
 
-            // if more than 1 minute passed since last closeTimeOfKline --> UpdateDB
-            // Need to prevent updating kline data at 50s before last closeTime of kline (observable is prepared and when it reaches API binance it takes next kline data
-            long timeSinceLastUpdate = 50000; //55000
+            // Need to prevent updating kline data at 50s before last closeTime of kline so update can be done after lst close time of kline or before close time-50s (observable is prepared and when it reaches API binance it takes next kline data
+            long timeSinceLastUpdate = 50000;
             long time = (tempKline.gettCloseTime() - timeSinceLastUpdate - System.currentTimeMillis());
             long time2 = (tempKline.gettCloseTime() - System.currentTimeMillis());
-
             if (time > 0 || time2 < 0) {
                 Log.e(TAG, "[DB IS NOT ACTUAL] LastKlineCLoseTime: " + tempKline.gettCloseTime() + " " + df2.format(tempKline.gettCloseTime()) + " --> difference: " + timeSinceLastUpdate + " --> currentTime: " + System.currentTimeMillis() + " " + df2.format(System.currentTimeMillis()) + " --> result: " + time + " (" + date + ") (" + date2 + ")");
+
+                databaseDB.deleteKlinesOlderThan("3m", System.currentTimeMillis() - 200L * (3 * 60 * 1000)); // delete older than 20h in 3m interval
+                databaseDB.deleteKlinesOlderThan("15m", System.currentTimeMillis() - 200L * (15 * 60 * 1000)); // delete older than 50h in 15m interval
+                databaseDB.deleteKlinesOlderThan("4h", System.currentTimeMillis() - 200L * (4 * 60 * 60 * 1000)); // delete older than 33day in 4h interval
+
                 Cursor data2 = databaseDB.retrieveParam(1);
                 if (data2.getCount() == 0) {
                     databaseDB.addParam(1, "Last Update Time", date, 0, 0);
@@ -232,142 +261,79 @@ public class UpdatingDatabaseService extends Service {
 
     public ObservableModel updateIntervalOfDB(String symbol, String interval, long timeCurrent) {
 
-        Cursor data, data2, data3;
+        Cursor data, data2;
         int nrOfKlines;
-        long closeTime, differenceTime;
-        ObservableModel model = new ObservableModel(symbol, 0, "3m", 0, 0);
+        long closeTime, differenceTime, minutes = 1;
+        ObservableModel model = new ObservableModel(symbol, 0, interval, 0, 0);
         int nrOfKlinesFromLastDBUpdate = 1;
-        int maxNrOfKlines3 = 99;
-        int maxNrOfKlines15 = 99;
-        int maxNrOfKlines4 = 99;
-        long minutes3 = 180000;
-        long minutes15 = 900000;
-        long hours4 = 14400000;
-        String intervalInSwitch;
+        int restOfKlineDivision = 0;
+        int maxNrOfKlines = 180;
+        data = databaseDB.retrieveLastCloseTime(interval);
+        data2 = databaseDB.checkIfThereAreDuplicates(symbol, interval);
+        data.moveToFirst();
+        data2.moveToFirst();
+//        if (symbol.equals("ETHUSDT")) {
+//            Log.e(TAG, "CHECK " + interval + " " + data2.getCount() + " " + data2.getInt(1));
+//        }
 
-        switch (interval) {
-            case "3m":
-                intervalInSwitch = "3m";
-                data = databaseDB.retrieveLastCloseTime(intervalInSwitch);
-                data2 = databaseDB.nrOfKlinesForSymbolInInterval(symbol, intervalInSwitch);
-                data3 = databaseDB.checkIfThereAreDuplicates(symbol, intervalInSwitch);
-                data.moveToFirst();
-                data2.moveToFirst();
-                data3.moveToFirst();
-                // First check if table is empty ora has duplicates
-                if (data.getCount() == 0 || data2.getCount() == 0 || data3.getInt(1) > 1) {
-//                    Log.e("UpdatingExistingDB", "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB 3m] + data3 = " + data3.getInt(1));
-                    model = new ObservableModel(symbol, maxNrOfKlines3, intervalInSwitch, 1, 0); //20
-                } else {
-                    nrOfKlines = data2.getInt(0);
-                    closeTime = data.getLong(8);
-                    differenceTime = closeTime - timeCurrent;
-                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes3;
-                    if (nrOfKlines != maxNrOfKlines3) {
-                        model = new ObservableModel(symbol, maxNrOfKlines3, intervalInSwitch, 1, 0);
-                        // Log.e(TAG, "A " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / minutes3 + " " + nrOfKlines + " " + maxNrOfKlines3);
-                    } else {
-                        if (nrOfKlinesFromLastDBUpdate == 1) {
-                            // Only update last row to new values
-                            if (differenceTime < 0) {
-                                model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate + 1, intervalInSwitch, 2, 1);
-                                // Log.e(TAG, "B " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / minutes3 + " " + nrOfKlines + " " + (nrOfKlinesFromLastDBUpdate+1));
-                            } else {
-                                model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate, intervalInSwitch, 2, 0);
-                                // Log.e(TAG, "C " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / minutes3 + " " + nrOfKlines + " " + nrOfKlinesFromLastDBUpdate);
-                            }
-                        } else {
-                            // Delete oldest rows, add newest rows
-                            model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate + 1, intervalInSwitch, 2, nrOfKlinesFromLastDBUpdate);
-                            // Log.e(TAG, "D " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / minutes3 + " " + nrOfKlines + " " + (nrOfKlinesFromLastDBUpdate+1));
-                        }
-                    }
-
+        // First check if table is empty or has duplicates
+        if (data2.getCount() == 0) {
+            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB]");
+            model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
+        } else if (data2.getInt(1) > 1) {
+            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB] or " + interval + " duplicates are present if value is > 1 ===> " + data2.getInt(1));
+            model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
+        } else {
+            nrOfKlines = data2.getCount();
+            closeTime = data.getLong(8);
+            differenceTime = closeTime - timeCurrent;
+            switch (interval) {
+                case "3m":
+                    minutes = 180000;
+                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
+                    restOfKlineDivision += (-1 * differenceTime) % minutes;
+                    break;
+                case "15m":
+                    minutes = 900000;
+                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
+                    restOfKlineDivision += (-1 * differenceTime) % minutes;
+                    break;
+                case "4h":
+                    minutes = 14400000;
+                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
+                    restOfKlineDivision += (-1 * differenceTime) % minutes;
+                    break;
+            }
+            if (nrOfKlines < maxNrOfKlines) {
+                model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
+                if (symbol.equals("ETHUSDT")) {
+                    Log.e(TAG, "A nrOfKlines are less than maxNrOfKlines, so clear table and load new maxNrOfKlines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
                 }
-                data.close();
-                data2.close();
-                break;
-            case "15m":
-                intervalInSwitch = "15m";
-                data = databaseDB.retrieveLastCloseTime(intervalInSwitch);
-                data2 = databaseDB.nrOfKlinesForSymbolInInterval(symbol, intervalInSwitch);
-                data3 = databaseDB.checkIfThereAreDuplicates(symbol, intervalInSwitch);
-                data.moveToFirst();
-                data2.moveToFirst();
-                data3.moveToFirst();
-                if (data.getCount() == 0 || data2.getCount() == 0 || data3.getInt(1) > 1) {
-//                    Log.e(TAG, "UpdateExistingDB - Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB 15m]");
-                    model = new ObservableModel(symbol, maxNrOfKlines15, intervalInSwitch, 1, 0);
-                } else {
-                    nrOfKlines = data2.getInt(0);
-                    closeTime = data.getLong(8);
-                    differenceTime = closeTime - timeCurrent;
-                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes15;
-                    if (nrOfKlines != maxNrOfKlines15) {
-                        model = new ObservableModel(symbol, maxNrOfKlines15, intervalInSwitch, 1, 0);
-                        // Log.e(TAG, "A " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / minutes15 + " " + nrOfKlines + " " + maxNrOfKlines15);
-                    } else {
-                        if (nrOfKlinesFromLastDBUpdate == 1) {
-                            // Only update last row to new values
-                            if (differenceTime < 0) {
-                                model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate + 1, intervalInSwitch, 2, 1);
-                                // Log.e(TAG, "B " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / minutes15 + " " + nrOfKlines + " " + (nrOfKlinesFromLastDBUpdate+1));
-                            } else {
-                                model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate, intervalInSwitch, 2, 0);
-                                //  Log.e(TAG, "C " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / minutes15 + " " + nrOfKlines + " " + nrOfKlinesFromLastDBUpdate);
-                            }
-                        } else {
-                            // Delete oldest rows, add newest rows
-                            model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate + 1, intervalInSwitch, 2, nrOfKlinesFromLastDBUpdate);
-                            // Log.e(TAG, "D " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / minutes15 + " " + nrOfKlines + " " + (nrOfKlinesFromLastDBUpdate+1));
+            } else {
+                long timeSinceLastUpdate = 50000;
+                //Here in first step we only need to update last kline values, in second we need to update last kline values + add new klines
+                if (differenceTime - timeSinceLastUpdate > 0) {
+                    model = new ObservableModel(symbol, 1, interval, 2, 0);
+                    if (symbol.equals("ETHUSDT")) {
+                        Log.e(TAG, "B more NrOfKlines than maxNrOfKlines and still inside closeTime of last Kline. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
+                    }
+                } else if (differenceTime <= 0) {
+                    if (nrOfKlinesFromLastDBUpdate >= maxNrOfKlines) {
+                        model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
+                        if (symbol.equals("ETHUSDT")) {
+                            Log.e(TAG, "D nrOfKlinesFromLastDBUpdate is higher than maxNrOfKlines, so better to clean and fresh download maxNrOfKlines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
+                        }
+                    } else { //if (minutes - timeSinceLastUpdate > restOfKlineDivision)
+                        model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate + 2, interval, 3, 0);
+                        if (symbol.equals("ETHUSDT")) {
+                            Log.e(TAG, "C NrOfKlines do not equal max nr of Klines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
                         }
                     }
                 }
-                data.close();
-                data2.close();
-                break;
-            case "4h":
-                intervalInSwitch = "4h";
-                data = databaseDB.retrieveLastCloseTime(intervalInSwitch);
-                data2 = databaseDB.nrOfKlinesForSymbolInInterval(symbol, intervalInSwitch);
-                data3 = databaseDB.checkIfThereAreDuplicates(symbol, intervalInSwitch);
-                data.moveToFirst();
-                data2.moveToFirst();
-                data3.moveToFirst();
-                if (data.getCount() == 0 || data2.getCount() == 0 || data3.getInt(1) > 1) {
-//                    Log.e(TAG, "UpdateExistingDB - Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB 4h]");
-                    model = new ObservableModel(symbol, maxNrOfKlines4, intervalInSwitch, 1, 0); //maxNrOfKlines4
-                } else {
-                    nrOfKlines = data2.getInt(0);
-                    closeTime = data.getLong(8);
-                    differenceTime = closeTime - timeCurrent;
-                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / hours4;
-                    if (nrOfKlines != maxNrOfKlines4) {
-                        model = new ObservableModel(symbol, maxNrOfKlines4, intervalInSwitch, 1, 0);
-                        // Log.e(TAG, "A " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / hours4 + " " + nrOfKlines + " " + maxNrOfKlines4);
-                    } else {
-                        if (nrOfKlinesFromLastDBUpdate == 1) {
-                            // Only update last row to new values
-                            if (differenceTime < 0) {
-                                model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate + 1, intervalInSwitch, 2, 1);
-                                // Log.e(TAG, "B " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / hours4 + " " + nrOfKlines + " " + (nrOfKlinesFromLastDBUpdate+1));
-                            } else {
-                                model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate, intervalInSwitch, 2, 0);
-                                // Log.e(TAG, "C " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / hours4 + " " + nrOfKlines + " " + nrOfKlinesFromLastDBUpdate);
-                            }
-                        } else {
-                            // Delete oldest rows, add newest rows
-                            model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate + 1, intervalInSwitch, 2, nrOfKlinesFromLastDBUpdate);
-                            //  Log.e(TAG, "D " + closeTime + " " + timeCurrent + " " + (closeTime - timeCurrent) + " " + -(closeTime - timeCurrent) / hours4 + " " + nrOfKlines + " " + (nrOfKlinesFromLastDBUpdate+1));
-                        }
-                    }
-                }
-                data.close();
-                data2.close();
-                break;
-            default:
-                break;
+            }
         }
+        data.close();
+        data2.close();
         return model;
     }
 
@@ -385,7 +351,6 @@ public class UpdatingDatabaseService extends Service {
                     list.get(i).getSymbol(), list.get(i).getInterval(), list.get(i).getWhatToDoWithDB(), list.get(i).getHowManyOldOnesToDelete()));
 //            Log.e(TAG, "Request [" + list.get(i).getSymbol() + "] NrOfKlines: " + list.get(i).getNrOfKlinesToDownload() + " Interval: " + list.get(i).getInterval() + " WhatToDo: " + list.get(i).getWhatToDoWithDB() + " HowManyOldOnesToDelete: " + list.get(i).getHowManyOldOnesToDelete());
         }
-
         for (int i = 0; i < request.size(); i++) {
             observableRequestList.add(request.get(i).getRequest());
         }
@@ -427,7 +392,6 @@ public class UpdatingDatabaseService extends Service {
                                                     String interval = request.get(i).getInterval();
                                                     int whatToDoInDB = request.get(i).getWhatToDoInDB();
                                                     int howManyOldOnes = request.get(i).getHowManyOldOnesToDelete();
-
                                                     for (int j = 0; j < aaa.length; j++) {
                                                         rawTable_Kline temp = new rawTable_Kline(symbol,
                                                                 Long.parseLong(aaa[j][0]),
@@ -439,6 +403,11 @@ public class UpdatingDatabaseService extends Service {
                                                                 Long.parseLong(aaa[j][6]),
                                                                 Long.parseLong(aaa[j][8]),
                                                                 interval);
+
+                                                        if (symbol.equals("ETHUSDT")) {
+                                                            Log.e(TAG, "ResultDataParse: " + interval + " " + temp.toString());
+                                                        }
+
                                                         klinesDataList.add(temp);
                                                     }
 
@@ -447,11 +416,24 @@ public class UpdatingDatabaseService extends Service {
 
                                                     switch (whatToDoInDB) {
                                                         case 1:
-                                                            databaseDB.deleteAllKlinesForSymbolInterval(interval, symbol, klinesDataList);
+                                                            if (symbol.equals("ETHUSDT")) {
+                                                                Log.e(TAG, "ResultDataCase1");
+                                                            }
+                                                            databaseDB.deleteAllKlinesForSymbolIntervalandAddNew(interval, symbol, klinesDataList);
                                                             klinesDataList.clear();
                                                             break;
                                                         case 2:
-                                                            databaseDB.deleteKlinesAndInsertNewKlinesForSymbolInterval(interval, symbol, 1, howManyOldOnes, klinesDataList);
+                                                            if (symbol.equals("ETHUSDT")) {
+                                                                Log.e(TAG, "ResultDataCase2");
+                                                            }
+                                                            databaseDB.updateLastKlineValues(interval, symbol, klinesDataList);
+                                                            klinesDataList.clear();
+                                                            break;
+                                                        case 3:
+                                                            if (symbol.equals("ETHUSDT")) {
+                                                                Log.e(TAG, "ResultDataCase3");
+                                                            }
+                                                            databaseDB.updateAndInsertNewKlineData(interval, symbol, klinesDataList);
                                                             klinesDataList.clear();
                                                             break;
                                                         default:
@@ -529,43 +511,8 @@ public class UpdatingDatabaseService extends Service {
 
     private void countBestCryptoToBuy(String symbol) {
 
-        List<Kline> coinKlines3m = new ArrayList<>();
-        List<Kline> coinKlines15m = new ArrayList<>();
-        List<Kline> coinKlines4h = new ArrayList<>();
-
-        Cursor data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol);
-        data.moveToFirst();
-        if (data.getCount() > 0) {
-
-            do {
-                Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
-                        data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
-
-                String interval = tempKline.gettKlineInterval();
-                switch (interval) {
-                    case "3m":
-                        coinKlines3m.add(tempKline);
-                        break;
-                    case "15m":
-                        coinKlines15m.add(tempKline);
-                        break;
-                    case "4h":
-                        coinKlines4h.add(tempKline);
-                        break;
-                    default:
-                        break;
-                }
-            } while (data.moveToNext());
-        }
-        data.close();
-
-        /* TODO:
-               Przywrócić wartości jak wejdzie test na produkcji. Również wartości na kwoty zleceń i ilość zleceń w Approving service oraz w RetrfitClientSecrettEstnet pobieranie api z bazy dnaych
-         */
-
         int activeStrategy;
-
-        data = databaseDB.retrieveParam(17);
+        Cursor data = databaseDB.retrieveParam(17);
         data.moveToFirst();
         if (data.getCount() == 0) {
             Log.e(TAG, "There is no param nr 17");
@@ -580,812 +527,86 @@ public class UpdatingDatabaseService extends Service {
         }
         data.close();
 
+        List<Kline> coinKlines3m = new ArrayList<>();
+        List<Kline> coinKlines15m = new ArrayList<>();
+        List<Kline> coinKlines4h = new ArrayList<>();
+
         switch (activeStrategy) {
+            /*
+            1.strategyNr1_quickTestStrategy_15m
+            2.strategyNr2_EMA_KlineSize_WT_4h
+            3.strategyNr3_EMA_KlineSize_WT_15m
+            4.strategyNr4_RSI_EMA_4h
+            5.strategyNr10_Ichimoku_4h
+            6.strategyNr10_Ichimoku_15m
+            7.strategyNr7_EMA_4h_WT_ADX_EMA_15m
+            8.strategyNr8_KlinesCrossEMA_RSI_Appear_15m
+             */
+
+
+
             case 2:
-                // Do usunięcia - fatalne wyniki
-                strategyNr2_WT_ATR_T4AJStrategy(symbol, coinKlines3m, coinKlines15m, coinKlines4h);
+                // Do poprawienia ma szanse na byt
+                coinKlines15m = getList(symbol,"15m");
+                coinKlines4h = getList(symbol,"4h");
+                ServiceMainStrategies.strategyNr2_EMA_KlineSize_WT_4h(symbol, coinKlines15m, coinKlines4h, getApplicationContext());
                 break;
             case 3:
-                strategyNr3_RSI_EMA_15m(symbol, coinKlines3m, coinKlines15m, coinKlines4h);
+                coinKlines15m = getList(symbol,"15m");
+                coinKlines3m = getList(symbol,"3m");
+                ServiceMainStrategies.strategyNr3_EMA_KlineSize_WT_15m(symbol, coinKlines3m, coinKlines15m, getApplicationContext());
                 break;
             case 4:
-                strategyNr4_RSI_WT_4h_15m(symbol, coinKlines3m, coinKlines15m, coinKlines4h);
+                //Nie działa
+                coinKlines15m = getList(symbol,"15m");
+                coinKlines4h = getList(symbol,"4h");
+                ServiceMainStrategies.strategyNr4_RSI_EMA_4h(symbol, coinKlines3m, coinKlines15m, coinKlines4h, getApplicationContext());
                 break;
             case 5:
-                // Inny stop loss co w 6
-                strategyNr6_EMA_4h_WT_ADX_EMA_15m(symbol, coinKlines3m, coinKlines15m, coinKlines4h);
-                //strategyNr5_WT_PPO_ADX(symbol, coinKlines3m, coinKlines15m, coinKlines4h, statusOf3mKlines, statusOf15mKlines, statusOf4hKlines);
+//                coinKlines15m = getList(symbol,"15m");
+//                ServiceMainStrategies.strategyNr5_EMA_ADX_percentDifferenceEMA_15m(symbol, coinKlines15m, getApplicationContext());
+                coinKlines4h = getList(symbol,"4h");
+                ServiceMainStrategies.strategyNr10_Ichimoku_4h(symbol, coinKlines4h, getApplicationContext());
                 break;
             case 6:
-                strategyNr6_EMA_4h_WT_ADX_EMA_15m(symbol, coinKlines3m, coinKlines15m, coinKlines4h);
+                coinKlines15m = getList(symbol,"15m");
+                ServiceMainStrategies.strategyNr10_Ichimoku_15m(symbol, coinKlines15m, getApplicationContext());
+
+                // to samo co pod 8 tylko inne interwaly -- słabe
+//                coinKlines4h = getList(symbol,"4h");
+//                ServiceMainStrategies.strategyNr6_KlinesCrossEMA_RSI_Appear(symbol, coinKlines4h, getApplicationContext());
+                break;
+            case 7:
+                coinKlines15m = getList(symbol,"15m");
+                coinKlines4h = getList(symbol,"4h");
+                ServiceMainStrategies.strategyNr7_EMA_4h_WT_ADX_EMA_15m(symbol, coinKlines15m, coinKlines4h, getApplicationContext());
+                break;
+            case 8:
+                coinKlines15m = getList(symbol,"15m");
+                ServiceMainStrategies.strategyNr8_KlinesCrossEMA_RSI_Appear_15m(symbol, coinKlines15m, getApplicationContext());
                 break;
             default:
-                //strategyDefaultNr1_SERIES(symbol, coinKlines3m, coinKlines15m, coinKlines4h);
+                //To jest tylko testowe
+                coinKlines15m = getList(symbol,"15m");
+                ServiceMainStrategies.strategyNr1_quickTestStrategy_15m(symbol, coinKlines15m, getApplicationContext());
                 break;
         }
     }
 
-//    private void strategyDefaultNr1_SERIES(String symbol, List<Kline> coinKlines3m, List<Kline> coinKlines15m, List<Kline> coinKlines4h) {
-//
-//             /*
-//                            Version1: (priceDirection3 == 0 && priceDirection15 == 0 && waveTrendPredict15 == 0) --> 4,5/10
-//                            Version2: (isKlineApprovedForLongOrShort(statusOf3mKlines, statusOf15mKlines, 0) && priceDirection3 == 0 && priceDirection15 == 0) --> 6,5/10
-//                            Version3: isKlineApprovedForLongOrShort(statusOf3mKlines, statusOf15mKlines, 0)  && sumDirection >= -2  --> 3/10
-//                            Version4: isKlineApprovedForLongOrShort(statusOf3mKlines, statusOf15mKlines, 1) && (priceDirection3 +  predict3) >= 1) --> 3/10
-//                            Version5 - currently API 30 : isKlineApprovedForLongOrShort(statusOf3mKlines, statusOf15mKlines, 0) && priceDirection3 == -1 && priceDirection15 == -1 && predict3 == -1
-//                            Version6 - currently API 27 :  priceDirection3 == -1 && priceDirection15 == 1 && priceDirection4 == -1
-//                            !!!! Combined last two: 5 - used when (last15mPriceChange > 0.5 || last15mPriceChange < -0.5) --- 6 - used when (last15mPriceChange > 3 || last15mPriceChange < -3) --- 6 first before 5 !!!!
-//                                                 *This combined quite well works if market is going down or up, not when it's stabilised
-//
-//                             API 27 (01.07) --> ((waveTrendPredict15 + waveTrendPredict4 ) == -2 || (waveTrendPredict15 + waveTrendPredict4 ) == 2) && (priceDirection4 + predict15 == -2)
-//                             API 30 (01.07) -->  isKlineApprovedForLongOrShort(statusListOf3mToCheck, statusListOf15mToCheck, 0)  && priceDirection3 == -1 && priceDirection4 == 1 &&  ((waveTrendPredict15 + waveTrendPredict4 + waveTrendPredict3) == 0)
-//
-//
-//              */
-//
-//        int acceptableVolume = 1000000;
-//        float volumeOfLast15mKlines;
-//
-//        if (coinKlines15m.size() > 2) {
-//            volumeOfLast15mKlines = ServiceFunctionsStrategyDefault.countMoneyVolumeAtInterval(coinKlines15m, 0, 2);
-//        } else {
-//            volumeOfLast15mKlines = acceptableVolume;
-//        }
-//
-//        int acceptablePercentOfVolumeRise = 30;
-//        float percentOfRiseOfNumberOfVolumeInLast15min;
-//
-//        if (coinKlines3m.size() >= 2) {
-//            percentOfRiseOfNumberOfVolumeInLast15min = ServiceFunctionsStrategyDefault.countBeforeAndAfter(coinKlines3m, 10);
-//        } else {
-//            percentOfRiseOfNumberOfVolumeInLast15min = 0;
-//        }
-//
-//        if (volumeOfLast15mKlines >= acceptableVolume && percentOfRiseOfNumberOfVolumeInLast15min > acceptablePercentOfVolumeRise && !symbol.contains("BUSDUSDT") && coinKlines15m.size() >= 58 && coinKlines3m.size() >= 38 && coinKlines4h.size() >= 18) {
-//
-////            List<Integer> statusListOf3mToCheck;
-////            List<Integer> statusListOf15mToCheck;
-////            statusListOf15mToCheck = statusOf15mKlines.subList(0, 3);
-////            statusListOf3mToCheck = statusOf3mKlines.subList(0, 10);
-//            int nrOfTradesLast15mKlinesSum = ServiceFunctionsStrategyDefault.countNrOfTradesAtInterval(coinKlines15m, 0, 4);
-//
-//            DecimalFormat df2 = new DecimalFormat("0.00");
-//
-//            ArrayList<Double> PriceChangePercents = new ArrayList<>();
-//            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 2))); //6m
-//            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 5))); //15m
-//            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 10))); //30m
-//            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines15m.subList(0, 8))); //2h
-//            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines15m.subList(0, 16))); //4h
-//            String PriceLogValue = "";
-//            for (Double number : PriceChangePercents) {
-//                PriceLogValue += df2.format(number) + "% ";
-//            }
-//
-//            int priceDirection3 = ServiceFunctionsStrategyDefault.predictPriceDirection(coinKlines3m.subList(0, 15));
-//            int priceDirection15 = ServiceFunctionsStrategyDefault.predictPriceDirection(coinKlines15m.subList(0, 16));
-//            int priceDirection4 = ServiceFunctionsStrategyDefault.predictPriceDirection(coinKlines4h.subList(0, 8));
-//
-//            int predict3 = ServiceFunctionsStrategyDefault.predict(coinKlines3m);
-//            int predict15 = ServiceFunctionsStrategyDefault.predict(coinKlines15m);
-//            int predict4 = ServiceFunctionsStrategyDefault.predict(coinKlines4h);
-//
-//            String info = "LEVEL 1 [" + symbol + "] STRATEGY: 1 Volume30: " + volumeOfLast15mKlines + " %OfVolumeRise15: " + percentOfRiseOfNumberOfVolumeInLast15min + "  Predicted(3,15,4): " + predict3 + " " + predict15 + " " + predict4 + " PriceDirection(3,15,4): " + priceDirection3 + " " + priceDirection15 + " " + priceDirection4 + " LastPriceChange(6,15,30,2,4): " + PriceLogValue;
-//            Log.e(TAG, info);
-//            ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-//            @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("HH:mm:ss");
-//
-//            if (ServiceFunctionsStrategyDefault.isKlineApprovedForLongOrShort(statusListOf3mToCheck, statusListOf15mToCheck, 1, 8, 3)) {
-//
-//                if (PriceChangePercents.get(2) < -4) {
-//
-//                    if (priceDirection3 == 1 && priceDirection4 == 1) {
-//                        info = "LEVEL 2 [" + symbol + " SHORT] approved path price < -4, price directions up, approved at:  " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-//                        Log.e(TAG, info);
-//                        ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-//
-//                        databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, nrOfTradesLast15mKlinesSum,
-//                                volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(0).tClosePrice), TABLE_NAME_APPROVED);
-//                        databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, nrOfTradesLast15mKlinesSum,
-//                                volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(0).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-//
-//                    }
-//                } else if (PriceChangePercents.get(2) > 0.2 && PriceChangePercents.get(2) < 2) {
-//
-//                    if (priceDirection3 == 1 && priceDirection15 == 1 && predict15 == 1 && priceDirection4 == 1) {
-//                        info = "LEVEL 2 [" + symbol + " LONG] approved path price 0.2 - 2, price directions up, predict15 up, approved at: " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-//                        Log.e(TAG, info);
-//                        ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-//
-//                        databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, nrOfTradesLast15mKlinesSum,
-//                                volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(0).tClosePrice), TABLE_NAME_APPROVED);
-//                        databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, nrOfTradesLast15mKlinesSum,
-//                                volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(0).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-//
-//                    }
-//                }
-//            } else if (ServiceFunctionsStrategyDefault.isKlineApprovedForLongOrShort(statusListOf3mToCheck, statusListOf15mToCheck, 0, 8, 3)) {
-//
-//                if (PriceChangePercents.get(1) > 4) {
-//
-//                    if (priceDirection3 == -1 && priceDirection4 == -1) {
-//                        info = "LEVEL 2 [" + symbol + " LONG] approved path price > 4, price directions down, approved at: " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-//                        Log.e(TAG, info);
-//                        ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-//
-//                        databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, nrOfTradesLast15mKlinesSum,
-//                                volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(0).tClosePrice), TABLE_NAME_APPROVED);
-//                        databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, nrOfTradesLast15mKlinesSum,
-//                                volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(0).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-//
-//                    }
-//
-//                } else if (PriceChangePercents.get(2) < -0.2 && PriceChangePercents.get(2) > -2) {
-//
-//                    if (priceDirection3 == -1 && priceDirection15 == -1 && predict15 == -1 && priceDirection4 == -1) {
-//                        info = "LEVEL 2 [" + symbol + " SHORT] approved path price -0.2 - -2, price directions down, predict15 down, approved at: " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-//                        Log.e(TAG, info);
-//                        ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-//
-//                        databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, nrOfTradesLast15mKlinesSum,
-//                                volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(0).tClosePrice), TABLE_NAME_APPROVED);
-//                        databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, nrOfTradesLast15mKlinesSum,
-//                                volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(0).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-//
-//                    }
-//                }
-//            }
-//
-//        }
-//    }
+    private List<Kline> getList(String symbol, String interval) {
 
-    private void strategyNr2_WT_ATR_T4AJStrategy(String symbol, List<Kline> coinKlines3m, List<Kline> coinKlines15m, List<Kline> coinKlines4h) {
+        List<Kline> list = new ArrayList<>();
 
-        float volumeOfLast15mKlines;
-        int acceptableVolume = 1000000; //1000000
-
-
-        if (coinKlines15m.size() > 2) {
-            volumeOfLast15mKlines = ServiceFunctionsStrategyDefault.countMoneyVolumeAtInterval(coinKlines15m, 0, 2);
-        } else {
-            volumeOfLast15mKlines = acceptableVolume;
+        Cursor data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol, interval);
+        data.moveToFirst();
+        if (data.getCount() > 0) {
+            do {
+                Kline tempKline = new Kline(data.getInt(0), data.getString(1), data.getLong(2), data.getFloat(3), data.getFloat(4),
+                        data.getFloat(5), data.getFloat(6), data.getFloat(7), data.getLong(8), data.getLong(9), data.getString(10));
+                list.add(tempKline);
+            } while (data.moveToNext());
         }
-
-        float percentOfRiseOfNumberOfVolumeInLast15min;
-        int acceptablePercentOfVolumeRise = 30;
-
-        if (coinKlines3m.size() >= 2) {
-            percentOfRiseOfNumberOfVolumeInLast15min = ServiceFunctionsStrategyDefault.countBeforeAndAfter(coinKlines3m, 10);
-        } else {
-            percentOfRiseOfNumberOfVolumeInLast15min = 0;
-        }
-
-        if (volumeOfLast15mKlines >= acceptableVolume && !symbol.contains("BUSDUSDT") && coinKlines15m.size() >= 58 && coinKlines3m.size() >= 38 && coinKlines4h.size() >= 15) {
-
-//            List<Integer> statusListOf3mToCheck;
-//            List<Integer> statusListOf15mToCheck;
-//            statusListOf15mToCheck = statusOf15mKlines.subList(0, 3);
-//            statusListOf3mToCheck = statusOf3mKlines.subList(0, 10);
-
-            DecimalFormat df = new DecimalFormat("0.000000");
-            DecimalFormat df2 = new DecimalFormat("0.00");
-
-            int predict3, predict15, predict4, priceDirection3, priceDirection15, priceDirection4, waveTrendPredict3, waveTrendPredict15, waveTrendPredict4;
-            int nrOfTradesLast15mKlinesSum = ServiceFunctionsStrategyDefault.countNrOfTradesAtInterval(coinKlines15m, 0, 2);
-
-            ArrayList<Double> PriceChangePercents = new ArrayList<>();
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 2))); //6m
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 5))); //15m
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 10))); //30m
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines15m.subList(0, 8))); //2h
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines15m.subList(0, 16))); //4h
-            String PriceLogValue = "";
-
-            for (Double number : PriceChangePercents) {
-                PriceLogValue += df2.format(number) + "% ";
-            }
-
-            predict3 = ServiceFunctionsStrategyDefault.predict(coinKlines3m);
-            priceDirection3 = ServiceFunctionsStrategyDefault.predictPriceDirection(coinKlines3m.subList(0, 12));
-
-            StrategyResult strategy3m = ServiceFunctionsStrategyTa4J.strategyTa4J_nr2(coinKlines3m, getApplicationContext());
-            String strategyResult3m = "Strategy3m: [" + strategy3m.getBestStrategy() + "] Positions(M,A): " + strategy3m.getNrOfPositions().get(0).toString() + " " + strategy3m.getNrOfPositions().get(1).toString() + " vsBuyAndHold(M,A): "
-                    + strategy3m.getVsBuyAndHoldProfit().get(0).toString() + " " + strategy3m.getVsBuyAndHoldProfit().get(1).toString() + " total(M,A): " + strategy3m.getTotalProfit().get(0).toString() + " " + strategy3m.getTotalProfit().get(1).toString();
-
-            if (strategy3m.getNrOfPositions().get(0) == 0 && strategy3m.getNrOfPositions().get(1) == 0) {
-                strategyResult3m = "Strategy3m: NO POSITIONS";
-            }
-            int finalWaveTrend3m = strategy3m.getWaveTrendIndicator();
-
-            predict15 = ServiceFunctionsStrategyDefault.predict(coinKlines15m);
-            priceDirection15 = ServiceFunctionsStrategyDefault.predictPriceDirection(coinKlines15m.subList(0, 12));
-
-            StrategyResult strategy15m = ServiceFunctionsStrategyTa4J.strategyTa4J_nr2(coinKlines15m, getApplicationContext());
-            String strategyResult15m = "Strategy15m: [" + strategy15m.getBestStrategy() + "] Positions(M,A): " + strategy15m.getNrOfPositions().get(0).toString() + " " + strategy15m.getNrOfPositions().get(1).toString() + " vsBuyAndHold(M,A): "
-                    + strategy15m.getVsBuyAndHoldProfit().get(0).toString() + " " + strategy15m.getVsBuyAndHoldProfit().get(1).toString() + " total(M,A): " + strategy15m.getTotalProfit().get(0).toString() + " " + strategy15m.getTotalProfit().get(1).toString();
-
-            if (strategy15m.getNrOfPositions().get(0) == 0 && strategy15m.getNrOfPositions().get(1) == 0) {
-                strategyResult15m = "Strategy15m: NO POSITIONS";
-            }
-            int finalWaveTrend15m = strategy15m.getWaveTrendIndicator();
-
-            predict4 = ServiceFunctionsStrategyDefault.predict(coinKlines4h);
-            priceDirection4 = ServiceFunctionsStrategyDefault.predictPriceDirection(coinKlines4h.subList(0, 15));
-
-            int start = 0;
-            int add = 2;
-            double sumATR15 = 0;
-            double avgATR15 = 0;
-            ArrayList<Double> ATR_ChangeFromAVG15 = new ArrayList<>();
-
-            List<Kline> klinesList15 = coinKlines15m.subList(0, 18);
-            String ATRValues15 = "";
-            for (int i = 0; i < (klinesList15.size() / add); i++) {
-                ArrayList<Kline> klinesListInterval = new ArrayList<>(klinesList15.subList(start + add * i, add + add * i));
-                double temp = ServiceFunctionsStrategyDefault.calculateATR(klinesListInterval, add);
-                sumATR15 += temp;
-                ATR_ChangeFromAVG15.add(temp);
-            }
-            avgATR15 = sumATR15 / ((double) (klinesList15.size() / add));
-
-            ArrayList<Double> percentATR15 = new ArrayList<>();
-            for (Double number : ATR_ChangeFromAVG15) {
-                number = ((number * 100) / avgATR15) - 100;
-                percentATR15.add(number);
-                ATRValues15 += df2.format(number) + "% ";
-            }
-
-            double sumATR3 = 0;
-            double avgATR3 = 0;
-            ArrayList<Double> ATR_ChangeFromAVG3 = new ArrayList<>();
-
-            List<Kline> klinesList3 = coinKlines3m.subList(0, 20);
-            String ATRValues3 = "";
-            for (int i = 0; i < (klinesList3.size() / add); i++) {
-                ArrayList<Kline> klinesListInterval = new ArrayList<>(klinesList3.subList(start + add * i, add + add * i));
-                double temp = ServiceFunctionsStrategyDefault.calculateATR(klinesListInterval, add);
-                sumATR3 += temp;
-                ATR_ChangeFromAVG3.add(temp);
-            }
-            avgATR3 = sumATR3 / ((double) (klinesList3.size() / add));
-
-            ArrayList<Double> percentATR3 = new ArrayList<>();
-            for (Double number : ATR_ChangeFromAVG3) {
-                number = ((number * 100) / avgATR3) - 100;
-                percentATR3.add(number);
-                ATRValues3 += df2.format(number) + "% ";
-            }
-
-            String info = "LEVEL 1 [" + symbol + "] Volume30: " + volumeOfLast15mKlines + " %OfVolumeRise15: " + percentOfRiseOfNumberOfVolumeInLast15min + " WaveTrendStrategy(3,15): " + finalWaveTrend3m + " " + finalWaveTrend15m + " AvgATR15: " + df.format(avgATR15) + " ATR%15: " + ATRValues15 + " " + " AvgATR3: " + df.format(avgATR3) + " ATR%3: " + ATRValues3 + " " + strategyResult3m + " " + strategyResult15m + " " + coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice + " Predicted(3, 15, 4): " + predict3 + " " + predict15 + " " + predict4 + " PriceDirection: " + priceDirection3 + " " + priceDirection15 + " " + priceDirection4 + " LastPriceChange(6,15,30,2,4): " + PriceLogValue;
-            Log.e(TAG, info);
-            ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-
-            @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("HH:mm:ss");
-
-            if (finalWaveTrend3m == 1 && finalWaveTrend15m == 1 && percentATR15.get(0) < 70 && percentATR15.get(1) < 70 && percentATR15.get(0) > -25 && percentATR15.get(1) > -25 && PriceChangePercents.get(4) > -5) {
-                info = "LEVEL 2 [" + symbol + " LONG] approved at: " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                Log.e(TAG, info);
-                ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, nrOfTradesLast15mKlinesSum,
-                        volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, nrOfTradesLast15mKlinesSum,
-                        volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-
-            } else if (finalWaveTrend3m == -1 && finalWaveTrend15m == -1 && percentATR15.get(0) < 70 && percentATR15.get(1) < 70 && percentATR15.get(0) > -25 && percentATR15.get(1) > -25 && PriceChangePercents.get(4) < 5) {
-                info = "LEVEL 2 [" + symbol + " SHORT] approved at:  " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                Log.e(TAG, info);
-                ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, nrOfTradesLast15mKlinesSum,
-                        volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, nrOfTradesLast15mKlinesSum,
-                        volumeOfLast15mKlines, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-            }
-
-        }
-
+        data.close();
+        return list;
     }
-
-
-    private void strategyNr4_RSI_WT_4h_15m(String symbol, List<Kline> coinKlines3m, List<Kline> coinKlines15m, List<Kline> coinKlines4h) {
-
-        float volumeOfLast45mKlines, percentOfRiseOfNumberOfVolumeInLast45min, nrOfTradesLast45mKlinesSum;
-        int acceptableVolume = 1000000; //1000000
-        int acceptablePercentOfVolumeRise = 30;
-        int acceptableNrOfTrades = 5000;
-
-        if (coinKlines15m.size() > 3) {
-            volumeOfLast45mKlines = ServiceFunctionsStrategyDefault.countMoneyVolumeAtInterval(coinKlines15m, 0, 3);
-            nrOfTradesLast45mKlinesSum = ServiceFunctionsStrategyDefault.countNrOfTradesAtInterval(coinKlines15m, 0, 3);
-        } else {
-            volumeOfLast45mKlines = 0;
-            nrOfTradesLast45mKlinesSum = 0;
-        }
-
-        if (coinKlines3m.size() > 15) {
-            percentOfRiseOfNumberOfVolumeInLast45min = ServiceFunctionsStrategyDefault.countBeforeAndAfter(coinKlines3m, 15);
-        } else {
-            percentOfRiseOfNumberOfVolumeInLast45min = 0;
-        }
-
-        if (nrOfTradesLast45mKlinesSum >= acceptableNrOfTrades && volumeOfLast45mKlines >= acceptableVolume && percentOfRiseOfNumberOfVolumeInLast45min > acceptablePercentOfVolumeRise && !symbol.contains("BUSDUSDT") && coinKlines15m.size() >= 59 && coinKlines3m.size() >= 39 && coinKlines4h.size() >= 19) {
-
-            DecimalFormat df = new DecimalFormat("0.000000");
-            DecimalFormat df2 = new DecimalFormat("0.00");
-            @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("HH:mm:ss");
-
-            ArrayList<Double> PriceChangePercents = new ArrayList<>();
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 2))); //6m
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 5))); //15m
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 10))); //30m
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines15m.subList(0, 8))); //2h
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines15m.subList(0, 16))); //4h
-            String PriceLogValue = "";
-            for (Double number : PriceChangePercents) {
-                PriceLogValue += df2.format(number) + "% ";
-            }
-
-            int start = 0;
-            int add = 2;
-            double sumATR15 = 0;
-            double avgATR15 = 0;
-            ArrayList<Double> ATR_ChangeFromAVG15 = new ArrayList<>();
-
-            List<Kline> klinesList15 = coinKlines15m.subList(0, 18);
-            String ATRValues15 = "";
-            for (int i = 0; i < (klinesList15.size() / add); i++) {
-                ArrayList<Kline> klinesListInterval = new ArrayList<>(klinesList15.subList(start + add * i, add + add * i));
-                double temp = ServiceFunctionsStrategyDefault.calculateATR(klinesListInterval, add);
-                sumATR15 += temp;
-                ATR_ChangeFromAVG15.add(temp);
-            }
-            avgATR15 = sumATR15 / ((double) (klinesList15.size() / add));
-
-            ArrayList<Double> percentATR15 = new ArrayList<>();
-            for (Double number : ATR_ChangeFromAVG15) {
-                number = ((number * 100) / avgATR15) - 100;
-                percentATR15.add(number);
-                ATRValues15 += df2.format(number) + "% ";
-            }
-
-            int priceDirection15 = ServiceFunctionsStrategyDefault.predictPriceDirection(coinKlines15m.subList(0, 16));
-            int priceDirection3 = ServiceFunctionsStrategyDefault.predictPriceDirection(coinKlines3m.subList(0, 15));
-            int priceDirection4 = ServiceFunctionsStrategyDefault.predictPriceDirection(coinKlines4h.subList(0, 8));
-
-            StrategyParameters params3m = new StrategyParameters(8, "3m", 60, 30, 70, 90, 40, 0.5f, 12.0f);
-            StrategyParameters params15m = new StrategyParameters(2, "15m", 60, 30, 70, 90, 40, 0.5f, 12.0f);
-            StrategyParameters params4h = new StrategyParameters(1, "4h", 60, 30, 70, 90, 40, 0.5f, 12.0f);
-            StrategyResultV2 strategy3m = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines3m, 4, params3m, getApplicationContext());
-            StrategyResultV2 strategy15m = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines15m, 4, params15m, getApplicationContext());
-            StrategyResultV2 strategy4h = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines4h, 4, params4h, getApplicationContext());
-
-            String info = "LEVEL 1 [" + symbol + "] STRATEGY: 4 ---> [Volume45]: " + volumeOfLast45mKlines + " [%OfVolumeRise45]: " + percentOfRiseOfNumberOfVolumeInLast45min + " [NrOfTrades45m]:" + nrOfTradesLast45mKlinesSum + " AvgATR15: " + df.format(avgATR15) + " ATR%15: " + ATRValues15 + " PriceDirection: " + priceDirection3 + " " + priceDirection15 + " " + priceDirection4 + " LastPriceChange(6,15,30,2,4): " + PriceLogValue + " [TrendMACD<>4h-15m]: " + strategy4h.getPassedMACD() + " " + strategy15m.getPassedMACD() + " [WT<>4h-15m]: " + strategy4h.getPassedWT() + " " + strategy15m.getPassedWT() + " [RSI<>4h-15m]: " + strategy4h.getPassedRSI() + " " + strategy15m.getPassedRSI();
-            Log.e(TAG, info);
-            ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-
-            long hours4 = 14400000;
-
-            if (strategy4h.getPassedRSI() == 1 && strategy15m.getPassedWT() == -1) {
-
-                Cursor data = databaseDB.checkIfSymbolWasApprovedInCertainTime(symbol, (System.currentTimeMillis() - hours4));
-                data.moveToFirst();
-                if (data.getCount() == 0) {
-                    info = "LEVEL 2 [" + symbol + " LONG] approved at: " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                    Log.e(TAG, info);
-                    ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                } else {
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                }
-                data.close();
-
-            } else if (strategy4h.getPassedRSI() == -1 && strategy15m.getPassedWT() == 1) {
-
-                Cursor data = databaseDB.checkIfSymbolWasApprovedInCertainTime(symbol, (System.currentTimeMillis() - hours4));
-                data.moveToFirst();
-                if (data.getCount() == 0) {
-
-                    info = "LEVEL 2 [" + symbol + " SHORT] approved at:  " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                    Log.e(TAG, info);
-                    ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                } else {
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                }
-                data.close();
-            }
-
-        }
-
-    }
-
-    private void strategyNr3_RSI_EMA_15m(String symbol, List<Kline> coinKlines3m, List<Kline> coinKlines15m, List<Kline> coinKlines4h) {
-
-        float volumeOfLast45mKlines, percentOfRiseOfNumberOfVolumeInLast45min, nrOfTradesLast45mKlinesSum;
-        int acceptableVolume = 500000; //1000000
-        int acceptablePercentOfVolumeRise = 25;
-        int acceptableNrOfTrades = 1000;
-
-        if (coinKlines15m.size() > 3) {
-            volumeOfLast45mKlines = ServiceFunctionsStrategyDefault.countMoneyVolumeAtInterval(coinKlines15m, 0, 3);
-            nrOfTradesLast45mKlinesSum = ServiceFunctionsStrategyDefault.countNrOfTradesAtInterval(coinKlines15m, 0, 3);
-        } else {
-            volumeOfLast45mKlines = 0;
-            nrOfTradesLast45mKlinesSum = 0;
-        }
-
-        if (coinKlines3m.size() > 15) {
-            percentOfRiseOfNumberOfVolumeInLast45min = ServiceFunctionsStrategyDefault.countBeforeAndAfter(coinKlines3m, 15);
-        } else {
-            percentOfRiseOfNumberOfVolumeInLast45min = 0;
-        }
-
-        if (nrOfTradesLast45mKlinesSum >= acceptableNrOfTrades && !symbol.contains("BUSDUSDT") && coinKlines15m.size() >= 90 && coinKlines3m.size() >= 90 && coinKlines4h.size() >= 90) { //  && volumeOfLast45mKlines >= acceptableVolume && percentOfRiseOfNumberOfVolumeInLast45min > acceptablePercentOfVolumeRise &&
-
-            @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("HH:mm:ss");
-
-            StrategyParameters params3m = new StrategyParameters(2, "3m", 60, 30, 70, 90, 40, 0.5f, 12.0f);
-            StrategyParameters params15m = new StrategyParameters(4, "15m", 60, 30, 70, 90, 30, 0.5f, 12.0f);
-            StrategyParameters params4h = new StrategyParameters(4, "4h", 60, 30, 70, 90, 40, 0.5f, 12.0f);
-            StrategyResultV2 strategy3m = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines3m, 3, params3m, getApplicationContext());
-            StrategyResultV2 strategy15m = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines15m, 3, params15m, getApplicationContext());
-            StrategyResultV2 strategy4h = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines4h, 3, params4h, getApplicationContext());
-
-            String info = "LEVEL 1 [" + symbol + "] STRATEGY: 3 ---> [Volume45]: " + volumeOfLast45mKlines + " [%OfVolumeRise45]: " + percentOfRiseOfNumberOfVolumeInLast45min + " [NrOfTrades45m]:" + nrOfTradesLast45mKlinesSum + " [TrendEMA<>4h-15m]: " + strategy4h.getPassedEMA() + " " + strategy15m.getPassedEMA() + " [WT<>4h-15m]: " + strategy4h.getPassedWT() + " " + strategy15m.getPassedWT() + " [RSI<>4h-15m]: " + strategy4h.getPassedRSI() + " " + strategy15m.getPassedRSI();
-            Log.e(TAG, info);
-            ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-
-            long hours4 = 14400000;
-
-            if (strategy15m.getPassedEMA() == 1 && strategy15m.getPassedRSI() == 1 && strategy4h.getPassedEMA() == 1 ) {
-
-                Cursor data = databaseDB.checkIfSymbolWasApprovedInCertainTime(symbol, (System.currentTimeMillis() - hours4));
-                data.moveToFirst();
-                if (data.getCount() == 0) {
-                    info = "LEVEL 2 [" + symbol + " LONG] approved at: " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                    Log.e(TAG, info);
-                    ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                } else {
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                }
-                data.close();
-
-            } else if (strategy15m.getPassedRSI() == -1 && strategy15m.getPassedEMA() == -1 && strategy4h.getPassedEMA() == -1) {
-
-                Cursor data = databaseDB.checkIfSymbolWasApprovedInCertainTime(symbol, (System.currentTimeMillis() - hours4));
-                data.moveToFirst();
-                if (data.getCount() == 0) {
-
-                    info = "LEVEL 2 [" + symbol + " SHORT] approved at:  " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                    Log.e(TAG, info);
-                    ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                } else {
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                }
-                data.close();
-            }
-
-        }
-
-    }
-
-    private void strategyNr6_EMA_4h_WT_ADX_EMA_15m(String symbol, List<Kline> coinKlines3m, List<Kline> coinKlines15m, List<Kline> coinKlines4h) {
-
-        float volumeOfLast45mKlines, percentOfRiseOfNumberOfVolumeInLast45min, nrOfTradesLast45mKlinesSum;
-        int acceptableVolume = 250000; //1000000
-       // int acceptablePercentOfVolumeRise = 10;
-        int acceptableNrOfTrades = 1000;
-
-        if (coinKlines15m.size() > 3) {
-            volumeOfLast45mKlines = ServiceFunctionsStrategyDefault.countMoneyVolumeAtInterval(coinKlines15m, 0, 3);
-            nrOfTradesLast45mKlinesSum = ServiceFunctionsStrategyDefault.countNrOfTradesAtInterval(coinKlines15m, 0, 3);
-        } else {
-            volumeOfLast45mKlines = 0;
-            nrOfTradesLast45mKlinesSum = 0;
-        }
-
-        if (coinKlines3m.size() > 15) {
-            percentOfRiseOfNumberOfVolumeInLast45min = ServiceFunctionsStrategyDefault.countBeforeAndAfter(coinKlines3m, 15);
-        } else {
-            percentOfRiseOfNumberOfVolumeInLast45min = 0;
-        }
-
-        @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("HH:mm:ss");
-        @SuppressLint("SimpleDateFormat") DateFormat df4 = new SimpleDateFormat("dd/MM/yyyy - HH:mm:ss");
-
-        String e = "LEVEL 0,5 [" + symbol + "] " + coinKlines4h.get(0).toString() + " size: " + coinKlines4h.size() + " CurrentTime: " + df4.format(System.currentTimeMillis()) + " (" + System.currentTimeMillis() + ") "
-                + " OpenTime: " + df4.format(coinKlines4h.get(0).gettOpenTime()) + " (" + coinKlines4h.get(0).gettOpenTime() + ") " + " difference:" + (System.currentTimeMillis() - coinKlines4h.get(0).gettOpenTime());
-        Log.e(TAG, e);
-
-        //Need to wait a while before new 4h klines appears
-        long differenceBetweenCurrentTimeAndOpenTime = System.currentTimeMillis() - coinKlines4h.get(0).gettOpenTime();
-        long minutes20 = 1200000;
-        long hours8 = 28800000;
-
-        if (differenceBetweenCurrentTimeAndOpenTime > minutes20 && nrOfTradesLast45mKlinesSum >= acceptableNrOfTrades && volumeOfLast45mKlines >= acceptableVolume && !symbol.contains("BUSDUSDT") && coinKlines15m.size() >= 59 && coinKlines3m.size() >= 39 && coinKlines4h.size() >= 19) { // && percentOfRiseOfNumberOfVolumeInLast45min > acceptablePercentOfVolumeRise
-
-
-            StrategyParameters params3m = new StrategyParameters(2, "3m", 53, 30, 70, 90, 40, 0.5f, 12.0f);
-            StrategyParameters params15m = new StrategyParameters(3, "15m", 53, 30, 70, 90, 40, 0.5f, 12.0f);
-            StrategyParameters params4h = new StrategyParameters(1, "4h", 53, 30, 70, 90, 40, 0.5f, 12.0f);
-            StrategyResultV2 strategy3m = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines3m, 6, params3m, getApplicationContext());
-            StrategyResultV2 strategy15m = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines15m, 6, params15m, getApplicationContext());
-            StrategyResultV2 strategy4h = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines4h, 6, params4h, getApplicationContext());
-
-            String info = "LEVEL 1 [" + symbol + "] STRATEGY: 6 ---> [TrendEMA<>4h-15m]: " + strategy4h.getPassedEMA() + " " + strategy15m.getPassedEMA() + " [WT<>4h-15m]: " + strategy4h.getPassedWT() + " " + strategy15m.getPassedWT() + " [ADX<>4h-15m]: " + strategy4h.getPassedADX() + " " + strategy15m.getPassedADX();
-            Log.e(TAG, info);
-            ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-
-
-            if (strategy4h.getPassedEMA() == 1 && strategy15m.getPassedEMA() == 1 && strategy15m.getPassedADX() == 1 && strategy15m.getPassedWT() == 1) {
-
-                Cursor data = databaseDB.checkIfSymbolWasApprovedInCertainTime(symbol, (System.currentTimeMillis() - hours8));
-                data.moveToFirst();
-                if (data.getCount() == 0) {
-                    info = "LEVEL 2 [" + symbol + " LONG] approved at: " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                    Log.e(TAG, info);
-                    ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                } else {
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                }
-                data.close();
-
-            } else if  (strategy4h.getPassedEMA() == -1 && strategy15m.getPassedEMA() == -1 && strategy15m.getPassedADX() == 1 && strategy15m.getPassedWT() == -1) {
-
-                Cursor data = databaseDB.checkIfSymbolWasApprovedInCertainTime(symbol, (System.currentTimeMillis() - hours8));
-                data.moveToFirst();
-                if (data.getCount() == 0) {
-
-                    info = "LEVEL 2 [" + symbol + " SHORT] approved at:  " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                    Log.e(TAG, info);
-                    ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                } else {
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                }
-                data.close();
-            }
-
-        }
-
-    }
-
-    private void strategyNr6_RSI_EMA_4h(String symbol, List<Kline> coinKlines3m, List<Kline> coinKlines15m, List<Kline> coinKlines4h) {
-
-        float volumeOfLast45mKlines, percentOfRiseOfNumberOfVolumeInLast45min, nrOfTradesLast45mKlinesSum;
-        int acceptableVolume = 1500000; //1000000
-        int acceptablePercentOfVolumeRise = 25;
-        int acceptableNrOfTrades = 3000;
-
-        if (coinKlines15m.size() > 3) {
-            volumeOfLast45mKlines = ServiceFunctionsStrategyDefault.countMoneyVolumeAtInterval(coinKlines15m, 0, 3);
-            nrOfTradesLast45mKlinesSum = ServiceFunctionsStrategyDefault.countNrOfTradesAtInterval(coinKlines15m, 0, 3);
-        } else {
-            volumeOfLast45mKlines = 0;
-            nrOfTradesLast45mKlinesSum = 0;
-        }
-
-        if (coinKlines3m.size() > 15) {
-            percentOfRiseOfNumberOfVolumeInLast45min = ServiceFunctionsStrategyDefault.countBeforeAndAfter(coinKlines3m, 15);
-        } else {
-            percentOfRiseOfNumberOfVolumeInLast45min = 0;
-        }
-
-        if (nrOfTradesLast45mKlinesSum >= acceptableNrOfTrades && volumeOfLast45mKlines >= acceptableVolume && percentOfRiseOfNumberOfVolumeInLast45min > acceptablePercentOfVolumeRise && !symbol.contains("BUSDUSDT") && coinKlines15m.size() >= 59 && coinKlines3m.size() >= 39 && coinKlines4h.size() >= 19) {
-
-            DecimalFormat df = new DecimalFormat("0.000000");
-            DecimalFormat df2 = new DecimalFormat("0.00");
-            @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("HH:mm:ss");
-
-            StrategyParameters params3m = new StrategyParameters(2, "3m", 60, 30, 70, 90, 40, 0.5f, 12.0f);
-            StrategyParameters params15m = new StrategyParameters(5, "15m", 60, 31, 69, 90, 39, 0.5f, 12.0f);
-            StrategyParameters params4h = new StrategyParameters(5, "4h", 60, 31, 69, 90, 39, 0.5f, 12.0f);
-            StrategyResultV2 strategy3m = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines3m, 3, params3m, getApplicationContext());
-            StrategyResultV2 strategy15m = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines15m, 3, params15m, getApplicationContext());
-            StrategyResultV2 strategy4h = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines4h, 3, params4h, getApplicationContext());
-
-            String info = "LEVEL 1 [" + symbol + "] STRATEGY: 4 ---> [Volume45]: " + volumeOfLast45mKlines + " [%OfVolumeRise45]: " + percentOfRiseOfNumberOfVolumeInLast45min + " [NrOfTrades45m]:" + nrOfTradesLast45mKlinesSum + " [TrendEMA<>4h-15m]: " + strategy4h.getPassedEMA() + " " + strategy15m.getPassedEMA() + " [WT<>4h-15m]: " + strategy4h.getPassedWT() + " " + strategy15m.getPassedWT() + " [RSI<>4h-15m]: " + strategy4h.getPassedRSI() + " " + strategy15m.getPassedRSI();
-            Log.e(TAG, info);
-            ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-
-            long hours4 = 14400000;
-            long hours8 = 28800000;
-
-            if (strategy4h.getPassedEMA() == 1 && strategy4h.getPassedRSI() == 1 && strategy4h.getPassedADX() == 1) {
-
-                Cursor data = databaseDB.checkIfSymbolWasApprovedInCertainTime(symbol, (System.currentTimeMillis() - hours8));
-                data.moveToFirst();
-                if (data.getCount() == 0) {
-                    info = "LEVEL 2 [" + symbol + " LONG] approved at: " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                    Log.e(TAG, info);
-                    ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                } else {
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                }
-                data.close();
-
-            } else if (strategy4h.getPassedRSI() == -1 && strategy4h.getPassedEMA() == -1 && strategy4h.getPassedADX() == 1) {
-
-                Cursor data = databaseDB.checkIfSymbolWasApprovedInCertainTime(symbol, (System.currentTimeMillis() - hours8));
-                data.moveToFirst();
-                if (data.getCount() == 0) {
-
-                    info = "LEVEL 2 [" + symbol + " SHORT] approved at:  " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                    Log.e(TAG, info);
-                    ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                } else {
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, 4,
-                            4f, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                }
-                data.close();
-            }
-
-        }
-
-    }
-
-    private void strategyNr5_WT_PPO_ADX(String symbol, List<Kline> coinKlines3m, List<Kline> coinKlines15m, List<Kline> coinKlines4h) {
-
-        //Wcześniej był sam volumen do sprawdzenia
-        float volumeFromLast30min, volumeFromPrevious30min;
-        int acceptableVolume = 3300000; //1000000
-
-        if (coinKlines15m.size() > 2) {
-            volumeFromLast30min = ServiceFunctionsStrategyDefault.countMoneyVolumeAtInterval(coinKlines15m, 0, 2);
-            volumeFromPrevious30min = ServiceFunctionsStrategyDefault.countMoneyVolumeAtInterval(coinKlines15m, 2, 4);
-        } else {
-            volumeFromLast30min = 0;
-            volumeFromPrevious30min = 0;
-        }
-
-        float nrOfTradesFromLast30min, nrOfTradesInPrevious30min;
-        int acceptableNrOfTrades = 44000;
-
-        if (coinKlines15m.size() > 2) {
-            nrOfTradesFromLast30min = ServiceFunctionsStrategyDefault.countNrOfTradesAtInterval(coinKlines15m, 0, 2);
-            nrOfTradesInPrevious30min = ServiceFunctionsStrategyDefault.countNrOfTradesAtInterval(coinKlines15m, 2, 4);
-        } else {
-            nrOfTradesFromLast30min = 0;
-            nrOfTradesInPrevious30min = 0;
-        }
-
-        boolean isVolumeAndNrOfTradesAccepted = (volumeFromLast30min > volumeFromPrevious30min * 1.25) && (nrOfTradesFromLast30min > nrOfTradesInPrevious30min * 1.25) && volumeFromLast30min > acceptableVolume && nrOfTradesFromLast30min > acceptableNrOfTrades;
-
-
-        String info2 = "LEVEL 0 [" + symbol + "] volume: " + volumeFromLast30min + " previous: " + volumeFromPrevious30min + " nrTrades: " + nrOfTradesFromLast30min + " previous: " + nrOfTradesInPrevious30min + " approved?: " + isVolumeAndNrOfTradesAccepted;
-        Log.e(TAG, info2);
-
-
-        if (isVolumeAndNrOfTradesAccepted && !symbol.contains("BUSDUSDT") && coinKlines15m.size() >= 58 && coinKlines3m.size() >= 38 && coinKlines4h.size() >= 15) {
-
-            DecimalFormat df = new DecimalFormat("0.000000");
-            DecimalFormat df2 = new DecimalFormat("0.00");
-
-            int predict15, priceDirection15;
-            int nrOfTradesLast15mKlinesSum = ServiceFunctionsStrategyDefault.countNrOfTradesAtInterval(coinKlines15m, 0, 2);
-
-            ArrayList<Double> PriceChangePercents = new ArrayList<>();
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 2))); //6m
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 5))); //15m
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines3m.subList(0, 10))); //30m
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines15m.subList(0, 8))); //2h
-            PriceChangePercents.add(ServiceFunctionsStrategyDefault.percentOfPriceChange(coinKlines15m.subList(0, 16))); //4h
-            String PriceLogValue = "";
-
-            for (Double number : PriceChangePercents) {
-                PriceLogValue += df2.format(number) + "% ";
-            }
-
-            predict15 = ServiceFunctionsStrategyDefault.predict(coinKlines15m);
-            priceDirection15 = ServiceFunctionsStrategyDefault.predictPriceDirection(coinKlines15m.subList(0, 12));
-//            String info2 = "Size 15m: " + coinKlines15m.size() + " Size 3m: " + coinKlines3m.size();
-//            ServiceFunctionsOther.writeToFile(info2, getApplicationContext(), "result");
-//
-//            @SuppressLint("SimpleDateFormat") DateFormat df5 = new SimpleDateFormat("HH:mm:ss - dd");
-//            for (int i = 0; i < coinKlines15m.size(); i++)  {
-//                info2 = "KlineSize i: " + i + " " + df5.format(new Date (coinKlines15m.get(i).gettCloseTime())) + " " + coinKlines15m.get(i).gettClosePrice();
-//                ServiceFunctionsOther.writeToFile(info2, getApplicationContext(), "result");
-//            }
-
-            StrategyParameters params3m = new StrategyParameters(10, "3m", 53, 30, 70, 90, 36, 0.75f, 12.0f);
-            StrategyParameters params15m = new StrategyParameters(10, "15m", 53, 30, 70, 90, 36, 0.75f, 12.0f);
-            StrategyParameters params4h = new StrategyParameters(10, "4h", 53, 30, 70, 90, 36, 0.75f, 12.0f);
-            StrategyResultV2 strategyNr15 = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines15m, 5, params15m, getApplicationContext()); // 53, 10, 0.75, 12.1, 36
-            StrategyResultV2 strategyNr3 = ServiceFunctionsStrategyTa4J.strategyTa4J(coinKlines3m, 5, params3m, getApplicationContext());
-
-            int start = 0;
-            int add = 2;
-            double sumATR15 = 0;
-            double avgATR15 = 0;
-            ArrayList<Double> ATR_ChangeFromAVG15 = new ArrayList<>();
-            List<Kline> klinesList15 = coinKlines15m.subList(0, 18);
-            String ATRValues15 = "";
-            for (int i = 0; i < (klinesList15.size() / add); i++) {
-                ArrayList<Kline> klinesListInterval = new ArrayList<>(klinesList15.subList(start + add * i, add + add * i));
-                double temp = ServiceFunctionsStrategyDefault.calculateATR(klinesListInterval, add);
-                sumATR15 += temp;
-                ATR_ChangeFromAVG15.add(temp);
-            }
-            avgATR15 = sumATR15 / ((double) (klinesList15.size() / add));
-            for (Double number : ATR_ChangeFromAVG15) {
-                number = ((number * 100) / avgATR15) - 100;
-                ATRValues15 += df2.format(number) + "% ";
-            }
-
-            String info = "LEVEL 1 [" + symbol + "] STRATEGY: 5 Volume15m: " + volumeFromLast30min + " AvgATR15: " + df.format(avgATR15) + " ATR%15m: " + ATRValues15 + " Predicted(3m, 15m, 4h): " + predict15 + " PriceDirection: " + priceDirection15 + " LastPriceChange(6m, 15m, 30m, 2h, 4h): " + PriceLogValue + " PPO(3,15) " + strategyNr3.getPassedPPO() + " " + strategyNr15.getPassedPPO() + " WT(3,15) " + strategyNr3.getPassedWT() + " " + strategyNr15.getPassedWT() + " ADX(3,15) " + strategyNr3.getPassedADX() + " " + strategyNr15.getPassedADX();
-            Log.e(TAG, info);
-            ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-
-            @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("HH:mm:ss");
-            long hours4 = 14400000;
-
-            if (strategyNr15.getPassedWT() == 1 && strategyNr15.getPassedADX() == 1 && strategyNr15.getPassedPPO() == 1) {//&& percentATR15.get(0) < 70 && percentATR15.get(1) < 70 && percentATR15.get(0) > -25 && percentATR15.get(1) > -25 && PriceChangePercents.get(4) > -5) {
-
-                Cursor data = databaseDB.checkIfSymbolWasApprovedInCertainTime(symbol, (System.currentTimeMillis() - hours4));
-                data.moveToFirst();
-                if (data.getCount() == 0) {
-
-                    info = "LEVEL 2 [" + symbol + " LONG] approved at: " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                    Log.e(TAG, info);
-                    ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, nrOfTradesLast15mKlinesSum,
-                            volumeFromLast30min, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 1, nrOfTradesLast15mKlinesSum,
-                            volumeFromLast30min, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                }
-
-            } else if (strategyNr15.getPassedWT() == -1 && strategyNr15.getPassedADX() == 1 && strategyNr15.getPassedPPO() == -1) { //&& percentATR15.get(0) < 70 && percentATR15.get(1) < 70 && percentATR15.get(0) > -25 && percentATR15.get(1) > -25 && PriceChangePercents.get(4) < 5) {
-
-                Cursor data = databaseDB.checkIfSymbolWasApprovedInCertainTime(symbol, (System.currentTimeMillis() - hours4));
-                data.moveToFirst();
-                if (data.getCount() == 0) {
-                    info = "LEVEL 2 [" + symbol + " SHORT] approved at:  " + df3.format(System.currentTimeMillis()) + " " + df3.format(coinKlines3m.get(coinKlines3m.size() - 1).gettCloseTime());
-                    Log.e(TAG, info);
-                    ServiceFunctionsOther.writeToFile(info, getApplicationContext(), "result");
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, nrOfTradesLast15mKlinesSum,
-                            volumeFromLast30min, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED);
-                    databaseDB.addApprovedNewCrypto(new ApprovedToken(symbol, 0, nrOfTradesLast15mKlinesSum,
-                            volumeFromLast30min, System.currentTimeMillis(), coinKlines3m.get(coinKlines3m.size() - 1).tClosePrice), TABLE_NAME_APPROVED_HISTORIC);
-                }
-            }
-
-        }
-
-    }
-
 }

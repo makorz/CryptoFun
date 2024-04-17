@@ -67,6 +67,8 @@ public class MainActivity extends AppCompatActivity {
         Objects.requireNonNull(this.getSupportActionBar()).hide();
         getWindow().setNavigationBarColor(ContextCompat.getColor(this, R.color.orange_700));
         TextView timeView = binding.textMain;
+        TextView strategyView = binding.textStrategyNumber;
+        TextView stopLimitStrategyView = binding.textStopLimitStrategyNumber;
         bottomNavigationView = findViewById(R.id.nav_view2);
         bottomNavigationView.setVisibility(View.GONE);
 
@@ -84,6 +86,28 @@ public class MainActivity extends AppCompatActivity {
         } else {
             data.moveToFirst();
             timeView.setText(data.getString(2));
+        }
+        data.close();
+
+        String strategy = "STRATEGY: ";
+        data = databaseDB.retrieveParam(17);
+        if (data.getCount() == 0) {
+            Toast.makeText(this, "Table is empty...", Toast.LENGTH_LONG).show();
+        } else {
+            data.moveToFirst();
+            strategy += String.valueOf(data.getInt(3));
+            strategyView.setText(strategy);
+        }
+        data.close();
+
+        strategy = "SL STRATEGY: ";
+        data = databaseDB.retrieveParam(18);
+        if (data.getCount() == 0) {
+            Toast.makeText(this, "Table is empty...", Toast.LENGTH_LONG).show();
+        } else {
+            data.moveToFirst();
+            strategy += String.valueOf(data.getInt(3));
+            stopLimitStrategyView.setText(strategy);
         }
         data.close();
 
@@ -140,9 +164,24 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 TextView timeView = binding.textMain;
+                TextView strategyView = binding.textStrategyNumber;
+                TextView stopLimitStrategyView = binding.textStopLimitStrategyNumber;
+                stopLimitStrategyView.setText(intent.getStringExtra("currentStopLimitStrategy"));
+                strategyView.setText(intent.getStringExtra("currentStrategy"));
                 timeView.setText(intent.getStringExtra("updateDate"));
+
+                Cursor data = databaseDB.retrieveParam(3);
+                int howManyMinutes = 1;
+                if (data.getCount() == 0) {
+                    Toast.makeText(getApplicationContext(), "Table is empty...", Toast.LENGTH_LONG).show();
+                } else {
+                    data.moveToFirst();
+                    howManyMinutes = data.getInt(3);
+                }
+                data.close();
+                Log.e(TAG, "ALARM START --> " + howManyMinutes + " minutes");
                 AlarmReceiverLoopingService alarm = new AlarmReceiverLoopingService();
-                alarm.setAlarm(getApplicationContext(),1);
+                alarm.setAlarm(getApplicationContext(),howManyMinutes);
 
             }
 
@@ -163,8 +202,18 @@ public class MainActivity extends AppCompatActivity {
                     MainActivity.this.startForegroundService(serviceIntent);
                 }
 
+                Cursor data = databaseDB.retrieveParam(3);
+                int howManyMinutes = 1;
+                if (data.getCount() == 0) {
+                    Toast.makeText(getApplicationContext(), "Table is empty...", Toast.LENGTH_LONG).show();
+                } else {
+                    data.moveToFirst();
+                    howManyMinutes = data.getInt(3);
+                }
+                data.close();
+                Log.e(TAG, "ALARM START --> " + howManyMinutes + " minutes");
                 AlarmReceiverLoopingService alarm = new AlarmReceiverLoopingService();
-                alarm.setAlarm(getApplicationContext(), 1);
+                alarm.setAlarm(getApplicationContext(), howManyMinutes);
             }
 
             if (intent.getAction().equals("DB_update_start")) {

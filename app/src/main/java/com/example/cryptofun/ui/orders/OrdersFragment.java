@@ -311,8 +311,10 @@ public class OrdersFragment extends Fragment implements CallbackButton {
         } else {
             Log.e(TAG, "No callback " + receivedOrdersList.size());
             adapter.updateList(receivedOrdersList);
+            for (OrderListViewElement obj : receivedOrdersList) {
+                Log.e(TAG, obj.toString());
+            }
         }
-
 
     }
 

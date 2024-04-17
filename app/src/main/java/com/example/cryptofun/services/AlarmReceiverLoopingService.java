@@ -22,9 +22,9 @@ import com.example.cryptofun.R;
 public class AlarmReceiverLoopingService extends BroadcastReceiver {
 
     private static final String TAG = "AlarmService";
-    
+
     @Override
-    public void onReceive(Context context, Intent intent){
+    public void onReceive(Context context, Intent intent) {
 
         Intent in = new Intent(context, UpdatingDatabaseService.class);
 
@@ -55,24 +55,16 @@ public class AlarmReceiverLoopingService extends BroadcastReceiver {
     }
 
     @SuppressLint("ShortAlarm")
-    public void setAlarm(Context context, int when)
-    {
+    public void setAlarm(Context context, int howManyMinutes) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent i = new Intent(context, AlarmReceiverLoopingService.class);
         PendingIntent pi = PendingIntent.getBroadcast(context, 0, i, PendingIntent.FLAG_IMMUTABLE);
         assert am != null;
-//        if (when == 0) {
-//            Log.e(TAG, "000");
-//            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 10L * 1000L, pi);
-//        } else {
-            Log.e(TAG, "Time: 55s");
-            am.setAlarmClock(new AlarmManager.AlarmClockInfo((System.currentTimeMillis() + 55L * 1000L), pi), pi);
-//        }
-
+        Log.e(TAG, "Time: " + howManyMinutes + "m");
+        am.setAlarmClock(new AlarmManager.AlarmClockInfo((System.currentTimeMillis() + howManyMinutes * 60 * 1000L), pi), pi);
     }
 
-    public void stopAlarm(Context context)
-    {
+    public void stopAlarm(Context context) {
         Log.e(TAG, "Canceled");
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent i = new Intent(context, AlarmReceiverLoopingService.class);
