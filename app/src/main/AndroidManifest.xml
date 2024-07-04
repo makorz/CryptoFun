@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.example.cryptofun">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -29,14 +28,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CryptoFun"
         tools:targetApi="31">
-        <service android:name=".services.CreatingDatabaseService" />
-        <service android:name=".services.UpdatingDatabaseService" />
-        <service android:name=".services.ApprovingService" />
-        <service android:name=".services.OrdersService" />
-        <receiver android:name=".services.AlarmReceiverLoopingService" />
+        <service android:name="app.makorz.cryptofun.services.CreatingDatabaseService" />
+        <service android:name="app.makorz.cryptofun.services.UpdatingDatabaseService" />
+        <service android:name="app.makorz.cryptofun.services.ApprovingService" />
+        <service android:name="app.makorz.cryptofun.services.OrdersService" />
+        <receiver android:name="app.makorz.cryptofun.services.AlarmReceiverLoopingService" />
 
         <activity
-            android:name=".MainActivity"
+            android:name="app.makorz.cryptofun.MainActivity"
             android:exported="true"
             android:launchMode="singleInstance">
 
