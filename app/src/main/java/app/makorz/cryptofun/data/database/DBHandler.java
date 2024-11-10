@@ -436,6 +436,14 @@ public class DBHandler extends SQLiteOpenHelper {
 
     }
 
+    public Cursor retrieveDataToFindBestCrypto2(String tableName, String tokenSymbol, String interval) {
+        SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
+        String query = "SELECT * FROM " + tableName + " WHERE " + SYMBOL_CRYPTO + " = '" + tokenSymbol + "' and " + INTERVAL + " = '" + interval + "' ORDER BY " + OPEN_TIME + " ASC";
+        @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
+        //   Log.i(TAG, query);
+        return data;
+    }
+
     public Cursor retrieveActiveOrdersOnAccount(int accountNumber, String orderType, int isReal) {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         String query = "SELECT * FROM " + TABLE_NAME_ORDERS + " WHERE " + WHAT_ACCOUNT + " = " + accountNumber + " AND " + ORDER_TYPE + " = '" + orderType + "' AND " + IS_IT_REAL + " = " + isReal;
@@ -511,10 +519,10 @@ public class DBHandler extends SQLiteOpenHelper {
 //        return data;
 //    }
 
-    public Cursor checkIfSymbolWasApprovedInCertainTime(String symbol, long time) {
+    public Cursor checkIfSymbolWasApprovedInCertainTime(String symbol, long time, int strategyNr) {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         Cursor data;
-        String query = "SELECT symbol FROM historic_approved_tokens where approve_time > " + time + " AND symbol ='" + symbol + "'";
+        String query = "SELECT symbol FROM historic_approved_tokens where approve_time > " + time + " AND symbol ='" + symbol + "' AND number_of_trades = " + strategyNr;
         Log.i(TAG, query);
         data = sqLiteDatabase.rawQuery(query, null);
         return data;
@@ -535,6 +543,24 @@ public class DBHandler extends SQLiteOpenHelper {
         data = sqLiteDatabase.rawQuery(query, null);
         return data;
     }
+
+    //added for multiple strategies
+    public Cursor firstAppearOfTokenInCertainTimeV3(long time1, long time2, String tableName, boolean groupSymbols) {
+        SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
+        Cursor data;
+        String query;
+        if (groupSymbols) {
+            //Show only first appear of token that passed strategy
+            query = "SELECT symbol, longOrShort, number_of_trades, MIN(approve_time), price_when_approved FROM " + tableName + " where approve_time BETWEEN " + time1 + " AND " + time2 + " group by symbol, longOrShort, number_of_trades order by symbol, approve_time, number_of_trades asc";
+        } else {
+            //Show all appearances of token  that passed strategy
+            query = "SELECT symbol, longOrShort, number_of_trades, approve_time, price_when_approved FROM " + tableName + " where approve_time BETWEEN " + time1 + " AND " + time2 + " order by symbol, approve_time, number_of_trades asc";
+        }
+        Log.i(TAG, query);
+        data = sqLiteDatabase.rawQuery(query, null);
+        return data;
+    }
+
 
     public Cursor firstAppearOfTokenInCertainTimeV2(String name, long time1, long time2) {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();

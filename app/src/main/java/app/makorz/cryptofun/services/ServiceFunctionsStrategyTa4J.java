@@ -65,7 +65,8 @@ public class ServiceFunctionsStrategyTa4J {
     public static StrategyResultV2 strategyTa4J(List<Kline> klines, int strategyNr, StrategyParameters params, Context context) {
 
         // Prepare barSeries to compute Technical Indicators (remember that this revers affects original list)
-        Collections.reverse(klines);
+        //Collections.reverse(klines);
+
         BarSeries series = new BaseBarSeriesBuilder().withName("SeriesForStrategy").build();
 
         for (int i = 0; i < klines.size(); i++) {
@@ -82,6 +83,7 @@ public class ServiceFunctionsStrategyTa4J {
             double closePrice = klines.get(i).gettClosePrice();
             series.addBar(endTime, openPrice, highPrice, lowPrice, closePrice);
         }
+
         //
         // PriceIndicators
         //
@@ -181,10 +183,10 @@ public class ServiceFunctionsStrategyTa4J {
         Num numOfRSIBottomLevel = DecimalNum.valueOf(params.getRSILevelBottom());
         Num numOfarronLimit = DecimalNum.valueOf(params.getARRONLevel());
         Num numOfAdxLimit = DecimalNum.valueOf(params.getADXLevel());
-        Num numOfLimitBottomPPO_forShort = DecimalNum.valueOf(params.getPPOLevelBottom());
-        Num numOfLimitTopPPO_forShort = DecimalNum.valueOf(params.getPPOLevelTop());
-        Num numOfLimitBottomPPO_forLong = DecimalNum.valueOf(params.getPPOLevelTop()).negate();
-        Num numOfLimitTopPPO_forLong = DecimalNum.valueOf(params.getPPOLevelBottom()).negate();
+        Num numOfLimitBottomPPO = DecimalNum.valueOf(params.getPPOLevelBottom());
+        Num numOfLimitTopPPO = DecimalNum.valueOf(params.getPPOLevelTop());
+        Num numOfLimitBottomPPO_Negated = DecimalNum.valueOf(params.getPPOLevelTop()).negate();
+        Num numOfLimitTopPPO_Negated = DecimalNum.valueOf(params.getPPOLevelBottom()).negate();
         Num numOfPpoBefore = ppo.getValue(series.getEndIndex() - params.getNrOfKlinesToWait());
 
         switch (strategyNr) {
@@ -242,84 +244,11 @@ public class ServiceFunctionsStrategyTa4J {
                     }
                 }
                 break;
-            case 1:
-                int sumOfEMASeries = 0;
-                int howLongSeriesInRow = 4; //4
-                int longOrShort = 0;
-                if (series.getBarCount() > params.getNrOfKlinesToWait()) {
-                    for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
-
-                        Num ema12num = ema12.getValue(i);
-                        Num ema32num = ema32.getValue(i);
-                        Num ema92num = ema92.getValue(i);
-                        Num ema181num = ema181.getValue(i);
-                        Num closeNum = close.getValue(i);
-                        Num highNum = high.getValue(i);
-                        Num lowNum = low.getValue(i);
-                        Num openNum = open.getValue(i);
-                        Num wt1 = tci.getValue(i);
-                        Num wt2 = sma.getValue(i);
-
-                        double percentDiff = (ema32.getValue(i).doubleValue() * 100) / ema181.getValue(i).doubleValue();
-
-                        String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [ema181]: " + df.format(ema181.getValue(i).doubleValue()) + " [emaDiff]: " + df.format(percentDiff) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue());
-
-                        if (ema12num.isLessThan(ema32num) && ema32num.isLessThan(ema92num) && ema92num.isLessThan(ema181num) && closeNum.isLessThan(ema12num) && highNum.isLessThan(ema12num) && lowNum.isLessThan(ema12num) && openNum.isLessThan(ema12num) && closeNum.isLessThan(close.getValue(i-1)) && percentDiff < 97) {
-
-                            if (sumOfEMASeries == 0 ) {
-                                sumOfEMASeries++;
-                                longOrShort = 1;
-                            } else if ( longOrShort == 1 ){
-                                sumOfEMASeries++;
-                            }
-
-                            if (sumOfEMASeries >= howLongSeriesInRow ) { //&& close.getValue(series.getEndIndex()).isGreaterThan(open.getValue(series.getEndIndex()))
-                                resultEMA = 1;
-                            }
-                            String info = "Passed EMA LONG " + endOFLogEntry + " SeriesSizeEMA: " + sumOfEMASeries;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        } else if (sumOfEMASeries > 0 && longOrShort == 1) {
-                            sumOfEMASeries = 0;
-                        }
-
-                        if (ema12num.isGreaterThan(ema32num) && ema32num.isGreaterThan(ema92num) && ema92num.isGreaterThan(ema181num) && closeNum.isGreaterThan(ema12num) && highNum.isGreaterThan(ema12num) && lowNum.isGreaterThan(ema12num) && openNum.isGreaterThan(ema12num) && closeNum.isGreaterThan(close.getValue(i-1)) && percentDiff > 103) {
-
-                            if (sumOfEMASeries == 0 ) {
-                                sumOfEMASeries++;
-                                longOrShort = -1;
-                            } else if ( longOrShort == -1 ){
-                                sumOfEMASeries++;
-                            }
-
-                            if (sumOfEMASeries >= howLongSeriesInRow) { // && close.getValue(series.getEndIndex()).isLessThan(open.getValue(series.getEndIndex()))
-                                resultEMA = -1;
-                            }
-                            String info = "Passed EMA SHORT " + endOFLogEntry + " SeriesSizeEMA: " + sumOfEMASeries;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        } else if (sumOfEMASeries > 0 && longOrShort == -1) {
-                            sumOfEMASeries = 0;
-                        }
-
-                        if (i > series.getEndIndex() - 3 && resultWT == -2 && wt2.isGreaterThan(wt1) && wt1.isGreaterThan(numOfWTTopLevel)) {
-                            resultWT = -1;
-                            String info = "Passed WT SHORT " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (i > series.getEndIndex() - 3 && resultWT == -2 && wt1.isGreaterThan(wt2) && wt1.isLessThan(numOfWTBottomLevel)) {
-                            resultWT = 1;
-                            String info = "Passed WT LONG " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                    }
-                }
-                break;
             case 2:
                 int sum = 0;
                 int seriesLength = 2;
                 int LNorSH = 0;
-                Num percentLimit = DecimalNum.valueOf(95);
+                Num percentLimit = DecimalNum.valueOf(98);
                 if (series.getBarCount() > params.getNrOfKlinesToWait()) {
                     for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
 
@@ -330,8 +259,7 @@ public class ServiceFunctionsStrategyTa4J {
                         Num closeNum = close.getValue(i);
                         Num highNum = high.getValue(i);
                         Num lowNum = low.getValue(i);
-                        Num openNum = open.getValue(i);
-                        Num wt1 = tci.getValue(i);
+                           Num wt1 = tci.getValue(i);
                         Num wt2 = sma.getValue(i);
                         Num highLowPercent = highLowPercentDiff.getValue(i);
 
@@ -351,7 +279,7 @@ public class ServiceFunctionsStrategyTa4J {
                             ServiceFunctionsOther.writeToFile(info, context, "result");
                         }
 
-                        if (i > series.getEndIndex() - seriesLength && resultWT == 1 && ema12num.isLessThan(ema32num) && ema32num.isLessThan(ema92num) && ema92num.isLessThan(ema181num) && closeNum.isLessThan(ema12num) && highNum.isLessThan(ema12num) && lowNum.isLessThan(ema12num) && openNum.isLessThan(ema12num) && closeNum.isLessThan(close.getValue(i-1)) && highLowPercent.isGreaterThan(percentLimit)) {
+                        if (i > series.getEndIndex() - seriesLength && resultWT == 1 && ema12num.isLessThan(ema32num) && ema32num.isLessThan(ema92num) && ema92num.isLessThan(ema181num) && highNum.isLessThan(ema12num) && closeNum.isLessThan(close.getValue(i-1)) && highLowPercent.isGreaterThan(percentLimit)) {
 
                             if (sum == 0 ) {
                                 sum++;
@@ -369,7 +297,7 @@ public class ServiceFunctionsStrategyTa4J {
                             sum = 0;
                         }
 
-                        if (i > series.getEndIndex() - seriesLength && resultWT == -1 && ema12num.isGreaterThan(ema32num) && ema32num.isGreaterThan(ema92num) && ema92num.isGreaterThan(ema181num) && closeNum.isGreaterThan(ema12num) && highNum.isGreaterThan(ema12num) && lowNum.isGreaterThan(ema12num) && openNum.isGreaterThan(ema12num) && closeNum.isGreaterThan(close.getValue(i-1)) && highLowPercent.isGreaterThan(percentLimit)) {
+                        if (i > series.getEndIndex() - seriesLength && resultWT == -1 && ema12num.isGreaterThan(ema32num) && ema32num.isGreaterThan(ema92num) && ema92num.isGreaterThan(ema181num) && lowNum.isGreaterThan(ema12num) && closeNum.isGreaterThan(close.getValue(i-1)) && highLowPercent.isGreaterThan(percentLimit)) {
 
                             if (sum == 0 ) {
                                 sum++;
@@ -389,184 +317,56 @@ public class ServiceFunctionsStrategyTa4J {
                     }
                 }
                 break;
-            case 3:
-                int continuousSeriesOfRSIValues = 0;
-                int continuousSeriesOfClosePriceAboveEMA = 0;
-                int howLongMustBeThisSeriesInRow = 4; //4
-                int howLongMustBeRSISeriesInRow = 4;
-                int longOrShortWeAreCounting = 0;
-                Num rsiMiddleValue = DecimalNum.valueOf(50);
+            case 4:
+                int numberOfOccurrenceLong = 0;
+                int numberOfOccurrenceShort = 0;
+                int howManyOccurrencesRequired;
+                if (params.getIntervalOfKlines().equals("3m")) {
+                    howManyOccurrencesRequired = 10;
+                } else {
+                    howManyOccurrencesRequired = 4;
+                }
                 if (series.getBarCount() > params.getNrOfKlinesToWait()) {
                     for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
 
                         Num ema12num = ema12.getValue(i);
                         Num ema32num = ema32.getValue(i);
                         Num ema92num = ema92.getValue(i);
+                        Num ema181num = ema181.getValue(i);
+                        Num openNum = open.getValue(i);
                         Num closeNum = close.getValue(i);
                         Num highNum = high.getValue(i);
                         Num lowNum = low.getValue(i);
-                        Num openNum = open.getValue(i);
-                        Num rsiNum = rsi.getValue(i);
-                        Num rsiOneBeforeEnd = rsi.getValue(i - 1);
                         Num adxNum = adx.getValue(i);
+                        Num sarNum = sar.getValue(i);
 
-                        String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue());
+                        double percentDiff = (ema32.getValue(i).doubleValue() * 100) / ema181.getValue(i).doubleValue();
 
-                        if (closeNum.isGreaterThan(ema12num) && closeNum.isGreaterThan(ema32num) && highNum.isGreaterThan(ema12num) && highNum.isGreaterThan(ema32num) && lowNum.isGreaterThan(ema12num) &&
-                                lowNum.isGreaterThan(ema32num) && openNum.isGreaterThan(ema12num) && openNum.isGreaterThan(ema32num) && ema12num.isGreaterThan(ema32num) && ema32num.isGreaterThan(ema92num) &&
-                                ema12num.isGreaterThan(ema92num) && closeNum.isGreaterThan(close.getValue(i-1))) {
+                        String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [ema181]: " + df.format(ema181.getValue(i).doubleValue()) + " [emaDiff]: " + df.format(percentDiff) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue()) + " [HL%]: " + df.format(highLowPercentDiff.getValue(i).doubleValue());
 
-                            if (continuousSeriesOfClosePriceAboveEMA == 0 ) {
-                                continuousSeriesOfClosePriceAboveEMA++;
-                                longOrShortWeAreCounting = 1;
-                            } else if ( longOrShortWeAreCounting == 1 ){
-                                continuousSeriesOfClosePriceAboveEMA++;
-                            }
+                        if (resultEMA == -2 && ema12num.isLessThan(ema32num) && ema32num.isLessThan(ema92num) && ema92num.isLessThan(ema181num) && closeNum.isLessThan(openNum) && adxNum.isLessThan(numOfAdxLimit) && hlc3.getValue(series.getEndIndex()).isLessThan(sar.getValue(series.getEndIndex()))) {
 
-                            if (continuousSeriesOfClosePriceAboveEMA >= howLongMustBeThisSeriesInRow && close.getValue(series.getEndIndex()).isGreaterThan(open.getValue(series.getEndIndex()))) {
-                                resultEMA = 1;
-                            }
-                            String info = "Passed EMA LONG " + endOFLogEntry + " SeriesSizeEMA: " + continuousSeriesOfClosePriceAboveEMA;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        } else if (continuousSeriesOfClosePriceAboveEMA > 0 && longOrShortWeAreCounting == 1) {
-                            continuousSeriesOfClosePriceAboveEMA = 0;
-                        }
+                            numberOfOccurrenceShort++;
 
-                        if (closeNum.isLessThan(ema12num) && closeNum.isLessThan(ema32num) && highNum.isLessThan(ema12num) && highNum.isLessThan(ema32num) && lowNum.isLessThan(ema12num) && lowNum.isLessThan(ema32num) &&
-                                openNum.isLessThan(ema12num) && openNum.isLessThan(ema32num) && ema12num.isLessThan(ema32num) && ema32num.isLessThan(ema92num) && ema12num.isLessThan(ema92num) && closeNum.isLessThan(close.getValue(i-1))) {
-
-                            if (continuousSeriesOfClosePriceAboveEMA == 0 ) {
-                                continuousSeriesOfClosePriceAboveEMA++;
-                                longOrShortWeAreCounting = -1;
-                            } else if ( longOrShortWeAreCounting == -1 ){
-                                continuousSeriesOfClosePriceAboveEMA++;
-                            }
-
-                            if (continuousSeriesOfClosePriceAboveEMA >= howLongMustBeThisSeriesInRow && close.getValue(series.getEndIndex()).isLessThan(open.getValue(series.getEndIndex()))) {
+                            if (numberOfOccurrenceShort >= howManyOccurrencesRequired ) {
                                 resultEMA = -1;
                             }
-                            String info = "Passed EMA SHORT " + endOFLogEntry + " SeriesSizeEMA: " + continuousSeriesOfClosePriceAboveEMA;
+
+                            String info = "Passed EMA (Series) SHORT " + endOFLogEntry + " SeriesSizeEMA: " + numberOfOccurrenceShort;
                             ServiceFunctionsOther.writeToFile(info, context, "result");
-                        } else if (continuousSeriesOfClosePriceAboveEMA > 0 && longOrShortWeAreCounting == -1) {
-                            continuousSeriesOfClosePriceAboveEMA = 0;
                         }
 
-                        if (rsiNum.isLessThan(numOfRSITopLevel) && rsiNum.isGreaterThan(numOfRSIBottomLevel)) {
+                        if (resultEMA == -2 && ema12num.isGreaterThan(ema32num) && ema32num.isGreaterThan(ema92num) && ema92num.isGreaterThan(ema181num) && closeNum.isGreaterThan(openNum) && adxNum.isLessThan(numOfAdxLimit) && hlc3.getValue(series.getEndIndex()).isGreaterThan(sar.getValue(series.getEndIndex()))) {
 
-                            if (continuousSeriesOfRSIValues == 0) {
-                                continuousSeriesOfRSIValues++;
-                            } else {
-                                if (rsiNum.isLessThan(rsiOneBeforeEnd)) {
-                                    continuousSeriesOfRSIValues++;
-                                } else {
-                                    continuousSeriesOfRSIValues = 0;
-                                }
+                            numberOfOccurrenceLong++;
+
+                            if (numberOfOccurrenceLong >= howManyOccurrencesRequired ) {
+                                resultEMA = 1;
                             }
 
-                            if (continuousSeriesOfRSIValues >= howLongMustBeRSISeriesInRow) {
-                                resultRSI = -1;
-                            }
-                            String info = "Passed RSI SHORT " + endOFLogEntry + " SeriesSizeRSI: " + continuousSeriesOfRSIValues;
+                            String info = "Passed EMA (Series) LONG " + endOFLogEntry + " SeriesSizeEMA: " + numberOfOccurrenceLong;
                             ServiceFunctionsOther.writeToFile(info, context, "result");
                         }
-
-                        if (rsiNum.isGreaterThan(numOfRSIBottomLevel) && rsiNum.isLessThan(numOfRSITopLevel)) {
-
-                            if (continuousSeriesOfRSIValues == 0) {
-                                continuousSeriesOfRSIValues++;
-                            } else {
-                                if (rsiNum.isGreaterThan(rsiOneBeforeEnd)) {
-                                    continuousSeriesOfRSIValues++;
-                                } else {
-                                    continuousSeriesOfRSIValues = 0;
-                                }
-                            }
-
-                            if (continuousSeriesOfRSIValues >= howLongMustBeRSISeriesInRow) {
-                                resultRSI = 1;
-                            }
-                            String info = "Passed RSI LONG " + endOFLogEntry + " SeriesSizeRSI: " + continuousSeriesOfRSIValues;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (i == series.getEndIndex() && adxNum.isLessThan(numOfAdxLimit)) {
-                            resultADX = 1;
-                            String info = "Passed ADX LONG/SHORT " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                    }
-                }
-                break;
-            case 4:  //RSI_WT_4h_15m
-                if (series.getBarCount() > params.getNrOfKlinesToWait()) {
-                    for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
-
-                        Num wt1 = tci.getValue(i);
-                        Num wt2 = sma.getValue(i);
-                        Num macdEnd = macd.getValue(i);
-                        Num signalEnd = signalLine.getValue(i);
-                        Num rsiEnd = rsi.getValue(i);
-
-//                        int nrOfMACDSeries = 0;
-//                        int requiredSeries;
-//
-//                        if (params.getIntervalOfKlines().equals("3m")) {
-//                            requiredSeries = 10;
-//                        } else {
-//                            requiredSeries = 3;
-//                        }
-
-                        String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue());
-
-                        if (resultWT == -2 && wt2.isGreaterThan(wt1) && wt1.isGreaterThan(numOfWTTopLevel)) {
-                            resultWT = -1;
-                            String info = "Passed WT SHORT " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (resultWT == -2 && wt1.isGreaterThan(wt2) && wt1.isLessThan(numOfWTBottomLevel)) {
-                            resultWT = 1;
-                            String info = "Passed WT LONG " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (resultMACD == -2 && macdEnd.isLessThan(signalEnd)) {
-                            resultMACD = -1;
-                            String info = "Passed MACD SHORT " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (resultMACD == -2 && macdEnd.isGreaterThan(signalEnd)) {
-                            resultMACD = 1;
-                            //nrOfMACDSeries++;
-                            String info = "Passed MACD LONG " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (resultRSI == -2 && rsiEnd.isLessThan(numOfRSIBottomLevel)) {
-                            resultRSI = -1;
-                            String info = "Passed RSI SHORT " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (resultRSI == -2 && rsiEnd.isGreaterThan(numOfRSITopLevel)) {
-                            resultRSI = 1;
-                            String info = "Passed RSI LONG " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-//                        if (i == series.getEndIndex()) {
-//                            String info = "SERIES MACD: " + nrOfMACDSeries + " " + endOFLogEntry;
-//                            ServiceFunctionsOther.writeToFile(info, context, "result");
-//                        }
-//
-//                        if (nrOfMACDSeries == requiredSeries) {
-//                            resultMACD = 1;
-//                        } else if (nrOfMACDSeries == -1 * requiredSeries) {
-//                            resultMACD = -1;
-//                        }
-
                     }
                 }
                 break;
@@ -599,13 +399,13 @@ public class ServiceFunctionsStrategyTa4J {
                             ServiceFunctionsOther.writeToFile(info, context, "result");
                         }
 
-                        if (resultWT == 1 && resultPPO == -2 && ppoEnd.isGreaterThan(numOfLimitBottomPPO_forLong) && ppoEnd.isLessThan(numOfLimitTopPPO_forLong) && ppoEnd.isGreaterThan(numOfPpoBefore)) {
+                        if (resultWT == 1 && resultPPO == -2 && ppoEnd.isGreaterThan(numOfLimitBottomPPO_Negated) && ppoEnd.isLessThan(numOfLimitTopPPO_Negated) && ppoEnd.isGreaterThan(numOfPpoBefore)) {
                             resultPPO = 1;
                             String info = "Passed PPO LONG " + endOFLogEntry;
                             ServiceFunctionsOther.writeToFile(info, context, "result");
                         }
 
-                        if (resultWT == -1 && resultPPO == -2 && ppoEnd.isGreaterThan(numOfLimitBottomPPO_forShort) && ppoEnd.isLessThan(numOfLimitTopPPO_forShort) && ppoEnd.isLessThan(numOfPpoBefore)) {
+                        if (resultWT == -1 && resultPPO == -2 && ppoEnd.isGreaterThan(numOfLimitBottomPPO) && ppoEnd.isLessThan(numOfLimitTopPPO) && ppoEnd.isLessThan(numOfPpoBefore)) {
                             resultPPO = -1;
                             String info = "Passed PPO SHORT " + endOFLogEntry;
                             ServiceFunctionsOther.writeToFile(info, context, "result");
@@ -817,546 +617,69 @@ public class ServiceFunctionsStrategyTa4J {
                     }
                 }
                 break;
-            case 8:
-                int seriesOfEMAsLength = 0;
-                int assumedLength = 8;
-                int longOrShortRightNow = 0;
-                if (series.getBarCount() > params.getNrOfKlinesToWait()) {
-                    for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
+            case 20:
+                if (series.getBarCount() > params.getNrOfKlinesToWait()+26) {
+                    for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i < series.getEndIndex(); i++) {
 
                         Num ema12num = ema12.getValue(i);
                         Num ema32num = ema32.getValue(i);
                         Num ema92num = ema92.getValue(i);
                         Num ema181num = ema181.getValue(i);
-                        Num closeNum = close.getValue(i);
-                        Num openNum = open.getValue(i);
+                        Num aSpanNum = IchimokuLeadingSpanA.getValue(i-26);
+                        Num bSpanNum = IchimokuLeadingSpanB.getValue(i-26);
+                        Num lowNum = low.getValue(i);
+                        Num highNum = high.getValue(i);
+                        Num ppoNum = ppo.getValue(i);
 
-                        String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue());
+                        String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [ema181]: " + df.format(ema181.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue()) + " [SpanA]: " + df.format(IchimokuLeadingSpanA.getValue(i-26).doubleValue()) + " [SpanB]: " + df.format(IchimokuLeadingSpanB.getValue(i-26).doubleValue()) + " [SpanA-not26]: " + df.format(IchimokuLeadingSpanA.getValue(i).doubleValue()) + " [SpanB-not26]: " + df.format(IchimokuLeadingSpanB.getValue(i).doubleValue())  + " [BaseLineIchimoku]: " + df.format(IchimokuBaseLine.getValue(i).doubleValue()) + " [ConversionLineIchimoku]: " + df.format(IchimokuConversionLine.getValue(i).doubleValue());
 
-                        if (ema12num.isLessThan(ema32num) && ema32num.isLessThan(ema92num) && ema92num.isLessThan(ema181num) && closeNum.isLessThan(ema12num) && openNum.isLessThan(ema12num)) {
-
-                            if (seriesOfEMAsLength == 0 ) {
-                                seriesOfEMAsLength++;
-                                longOrShortRightNow = -1;
-                            } else if ( longOrShortRightNow == -1 ){
-                                seriesOfEMAsLength++;
-                            }
-
-                            if (seriesOfEMAsLength >= assumedLength ) {
-                                resultEMA = -1;
-                            }
-
-                            String info = "Passed EMA SHORT " + endOFLogEntry + " SeriesSizeEMA: " + seriesOfEMAsLength;
+                        if (ema12num.isLessThan(ema181num) && ema32num.isLessThan(ema92num) && ema32num.isGreaterThan(ema181num) && highNum.isLessThanOrEqual(ema181num) ) {
+                            resultEMA = -1;
+                            String info = "Passed EMA SHORT " + endOFLogEntry;
                             ServiceFunctionsOther.writeToFile(info, context, "result");
-                        } else if (seriesOfEMAsLength > 0 && longOrShortRightNow == -1) {
-                            seriesOfEMAsLength = 0;
                         }
 
-                        if (ema12num.isGreaterThan(ema32num) && ema32num.isGreaterThan(ema92num) && ema92num.isGreaterThan(ema181num) && closeNum.isGreaterThan(ema12num) && openNum.isGreaterThan(ema12num)) {
-
-                            if (seriesOfEMAsLength == 0 ) {
-                                seriesOfEMAsLength++;
-                                longOrShortRightNow = 1;
-                            } else if ( longOrShortRightNow == 1 ){
-                                seriesOfEMAsLength++;
-                            }
-
-                            if (seriesOfEMAsLength >= assumedLength) {
-                                resultEMA = 1;
-                            }
-                            String info = "Passed EMA LONG " + endOFLogEntry + " SeriesSizeEMA: " + seriesOfEMAsLength;
+                        if (ema12num.isGreaterThan(ema181num) && ema32num.isGreaterThan(ema92num) && ema32num.isLessThan(ema181num) && lowNum.isGreaterThanOrEqual(ema181num) ) {
+                            resultEMA = 1;
+                            String info = "Passed EMA LONG " + endOFLogEntry;
                             ServiceFunctionsOther.writeToFile(info, context, "result");
-                        } else if (seriesOfEMAsLength > 0 && longOrShortRightNow == 1) {
-                            seriesOfEMAsLength = 0;
+                        }
+
+                        if (aSpanNum.isLessThan(bSpanNum)) {
+                            resultICHIMOKU = -1;
+                            String info = "Passed ICHIMOKU SHORT " + endOFLogEntry;
+                            ServiceFunctionsOther.writeToFile(info, context, "result");
+                        }
+
+                        if (aSpanNum.isGreaterThan(bSpanNum)) {
+                            resultICHIMOKU = 1;
+                            String info = "Passed ICHIMOKU LONG " + endOFLogEntry;
+                            ServiceFunctionsOther.writeToFile(info, context, "result");
                         }
                     }
                 }
                 break;
-            case 9: //MACD, continuous ADX, WT
-                int continuousSeriesOfADXValuesRisingForLongDroppingForShort = 0;
-                int howLongMustBeThisSeriesInRow6 = 6;
-                Num startOfSeriesADX = DecimalNum.valueOf(0);
-                Num differenceForADX = DecimalNum.valueOf(5);
-
+            case 21: //WT
                 if (series.getBarCount() > params.getNrOfKlinesToWait()) {
-                    for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
+                    for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i < series.getEndIndex(); i++) {
 
                         Num wt1 = tci.getValue(i);
                         Num wt2 = sma.getValue(i);
-                        Num adxEnd = adx.getValue(i);
-                        Num adxOneBeforeEnd = adx.getValue(i - 1);
-                        Num macdEnd = macd.getValue(i);
-                        Num signalEnd = signalLine.getValue(i);
+                        Num wt1back = tci.getValue(i-1);
+                        Num wt2back = sma.getValue(i-1);
 
-                        String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue());
+                        String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [ema181]: " + df.format(ema181.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue()) + " [SpanA]: " + df.format(IchimokuLeadingSpanA.getValue(i-26).doubleValue()) + " [SpanB]: " + df.format(IchimokuLeadingSpanB.getValue(i-26).doubleValue()) + " [SpanA-not26]: " + df.format(IchimokuLeadingSpanA.getValue(i).doubleValue()) + " [SpanB-not26]: " + df.format(IchimokuLeadingSpanB.getValue(i).doubleValue())  + " [BaseLineIchimoku]: " + df.format(IchimokuBaseLine.getValue(i).doubleValue()) + " [ConversionLineIchimoku]: " + df.format(IchimokuConversionLine.getValue(i).doubleValue());
 
-                        if ((resultWT == -2 && wt2.isGreaterThan(wt1) && wt1.isGreaterThan(numOfWTTopLevel))) {
+                        if ((resultWT == -2 && wt1back.isGreaterThan(wt2back) && wt2.isGreaterThan(wt1) && wt1.isGreaterThan(numOfWTTopLevel))) {
                             resultWT = -1;
                             String info = "Passed WT SHORT " + endOFLogEntry;
                             ServiceFunctionsOther.writeToFile(info, context, "result");
                         }
 
-                        if ((resultWT == -2 && wt1.isGreaterThan(wt2) && wt1.isLessThan(numOfWTBottomLevel))) {
+                        if ((resultWT == -2 && wt2back.isGreaterThan(wt1back) && wt1.isGreaterThan(wt2) && wt1.isLessThan(numOfWTBottomLevel))) {
                             resultWT = 1;
                             String info = "Passed WT LONG " + endOFLogEntry;
                             ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (resultWT == -1 && adxEnd.isGreaterThan(numOfAdxLimit)) {
-
-                            if (continuousSeriesOfADXValuesRisingForLongDroppingForShort == 0) {
-                                continuousSeriesOfADXValuesRisingForLongDroppingForShort++;
-                                startOfSeriesADX = adxEnd;
-                            } else {
-                                if (adxEnd.isLessThan(adxOneBeforeEnd)) {
-                                    continuousSeriesOfADXValuesRisingForLongDroppingForShort++;
-                                } else {
-                                    continuousSeriesOfADXValuesRisingForLongDroppingForShort = 0;
-                                }
-                            }
-
-                            if (continuousSeriesOfADXValuesRisingForLongDroppingForShort >= howLongMustBeThisSeriesInRow6 && (startOfSeriesADX.minus(adxEnd).isGreaterThan(differenceForADX))) {
-                                resultADX = -1;
-                            }
-                            String info = "Passed ADX SHORT " + endOFLogEntry + " SeriesSize: " + continuousSeriesOfADXValuesRisingForLongDroppingForShort;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (resultWT == 1 && adxEnd.isGreaterThan(numOfAdxLimit)) {
-
-                            if (continuousSeriesOfADXValuesRisingForLongDroppingForShort == 0) {
-                                continuousSeriesOfADXValuesRisingForLongDroppingForShort++;
-                            } else {
-                                if (adxEnd.isGreaterThan(adxOneBeforeEnd)) {
-                                    continuousSeriesOfADXValuesRisingForLongDroppingForShort++;
-                                } else {
-                                    continuousSeriesOfADXValuesRisingForLongDroppingForShort = 0;
-                                }
-                            }
-
-                            if (continuousSeriesOfADXValuesRisingForLongDroppingForShort >= howLongMustBeThisSeriesInRow6 && (startOfSeriesADX.minus(adxEnd).isLessThan(differenceForADX.negate()))) {
-                                resultADX = 1;
-                            }
-                            String info = "Passed ADX LONG " + endOFLogEntry + " SeriesSize: " + continuousSeriesOfADXValuesRisingForLongDroppingForShort;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (resultADX == -1 && resultMACD == -2 && macdEnd.isLessThan(signalEnd)) {
-                            resultMACD = -1;
-                            String info = "Passed MACD SHORT " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (resultADX == 1 && resultMACD == -2 && macdEnd.isGreaterThan(signalEnd)) {
-                            resultMACD = 1;
-                            String info = "Passed MACD LONG " + endOFLogEntry;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-                    }
-                }
-                break;
-            case 10:
-                int sizeIchimoku = 0;
-                int firstConditionSizeIchimoku = 8;
-                int secondConditionSizeIchimoku = 8;
-                int longyOrShortyIchimoku = 0;
-                if (series.getBarCount() > params.getNrOfKlinesToWait()) {
-                    for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
-
-                        Num aSpanNum = IchimokuLeadingSpanA.getValue(i);
-                        Num bSpanNum = IchimokuLeadingSpanB.getValue(i);
-                        Num highNum = high.getValue(i);
-                        Num lowNum = low.getValue(i);
-
-                        String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [ema181]: " + df.format(ema181.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue()) + " [SpanA]: " + df.format(IchimokuLeadingSpanA.getValue(i).doubleValue()) + " [SpanB]: " + df.format(IchimokuLeadingSpanB.getValue(i).doubleValue()) + " [BaseLineIchimoku]: " + df.format(IchimokuBaseLine.getValue(i).doubleValue()) + " [ConversionLineIchimoku]: " + df.format(IchimokuConversionLine.getValue(i).doubleValue());
-
-                        if (resultICHIMOKU == -2 && aSpanNum.isLessThanOrEqual(bSpanNum) && highNum.isLessThan(bSpanNum)) {
-
-                            if (sizeIchimoku == 0 ) {
-                                sizeIchimoku++;
-                                longyOrShortyIchimoku = 1;
-                            } else if ( longyOrShortyIchimoku == 1 ){
-                                sizeIchimoku++;
-                            }
-
-                            if (sizeIchimoku >= firstConditionSizeIchimoku ) {
-                                resultICHIMOKU = 1;
-                                sizeIchimoku = 0;
-                            }
-                            String info = "Passed ICHIMOKU First Condition LONG " + endOFLogEntry + " SeriesSizeEMA: " + sizeIchimoku;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        } else if (resultICHIMOKU == -2 && sizeIchimoku > 0 && longyOrShortyIchimoku == 1) {
-                            sizeIchimoku = 0;
-                        }
-
-                        if (resultICHIMOKU == -2 && aSpanNum.isGreaterThanOrEqual(bSpanNum) && lowNum.isGreaterThan(bSpanNum)) {
-
-                            if (sizeIchimoku == 0 ) {
-                                sizeIchimoku++;
-                                longyOrShortyIchimoku = -1;
-                            } else if ( longyOrShortyIchimoku == -1 ){
-                                sizeIchimoku++;
-                            }
-
-                            if (sizeIchimoku >= firstConditionSizeIchimoku) {
-                                resultICHIMOKU = -1;
-                                sizeIchimoku = 0;
-                            }
-
-                            String info = "Passed ICHIMOKU First Condition SHORT " + endOFLogEntry + " SeriesSizeEMA: " + sizeIchimoku;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        } else if (resultICHIMOKU == -2 && sizeIchimoku > 0 && longyOrShortyIchimoku == -1) {
-                            sizeIchimoku = 0;
-                        }
-
-                        //Change  bSpanNum.isGreaterThan(aSpanNum) && IchimokuLeadingSpanA.getValue(i - 1).isGreaterThan(IchimokuLeadingSpanB.getValue(i - 1)) for what is
-
-                        if (resultICHIMOKU == 1 && resultEMA == -2 && IchimokuLeadingSpanA.getValue(i).isGreaterThanOrEqual(IchimokuLeadingSpanB.getValue(i))  && IchimokuLeadingSpanB.getValue(i - 1).isGreaterThanOrEqual(IchimokuLeadingSpanA.getValue(i - 1)) && i < series.getEndIndex() - 12) {
-
-                            resultEMA = 1;
-
-                            String info = "Passed ICHIMOKU Second Condition (ema used) LONG " + endOFLogEntry + " SeriesSizeEMA: " + sizeIchimoku;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-
-                        if (resultICHIMOKU == -1 && resultEMA == -2 && IchimokuLeadingSpanB.getValue(i).isGreaterThanOrEqual(IchimokuLeadingSpanA.getValue(i)) && IchimokuLeadingSpanA.getValue(i - 1).isGreaterThanOrEqual(IchimokuLeadingSpanB.getValue(i - 1)) && i < series.getEndIndex() - 12) {
-
-                            resultEMA = -1;
-
-                            String info = "Passed ICHIMOKU Second Condition (ema used) SHORT " + endOFLogEntry + " SeriesSizeEMA: " + sizeIchimoku;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        }
-
-                        if (resultICHIMOKU == 1 && resultEMA == 1 && resultAROON == -2 && aSpanNum.isGreaterThanOrEqual(bSpanNum) && lowNum.isGreaterThan(bSpanNum) && i < series.getEndIndex() - 10) {
-
-                            if (sizeIchimoku == 0 ) {
-                                sizeIchimoku++;
-                                longyOrShortyIchimoku = 1;
-                            } else if ( longyOrShortyIchimoku == 1 ){
-                                sizeIchimoku++;
-                            }
-
-                            if (sizeIchimoku >= secondConditionSizeIchimoku ) {
-                                resultAROON = 1;
-                                sizeIchimoku = 0;
-                            }
-                            String info = "Passed ICHIMOKU Third Condition (aroon field used) LONG " + endOFLogEntry + " SeriesSizeEMA: " + sizeIchimoku;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        } else if (resultICHIMOKU == 1 && sizeIchimoku > 0 && longyOrShortyIchimoku == 1) {
-                            sizeIchimoku = 0;
-                        }
-
-                        if (resultICHIMOKU == -1 && resultEMA == -1 && resultAROON == -2 && aSpanNum.isLessThanOrEqual(bSpanNum) && highNum.isLessThan(bSpanNum) && i < series.getEndIndex() - 10) {
-
-                            if (sizeIchimoku == 0 ) {
-                                sizeIchimoku++;
-                                longyOrShortyIchimoku = -1;
-                            } else if ( longyOrShortyIchimoku == -1 ){
-                                sizeIchimoku++;
-                            }
-
-                            if (sizeIchimoku >= secondConditionSizeIchimoku) {
-                                resultAROON = -1;
-                                sizeIchimoku = 0;
-                            }
-
-                            String info = "Passed ICHIMOKU Third Condition (aroon field used) SHORT " + endOFLogEntry + " SeriesSizeEMA: " + sizeIchimoku;
-                            ServiceFunctionsOther.writeToFile(info, context, "result");
-                        } else if (resultICHIMOKU == -1 && sizeIchimoku > 0 && longyOrShortyIchimoku == -1) {
-                            sizeIchimoku = 0;
-                        }
-                    }
-                }
-                break;
-
-
-
-            case 12:
-                /*
-                    Warunki wejścia w pozycję longa:
-
-                    Cena na interwale 15m przecina linię Chikou Span od dołu (byczy sygnał).
-                    Chikou Span na interwale 15m jest powyżej ceny z 26 okresów temu.
-                    Linia Tenkan-sen na interwale 4h przecina linię Kijun-sen od dołu (byczy sygnał).
-                    MACD na interwale 15m przecięcie linii sygnału od dołu (byczy sygnał).
-                    RSI na interwale 15m poniżej 30 (przeprzedany rynek).
-
-                    Warunki wejścia w pozycję shorta:
-
-                    Cena na interwale 15m przecina linię Chikou Span od góry (niedźwiedzi sygnał).
-                    Chikou Span na interwale 15m jest poniżej ceny z 26 okresów temu.
-                    Linia Tenkan-sen na interwale 4h przecina linię Kijun-sen od góry (niedźwiedzi sygnał).
-                    MACD na interwale 15m przecięcie linii sygnału od góry (niedźwiedzi sygnał).
-                    RSI na interwale 15m powyżej 70 (przegrzany rynek).
-
-               */
-                if (params.getIntervalOfKlines().equals("4h")) {
-                    if (series.getBarCount() > params.getNrOfKlinesToWait()) {
-
-                        int wasBaseLineCrossedByConversionLineForShort = 0;
-                        int wasBaseLineCrossedByConversionLineForLong = 0;
-
-                        for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
-
-                            Num conversionLineEnd = IchimokuConversionLine.getValue(i);
-                            Num baseLineEnd = IchimokuBaseLine.getValue(i);
-
-                            String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue()) + " [SpanA]: " + df.format(IchimokuLeadingSpanA.getValue(i).doubleValue()) + " [SpanB]: " + df.format(IchimokuLeadingSpanB.getValue(i).doubleValue()) + " [BaseLineIchimoku]: " + df.format(IchimokuBaseLine.getValue(i).doubleValue()) + " [ConversionLineIchimoku]: " + df.format(IchimokuConversionLine.getValue(i).doubleValue()) + " [LaggingSpanIchimoku]: " + df.format(IchimokuLaggingSpanLine.getValue(i).doubleValue());
-
-                            if (resultICHIMOKU == -2 && conversionLineEnd.isGreaterThan(baseLineEnd) && wasBaseLineCrossedByConversionLineForShort == 0) {
-                                wasBaseLineCrossedByConversionLineForShort++;
-                                resultICHIMOKU = -3;
-                            }
-
-                            if (resultICHIMOKU == -3 && conversionLineEnd.isLessThan(baseLineEnd) && wasBaseLineCrossedByConversionLineForShort == 1) {
-                                wasBaseLineCrossedByConversionLineForShort++;
-                                resultICHIMOKU = -1;
-                                String info = "Passed ICHIMOKU SHORT " + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if (resultICHIMOKU == 2 && conversionLineEnd.isLessThan(baseLineEnd) && wasBaseLineCrossedByConversionLineForLong == 0) {
-                                wasBaseLineCrossedByConversionLineForLong++;
-                                resultICHIMOKU = 3;
-                            }
-
-                            if (resultICHIMOKU == 3 && conversionLineEnd.isGreaterThan(baseLineEnd) && wasBaseLineCrossedByConversionLineForLong == 1) {
-                                wasBaseLineCrossedByConversionLineForLong++;
-                                resultICHIMOKU = 1;
-                                String info = "Passed ICHIMOKU LONG " + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-                        }
-                    }
-                } else {
-
-                    if (series.getBarCount() > params.getNrOfKlinesToWait()) {
-
-                        //                    for (int i = 0; i <= series.getEndIndex(); i++) {
-//                        infoStart.append(" ").append(i).append(": ").append(df.format(IchimokuLaggingSpanLine.getValue(series.getEndIndex()).doubleValue()));
-//                        i++;
-//                    }
-                        ServiceFunctionsOther.writeToFile("Entry PASS HLC3 END: " + df.format(hlc3.getValue(series.getEndIndex()).doubleValue()) + " HLC3 -26: " + df.format(hlc3.getValue(series.getEndIndex() - 26).doubleValue()) + " ICHIMOKU LAGGING SPAN LINE: " + df.format(IchimokuLaggingSpanLine.getValue(series.getEndIndex()).doubleValue()) + " RSI: " + df.format(rsi.getValue(series.getEndIndex()).doubleValue()) + " BAR COUNT: " + series.getBarCount() + " END INDEX: " + series.getEndIndex() + "CLOSE: " + df.format(close.getValue(series.getEndIndex()).doubleValue()), context, "result");
-
-//                    if (IchimokuLaggingSpanLine.getValue(series.getEndIndex()).isGreaterThan(hlc3.getValue(series.getEndIndex() - 26)) && rsi.getValue(series.getEndIndex()).isLessThan(numOfRSIBottomLevel)) {
-//                        resultICHIMOKU = 3;
-//                        resultRSI = 1;
-//                    } else if (IchimokuLaggingSpanLine.getValue(series.getEndIndex()).isLessThan(hlc3.getValue(series.getEndIndex() - 26)) && rsi.getValue(series.getEndIndex()).isGreaterThan(numOfRSITopLevel)) {
-//                        resultICHIMOKU = -3;
-//                        resultRSI = -1;
-//                    }
-
-                        if (hlc3.getValue(series.getEndIndex()).isGreaterThan(hlc3.getValue(series.getEndIndex() - 26)) && rsi.getValue(series.getEndIndex()).isLessThan(numOfRSIBottomLevel)) {
-                            resultICHIMOKU = 3;
-                            resultRSI = 1;
-                        } else if (hlc3.getValue(series.getEndIndex()).isLessThan(hlc3.getValue(series.getEndIndex() - 26)) && rsi.getValue(series.getEndIndex()).isGreaterThan(numOfRSITopLevel)) {
-                            resultICHIMOKU = -3;
-                            resultRSI = -1;
-                        }
-
-                        if (resultICHIMOKU != -2) {
-
-                            int wasLaggingSpanCrossedByPriceForShort = 0;
-                            int wasLaggingSpanCrossedByPriceForLong = 0;
-                            int wasSignalLineCrossedByMacdForShort = 0;
-                            int wasSignalLineCrossedByMacdForLong = 0;
-
-                            for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
-
-                                Num macdEnd = macd.getValue(i);
-                                Num signalEnd = signalLine.getValue(i);
-
-                                String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue()) + " [SpanA]: " + df.format(IchimokuLeadingSpanA.getValue(i).doubleValue()) + " [SpanB]: " + df.format(IchimokuLeadingSpanB.getValue(i).doubleValue()) + " [BaseLineIchimoku]: " + df.format(IchimokuBaseLine.getValue(i).doubleValue()) + " [ConversionLineIchimoku]: " + df.format(IchimokuConversionLine.getValue(i).doubleValue());
-
-                                if (resultICHIMOKU == -3 && hlc3.getValue(i).isGreaterThanOrEqual(hlc3.getValue(i-26)) && wasLaggingSpanCrossedByPriceForShort == 0) {
-                                    wasLaggingSpanCrossedByPriceForShort++;
-                                }
-
-                                if (resultICHIMOKU == -3 && hlc3.getValue(i).isLessThanOrEqual(hlc3.getValue(i-26)) && wasLaggingSpanCrossedByPriceForShort == 1) {
-                                    wasLaggingSpanCrossedByPriceForShort++;
-                                    resultICHIMOKU = -1;
-                                    String info = "Passed ICHIMOKU SHORT " + endOFLogEntry;
-                                    ServiceFunctionsOther.writeToFile(info, context, "result");
-                                }
-
-                                if (resultICHIMOKU == 3 && hlc3.getValue(i).isLessThanOrEqual(hlc3.getValue(i-26)) && wasLaggingSpanCrossedByPriceForLong == 0) {
-                                    wasLaggingSpanCrossedByPriceForLong++;
-                                }
-
-                                if (resultICHIMOKU == 3 && hlc3.getValue(i).isGreaterThanOrEqual(hlc3.getValue(i-26)) && wasLaggingSpanCrossedByPriceForLong == 1) {
-                                    wasLaggingSpanCrossedByPriceForLong++;
-                                    resultICHIMOKU = 1;
-                                    String info = "Passed ICHIMOKU LONG " + endOFLogEntry;
-                                    ServiceFunctionsOther.writeToFile(info, context, "result");
-                                }
-
-                                if (resultMACD == -2 && macdEnd.isGreaterThanOrEqual(signalEnd) && wasSignalLineCrossedByMacdForShort == 0) {
-                                    resultMACD = -3;
-                                    wasSignalLineCrossedByMacdForShort++;
-                                }
-
-                                if (resultMACD == -3 && macdEnd.isLessThanOrEqual(signalEnd) && wasSignalLineCrossedByMacdForShort == 1) {
-                                    wasSignalLineCrossedByMacdForShort++;
-                                    resultMACD = -1;
-                                    String info = "Passed MACD SHORT " + endOFLogEntry;
-                                    ServiceFunctionsOther.writeToFile(info, context, "result");
-                                }
-
-                                if (resultMACD == 2 && macdEnd.isLessThanOrEqual(signalEnd) && wasSignalLineCrossedByMacdForLong == 0) {
-                                    resultMACD = 3;
-                                    wasSignalLineCrossedByMacdForLong++;
-                                }
-
-                                if (resultMACD == 3 && macdEnd.isGreaterThanOrEqual(signalEnd) && wasSignalLineCrossedByMacdForLong == 1) {
-                                    wasSignalLineCrossedByMacdForLong++;
-                                    resultMACD = 1;
-                                    String info = "Passed MACD LONG " + endOFLogEntry;
-                                    ServiceFunctionsOther.writeToFile(info, context, "result");
-                                }
-                            }
-                        }
-                    }
-                }
-                break;
-            case 13:
-                /*
-                Warunki wejścia w pozycję longa:
-                    Ichimoku (4h i 15m):
-                        Cena na interwale 15m jest powyżej chmury Ichimoku.
-                        Linia Tenkan-sen na interwale 4h przecina linię Kijun-sen od dołu (byczy sygnał).
-                        Linia Senkou Span A na interwale 4h jest powyżej linii Senkou Span B.
-                    ADX (4h i 15m):
-                        ADX na interwale 4h jest powyżej 25, co oznacza silny trend.
-                        ADX na interwale 15m jest powyżej 20, co potwierdza krótkoterminowy trend.
-                    EMA Crossover (4h i 15m):
-                        EMA 12 na interwale 4h jest powyżej EMA 26.
-                        EMA 12 na interwale 15m jest powyżej EMA 26.
-                    MACD (4h i 15m):
-                        MACD na interwale 4h jest powyżej linii sygnału.
-                        MACD na interwale 15m przecina linię sygnału od dołu.
-
-                Warunki wejścia w pozycję shorta:
-                    Ichimoku (4h i 15m):
-                        Cena na interwale 15m jest poniżej chmury Ichimoku.
-                        Linia Tenkan-sen na interwale 4h przecina linię Kijun-sen od góry (niedźwiedzi sygnał).
-                        Linia Senkou Span A na interwale 4h jest poniżej linii Senkou Span B.
-                    ADX (4h i 15m):
-                        ADX na interwale 4h jest powyżej 25, co oznacza silny trend.
-                        ADX na interwale 15m jest powyżej 20, co potwierdza krótkoterminowy trend.
-                    EMA Crossover (4h i 15m):
-                        EMA 12 na interwale 4h jest poniżej EMA 26.
-                        EMA 12 na interwale 15m jest poniżej EMA 26.
-                    MACD (4h i 15m):
-                        MACD na interwale 4h jest poniżej linii sygnału.
-                        MACD na interwale 15m przecina linię sygnału od góry
-
-                 */
-
-                if (params.getIntervalOfKlines().equals("4h")) {
-                    if (series.getBarCount() > params.getNrOfKlinesToWait()) {
-                        for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
-
-                            String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue()) + " [SpanA]: " + df.format(IchimokuLeadingSpanA.getValue(i).doubleValue()) + " [SpanB]: " + df.format(IchimokuLeadingSpanB.getValue(i).doubleValue()) + " [BaseLineIchimoku]: " + df.format(IchimokuBaseLine.getValue(i).doubleValue()) + " [ConversionLineIchimoku]: " + df.format(IchimokuConversionLine.getValue(i).doubleValue());
-
-                            if ((resultADX == -2 && adx.getValue(i).isGreaterThanOrEqual(numOfAdxLimit) && adx.getValue(i-1).isGreaterThanOrEqual(numOfAdxLimit))) {
-                                resultADX = 1;
-                                String info = "Passed ADX " + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if ((resultEMA == -2 && ema12.getValue(i).isGreaterThanOrEqual(ema32.getValue(i))  && ema12.getValue(i-1).isGreaterThanOrEqual(ema32.getValue(i-1)))) {
-                                resultEMA = 1;
-                                String info = "Passed EMA LONG" + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if ((resultEMA == -2 && ema12.getValue(i).isLessThanOrEqual(ema32.getValue(i))  && ema12.getValue(i-1).isLessThanOrEqual(ema32.getValue(i-1)))) {
-                                resultEMA = -1;
-                                String info = "Passed EMA SHORT" + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if ((resultMACD == -2 && macd.getValue(i).isGreaterThanOrEqual(signalLine.getValue(i)) && macd.getValue(i-1).isGreaterThanOrEqual(signalLine.getValue(i-1)))) {
-                                resultMACD = 1;
-                                String info = "Passed MACD LONG" + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if ((resultMACD == -2 && macd.getValue(i).isLessThanOrEqual(signalLine.getValue(i)) && macd.getValue(i-1).isLessThanOrEqual(signalLine.getValue(i-1)))) {
-                                resultMACD = -1;
-                                String info = "Passed MACD SHORT" + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if ((resultICHIMOKU == -2 && IchimokuConversionLine.getValue(i).isGreaterThanOrEqual(IchimokuBaseLine.getValue(i)) && IchimokuLeadingSpanA.getValue(i).isGreaterThanOrEqual(IchimokuLeadingSpanB.getValue(i)) && IchimokuLeadingSpanA.getValue(i-1).isGreaterThanOrEqual(IchimokuLeadingSpanB.getValue(i-1)))) {
-                                resultICHIMOKU = 1;
-                                String info = "Passed ICHIMOKU LONG" + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if ((resultICHIMOKU == -2 && IchimokuConversionLine.getValue(i).isLessThanOrEqual(IchimokuBaseLine.getValue(i)) && IchimokuLeadingSpanA.getValue(i).isLessThanOrEqual(IchimokuLeadingSpanB.getValue(i)) && IchimokuLeadingSpanA.getValue(i-1).isLessThanOrEqual(IchimokuLeadingSpanB.getValue(i-1))))  {
-                                resultICHIMOKU = -1;
-                                String info = "Passed ICHIMOKU SHORT" + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-                        }
-                    }
-                } else {
-                    if (series.getBarCount() > params.getNrOfKlinesToWait()) {
-                        for (int i = series.getEndIndex() - params.getNrOfKlinesToWait(); i <= series.getEndIndex(); i++) {
-
-                            String endOFLogEntry = " at index " + i + " of interval " + params.getIntervalOfKlines() + " from: " + series.getBar(i).getBeginTime().toString() + " to: " + series.getBar(i).getEndTime().toString() + ". \nIndicatorValues: [hlc3]: " + df.format(hlc3.getValue(i).doubleValue()) + " [close]: " + df.format(close.getValue(i).doubleValue()) + " [hl2]: " + df.format(hl2.getValue(i).doubleValue()) + " [ema12]: " + df.format(ema12.getValue(i).doubleValue()) + " [ema32]: " + df.format(ema32.getValue(i).doubleValue()) + " [ema92]: " + df.format(ema92.getValue(i).doubleValue()) + " [WT1]: " + df.format(tci.getValue(i).doubleValue()) + " [WT2]: " + df.format(sma.getValue(i).doubleValue()) + " [ATR]: " + df.format(atr.getValue(i).doubleValue()) + " [SAR]: " + df.format(sar.getValue(i).doubleValue()) + " [MACD]: " + df.format(macd.getValue(i).doubleValue()) + " [SignalMACD]: " + df.format(signalLine.getValue(i).doubleValue()) + " [ADX]: " + df.format(adx.getValue(i).doubleValue()) + " [PPO]: " + df.format(ppo.getValue(i).doubleValue()) + " [UpArron]: " + df.format(aroonHigh.getValue(i).doubleValue()) + " [downArron]: " + df.format(aroonLow.getValue(i).doubleValue()) + " [RSI]: " + df.format(rsi.getValue(i).doubleValue()) + " [SpanA]: " + df.format(IchimokuLeadingSpanA.getValue(i).doubleValue()) + " [SpanB]: " + df.format(IchimokuLeadingSpanB.getValue(i).doubleValue()) + " [BaseLineIchimoku]: " + df.format(IchimokuBaseLine.getValue(i).doubleValue()) + " [ConversionLineIchimoku]: " + df.format(IchimokuConversionLine.getValue(i).doubleValue());
-
-                            if ((resultADX == -2 && adx.getValue(i).isGreaterThanOrEqual(numOfAdxLimit) && adx.getValue(i-1).isGreaterThanOrEqual(numOfAdxLimit))) {
-                                resultADX = 1;
-                                String info = "Passed ADX " + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if ((resultEMA == -2 && ema12.getValue(i).isGreaterThanOrEqual(ema92.getValue(i))  && ema12.getValue(i-1).isGreaterThanOrEqual(ema92.getValue(i-1)))) {
-                                resultEMA = 1;
-                                String info = "Passed EMA LONG" + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if ((resultEMA == -2 && ema12.getValue(i).isLessThanOrEqual(ema92.getValue(i))  && ema12.getValue(i-1).isLessThanOrEqual(ema92.getValue(i-1)))) {
-                                resultEMA = -1;
-                                String info = "Passed EMA SHORT" + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if (resultMACD == -2 && macd.getValue(i).isGreaterThanOrEqual(signalLine.getValue(i)) && macd.getValue(i-1).isGreaterThanOrEqual(signalLine.getValue(i-1))) {
-                                resultMACD = -3;
-                            }
-
-                            if (resultMACD == -3 && macd.getValue(i).isLessThanOrEqual(signalLine.getValue(i))) {
-                                resultMACD = -1;
-                                String info = "Passed MACD SHORT " + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if (resultMACD == 2 && macd.getValue(i).isLessThanOrEqual(signalLine.getValue(i)) && macd.getValue(i-1).isLessThanOrEqual(signalLine.getValue(i-1))) {
-                                resultMACD = 3;
-                            }
-
-                            if (resultMACD == 3 && macd.getValue(i).isGreaterThanOrEqual(signalLine.getValue(i))) {
-                                resultMACD = 1;
-                                String info = "Passed MACD LONG " + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if ((resultICHIMOKU == -2 && hlc3.getValue(i).isGreaterThanOrEqual(IchimokuLeadingSpanA.getValue(i)) && IchimokuLeadingSpanA.getValue(i).isGreaterThanOrEqual(IchimokuLeadingSpanB.getValue(i)) & hlc3.getValue(i-1).isGreaterThanOrEqual(IchimokuLeadingSpanA.getValue(i-1)) && IchimokuLeadingSpanA.getValue(i-1).isGreaterThanOrEqual(IchimokuLeadingSpanB.getValue(i-1)))) {
-                                resultICHIMOKU = 1;
-                                String info = "Passed ICHIMOKU LONG" + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
-
-                            if ((resultICHIMOKU == -2 && hlc3.getValue(i).isLessThanOrEqual(IchimokuLeadingSpanA.getValue(i)) && IchimokuLeadingSpanA.getValue(i).isLessThanOrEqual(IchimokuLeadingSpanB.getValue(i)) & hlc3.getValue(i-1).isLessThanOrEqual(IchimokuLeadingSpanA.getValue(i-1)) && IchimokuLeadingSpanA.getValue(i-1).isLessThanOrEqual(IchimokuLeadingSpanB.getValue(i-1))))  {
-                                resultICHIMOKU = -1;
-                                String info = "Passed ICHIMOKU SHORT" + endOFLogEntry;
-                                ServiceFunctionsOther.writeToFile(info, context, "result");
-                            }
                         }
                     }
                 }
@@ -1448,173 +771,6 @@ public class ServiceFunctionsStrategyTa4J {
         NumericIndicator ema = NumericIndicator.of(new EMAIndicator(source, emaLength));
 
         return ema.getValue(series.getEndIndex()).doubleValue();
-
-    }
-
-    public static StrategyResult strategyTa4J_nr2(List<Kline> klines, Context context) {
-
-        // Create a new empty time series
-        Collections.reverse(klines);
-        BarSeries series = new BaseBarSeriesBuilder().withName("My_Crypto_Series").build();
-
-        // Load the klines into the time series
-        for (int i = 0; i < klines.size(); i++) {
-
-            if (i > 0 && klines.get(i).gettCloseTime() <= klines.get(i - 1).gettCloseTime()) {
-                break;
-            }
-            long endTimeMillis = klines.get(i).gettCloseTime();
-
-            ZonedDateTime endTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endTimeMillis), ZoneId.systemDefault());
-            double openPrice = klines.get(i).gettOpenPrice();
-            double highPrice = klines.get(i).gettHighPrice();
-            double lowPrice = klines.get(i).gettLowPrice();
-            double closePrice = klines.get(i).gettClosePrice();
-            series.addBar(endTime, openPrice, highPrice, lowPrice, closePrice);
-        }
-        //Log.e(TAG, series.getBarData().toString());
-
-        BarSeriesManager seriesManager = new BarSeriesManager(series);
-        // Moving momentum strategy.
-        Strategy strategy1 = buildStrategyMomentum(series);
-        // ADX Indicator strategy.
-        Strategy strategy2 = buildStrategyADX(series);
-
-        // Running the strategies
-        TradingRecord tradingRecord1 = seriesManager.run(strategy1);
-        TradingRecord tradingRecord2 = seriesManager.run(strategy2);
-
-        // AnalysisOfStrategies
-        AnalysisCriterion vsBuyAndHold = new VersusBuyAndHoldCriterion(new GrossReturnCriterion());
-        AnalysisCriterion total = new GrossReturnCriterion();
-        Strategy bestStrategy = vsBuyAndHold.chooseBest(seriesManager, Arrays.asList(strategy1, strategy2));
-
-        ArrayList<Integer> nrOfPositions = new ArrayList<>();
-        ArrayList<Double> vsBuyAndHoldProfit = new ArrayList<>();
-        ArrayList<Double> totalProfit = new ArrayList<>();
-
-        nrOfPositions.add(tradingRecord1.getPositionCount());
-        nrOfPositions.add(tradingRecord2.getPositionCount());
-        vsBuyAndHoldProfit.add(vsBuyAndHold.calculate(series, tradingRecord1).doubleValue());
-        vsBuyAndHoldProfit.add(vsBuyAndHold.calculate(series, tradingRecord2).doubleValue());
-        totalProfit.add(total.calculate(series, tradingRecord1).doubleValue());
-        totalProfit.add(total.calculate(series, tradingRecord2).doubleValue());
-        int finalWaveTrendScore;
-        // Compute indicators
-        NumericIndicator ap = NumericIndicator.of(new TypicalPriceIndicator(series)); //Median originally
-        NumericIndicator esa = NumericIndicator.of(new EMAIndicator(ap, 10));
-        NumericIndicator diff = ap.minus(esa);
-        NumericIndicator x = diff.abs();
-        NumericIndicator d = NumericIndicator.of(new EMAIndicator(x, 10));
-        NumericIndicator z = d.multipliedBy(0.015);
-        NumericIndicator ci = diff.dividedBy(z);
-        double multiplier2 = (2.0 / (21 + 1));
-
-        // Compute the channel index -- overwrite of calculate was need because value at index 0 waa NaN
-        NumericIndicator tci = NumericIndicator.of(new AbstractEMAIndicator(ci, 21, multiplier2) {
-            @Override
-            protected Num calculate(int index) {
-                //Log.e(TAG, "ABSTRACT: " + ci.getValue(index) + " " + ci.numOf(index)+ " " + ci.getValue(index).isNaN());
-                if (index == 0) {
-                    return DecimalNum.valueOf(0);
-                }
-                Num prevValue = getValue(index - 1);
-                return ci.getValue(index).minus(prevValue).multipliedBy(DecimalNum.valueOf(multiplier2)).plus(prevValue);
-            }
-        });
-        // NumericIndicator tci = NumericIndicator.of(new EMAIndicator(diff, n2));
-        ATRIndicator atr = new ATRIndicator(series, 10);
-
-        //MACD
-        NumericIndicator close = NumericIndicator.of(new ClosePriceIndicator(series));
-        MACDIndicator macd = new MACDIndicator(close, 12, 26);
-        int signalLinePeriod = 9;
-        EMAIndicator signalLine = new EMAIndicator(macd, signalLinePeriod);
-
-        Num numObLevel2 = DecimalNum.valueOf(60);
-        Num numOsLevel2 = DecimalNum.valueOf(-60);
-
-        // Compute WaveTrend indicators
-        Num wt1 = tci.getValue(series.getEndIndex());
-        SMAIndicator sma = new SMAIndicator(tci, 4);
-        Num wt2 = sma.getValue(series.getEndIndex());
-
-        DecimalFormat df = new DecimalFormat("0.00000000000");
-        int i = series.getEndIndex();
-        String info = "Index: " + i + " MedianPrice(ap): " + df.format(ap.getValue(i).doubleValue()) + " EMA(" + 10 + "): " + df.format(esa.getValue(i).doubleValue()) + " EMA(" + 21 + "): " + df.format(d.getValue(i).doubleValue()) + " AbstractEMA(wt1): " + df.format(wt1.doubleValue()) + " SMA(wt2): " + df
-                .format(wt2.doubleValue()) + " ATR: " + df.format(atr.getValue(i).doubleValue()) + " MACD: " + df.format(macd.getValue(i).doubleValue()) + " signalMACD: " + df.format(signalLine.getValue(i).doubleValue());
-        Log.e("StrategyValues ", info);
-        ServiceFunctionsOther.writeToFile(info, context, "result");
-        // Check alert conditions and return the corresponding value
-        if ((wt1.isGreaterThan(wt2) && wt1.isGreaterThan(numObLevel2))) {
-            finalWaveTrendScore = -1;
-        } else if ((wt1.isLessThan(wt2) && wt1.isLessThan(numOsLevel2))) {
-            finalWaveTrendScore = 1;
-        } else {
-            finalWaveTrendScore = 0;
-        }
-        return new StrategyResult(nrOfPositions, vsBuyAndHoldProfit, totalProfit, finalWaveTrendScore, bestStrategy.getName());
-
-    }
-
-    public static Strategy buildStrategyMomentum(BarSeries series) {
-
-        if (series == null) {
-            throw new IllegalArgumentException("Series cannot be null");
-        }
-
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        // The bias is bullish when the shorter-moving average moves above the longer
-        // moving average.
-        // The bias is bearish when the shorter-moving average moves below the longer
-        // moving average.
-        EMAIndicator shortEma = new EMAIndicator(closePrice, 5); //9
-        EMAIndicator longEma = new EMAIndicator(closePrice, 26); //26
-
-        StochasticOscillatorKIndicator stochasticOscillK = new StochasticOscillatorKIndicator(series, 14);
-
-        MACDIndicator macd = new MACDIndicator(closePrice, 5, 26); // 9, 12
-        EMAIndicator emaMacd = new EMAIndicator(macd, 18);
-
-        // Entry rule
-        Rule entryRule = new OverIndicatorRule(shortEma, longEma) // Trend
-                .and(new CrossedDownIndicatorRule(stochasticOscillK, 20)) // Signal 1
-                .and(new OverIndicatorRule(macd, emaMacd)); // Signal 2
-
-        // Exit rule
-        Rule exitRule = new UnderIndicatorRule(shortEma, longEma) // Trend
-                .and(new CrossedUpIndicatorRule(stochasticOscillK, 80)) // Signal 1
-                .and(new UnderIndicatorRule(macd, emaMacd)); // Signal 2
-
-        return new BaseStrategy("MOMENTUM", entryRule, exitRule);
-
-    }
-
-    public static Strategy buildStrategyADX(BarSeries series) {
-
-        if (series == null) {
-            throw new IllegalArgumentException("Series cannot be null");
-        }
-
-        final ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
-        final SMAIndicator smaIndicator = new SMAIndicator(closePriceIndicator, 50);
-
-        final int adxBarCount = 14;
-        final ADXIndicator adxIndicator = new ADXIndicator(series, adxBarCount);
-        final OverIndicatorRule adxOver20Rule = new OverIndicatorRule(adxIndicator, 20);
-
-        final PlusDIIndicator plusDIIndicator = new PlusDIIndicator(series, adxBarCount);
-        final MinusDIIndicator minusDIIndicator = new MinusDIIndicator(series, adxBarCount);
-
-        final Rule plusDICrossedUpMinusDI = new CrossedUpIndicatorRule(plusDIIndicator, minusDIIndicator);
-        final Rule plusDICrossedDownMinusDI = new CrossedDownIndicatorRule(plusDIIndicator, minusDIIndicator);
-        final OverIndicatorRule closePriceOverSma = new OverIndicatorRule(closePriceIndicator, smaIndicator);
-        final Rule entryRule = adxOver20Rule.and(plusDICrossedUpMinusDI).and(closePriceOverSma);
-
-        final UnderIndicatorRule closePriceUnderSma = new UnderIndicatorRule(closePriceIndicator, smaIndicator);
-        final Rule exitRule = adxOver20Rule.and(plusDICrossedDownMinusDI).and(closePriceUnderSma);
-
-        return new BaseStrategy("ADX", entryRule, exitRule, adxBarCount);
 
     }
 

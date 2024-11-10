@@ -11,7 +11,11 @@ import android.os.IBinder;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.core.os.BuildCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import com.example.cryptofun.BuildConfig;
+import com.google.gson.internal.GsonBuildConfig;
 
 import app.makorz.cryptofun.data.MarkPrice;
 import app.makorz.cryptofun.data.PercentagesOfChanges;
@@ -21,6 +25,7 @@ import app.makorz.cryptofun.ui.home.GridViewElement;
 import app.makorz.cryptofun.ui.home.ListViewElement;
 import app.makorz.cryptofun.ui.orders.OrderListViewElement;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.text.DateFormat;
@@ -31,6 +36,8 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+
+import javax.mail.MessagingException;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Observable;
@@ -175,13 +182,39 @@ public class ApprovingService extends Service {
         }
         data.close();
 
+        int strategyNumber;
+
+        data = databaseDB.retrieveParam(17);
+        if (data.getCount() == 0) {
+            Log.e(TAG, "There is no param nr 17");
+            strategyNumber = 0;
+        } else {
+            data.moveToFirst();
+            strategyNumber = data.getInt(3);
+        }
+        data.close();
+
         lastChosenHoursTokensStat = getListOfSymbolsAccordingToProvidedTime(howManyHours, 0, TABLE_NAME_APPROVED_HISTORIC, shouldApprovedHistoricBeGrouped);
+
+        for (ListViewElement symbolObj : lastChosenHoursTokensStat) {
+            // Update the symbol by replacing "USDT" with an empty string
+            if (symbolObj.getText().contains("USDT")) {
+                String newText = symbolObj.getText().replace("USDT", "");
+                symbolObj.setText(newText);
+            } else {
+                Log.e(TAG, "\"USDT\" not found in: " + symbolObj.getText());
+            }
+        }
+
         last3MinutesTokensStat = getListOfSymbolsAccordingToProvidedTime(twoMinutes, 0, TABLE_NAME_APPROVED, false);
 
         Log.e(TAG, "list3mTokensSize: " + last3MinutesTokensStat.size());
 
-        if (last3MinutesTokensStat.size() > 0) {
-            String topic = "NEW TOKENS";
+        @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("dd/MM/yyyy - HH:mm:ss");
+
+        if (!last3MinutesTokensStat.isEmpty()) {
+            String topic = "NEW TOKENS caught at " + df3.format(last3MinutesTokensStat.get(0).getTime());
+            // String topic = "NEW TOKENS for strategy nr " + strategyNumber;
             StringBuilder body = new StringBuilder();
             String shortOrNot= "";
             for (int i = 0; i < last3MinutesTokensStat.size(); i++) {
@@ -194,21 +227,19 @@ public class ApprovingService extends Service {
                     shortOrNot = "SHORT";
                 }
 
-                body.append(i + 1).append(". ").append(shortOrNot).append(" for token ").append(last3MinutesTokensStat.get(i).getText()).append(" found at ").append(last3MinutesTokensStat.get(i).getTime()).append(" with price ").append(last3MinutesTokensStat.get(i).getPriceWhenCaught());
+                body.append(i + 1).append(". ").append("Strategy nr: [").append(last3MinutesTokensStat.get(i).getStrategyNr()).append("] Token: [").append(last3MinutesTokensStat.get(i).getText()).append("] Type: [").append(shortOrNot).append("] Price: [").append(last3MinutesTokensStat.get(i).getPriceWhenCaught()).append("]\n");
+
+//                body.append(i + 1).append(". ").append(shortOrNot).append(" for token ").append(last3MinutesTokensStat.get(i).getText()).append(" with strategy ").append(last3MinutesTokensStat.get(i).getStrategyNr()).append(" found at ").append(last3MinutesTokensStat.get(i).getTime()).append(" with price ").append(last3MinutesTokensStat.get(i).getPriceWhenCaught()).append("\n");
 
             }
 
-//            new Thread(
-//                    new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            ServiceFunctionsOther.sendEmail(topic, String.valueOf(body));
-//                        }
-//                    }
-//            ).start();
-
-
-
+            EmailSender emailSender = new EmailSender();
+            try {
+                emailSender.sendEmail(BuildConfig.SMTP_USERNAME, BuildConfig.SMTP_PASSWORD, topic, String.valueOf(body));
+            } catch (Exception e) {
+                System.err.println("General error: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
         setMainParametersOnView();
 
@@ -342,6 +373,7 @@ public class ApprovingService extends Service {
         for (int i = 0; i < biggestSymbols.size(); i++) {
             for (int j = 0; j < tempList.size(); j++) {
                 if (tempList.get(j).getSymbol().equals(biggestSymbols.get(i))) {
+                    biggestSymbols.set(i, biggestSymbols.get(i).replace("USDT", ""));
                     cryptoGridViewList.add(new GridViewElement(biggestSymbols.get(i), tempList.get(j).getPercent(), tempList.get(j).getValue()));
                 }
             }
@@ -533,8 +565,9 @@ public class ApprovingService extends Service {
         ArrayList<ListViewElement> returnList = new ArrayList<>();
         @SuppressLint("SimpleDateFormat") DateFormat df = new SimpleDateFormat("HH:mm:ss - EEE, dd");
         @SuppressLint("SimpleDateFormat") DateFormat df2 = new SimpleDateFormat("HH:mm");
+        @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("dd.MM.yy HH:mm");
 
-        Cursor data = databaseDB.firstAppearOfTokenInCertainTimeV1(currentTime - timeFrom, currentTime - timeTo, tableName, groupSymbols);
+        Cursor data = databaseDB.firstAppearOfTokenInCertainTimeV3(currentTime - timeFrom, currentTime - timeTo, tableName, groupSymbols);
         data.moveToFirst();
         if (data.getCount() == 0) {
             Log.e(TAG, "Nothing in [historic_approved_tokens 1]");
@@ -548,8 +581,9 @@ public class ApprovingService extends Service {
                     isItLong = false;
                 }
                 String symbol = data.getString(0);
-                long approveTime = data.getLong(2);
-                float approvedPrice = data.getFloat(3);
+                long approveTime = data.getLong(3);
+                float approvedPrice = data.getFloat(4);
+                int strategyNr = data.getInt(2);
 
                 //We are searching for highest/lowest price in certain time for that symbol and then look for opposite high/low between entry and opposite
                 float maxMinPrice = 0;
@@ -597,16 +631,16 @@ public class ApprovingService extends Service {
 
                 if (approveTime > currentTime - timeFrom) {
                     Timestamp stamp = new Timestamp(approveTime);
-                    String date = df2.format(new Date(stamp.getTime()));
+                    String date = df3.format(new Date(stamp.getTime()));
                     float percentOfChange = ((maxMinPrice / approvedPrice) * 100) - 100;
                     float percentOfChange2 = ((maxMinPrice2 / approvedPrice) * 100) - 100;
 
                     //symbol = symbol.replace("USDT", "");
 
                     if (isItLong) {
-                        returnList.add(new ListViewElement(symbol, percentOfChange, percentOfChange2, approvedPrice, date, isItLong));
+                        returnList.add(new ListViewElement(symbol, percentOfChange, percentOfChange2, approvedPrice, date, isItLong, strategyNr));
                     } else {
-                        returnList.add(new ListViewElement(symbol, percentOfChange, percentOfChange2, approvedPrice, date, isItLong));
+                        returnList.add(new ListViewElement(symbol, percentOfChange, percentOfChange2, approvedPrice, date, isItLong, strategyNr));
                     }
 
                     Log.e(TAG, "3 " + symbol + " IsItLong: " + isItLong + " TimeApproved: " + df.format(approveTime) + " TimeFrom: " + df.format((currentTime - timeFrom)) + " TimeTo: "
@@ -622,7 +656,7 @@ public class ApprovingService extends Service {
         } else {
             returnList.sort(new Comparator<ListViewElement>() {
                 public int compare(ListViewElement o1, ListViewElement o2) {
-                    return o1.getTime().compareTo(o2.getTime());
+                    return o2.getTime().compareTo(o1.getTime());
                     //return Float.compare(o1.getPercentChange(), o2.getPercentChange());
                 }
             });

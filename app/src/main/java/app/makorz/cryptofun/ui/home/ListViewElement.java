@@ -10,6 +10,7 @@ public class ListViewElement implements Serializable, Comparable<ListViewElement
     private float priceWhenCaught;
     private String time;
     private boolean isItLONG;
+    private int strategyNr;
 
 //    public ListViewElement(String text, float percentChange, float priceWhenCaught, String time, boolean isItLong) {
 //        this.text = text;
@@ -24,13 +25,22 @@ public class ListViewElement implements Serializable, Comparable<ListViewElement
 
     }
 
-    public ListViewElement(String text, float percentChange, float percentChange2, float priceWhenCaught, String time, boolean isItLONG) {
+    public ListViewElement(String text, float percentChange, float percentChange2, float priceWhenCaught, String time, boolean isItLONG, int strategyNr) {
         this.text = text;
         this.percentChange = percentChange;
         this.percentChange2 = percentChange2;
         this.priceWhenCaught = priceWhenCaught;
         this.time = time;
         this.isItLONG = isItLONG;
+        this.strategyNr = strategyNr;
+    }
+
+    public int getStrategyNr() {
+        return strategyNr;
+    }
+
+    public void setStrategyNr(int strategyNr) {
+        this.strategyNr = strategyNr;
     }
 
     public float getPercentChange2() {
@@ -78,7 +88,7 @@ public class ListViewElement implements Serializable, Comparable<ListViewElement
     }
 
     public void setText(String symbol) {
-        this.text = text;
+        this.text = symbol;
     }
 
 

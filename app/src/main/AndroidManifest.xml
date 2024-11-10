@@ -24,6 +24,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_cryptofun_logo3"
         android:label="@string/app_name"
+        android:largeHeap="true"
         android:roundIcon="@mipmap/ic_cryptofun_logo3"
         android:supportsRtl="true"
         android:theme="@style/Theme.CryptoFun"

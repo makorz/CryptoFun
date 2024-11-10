@@ -27,7 +27,7 @@ public class HomeFragment extends Fragment {
     private static final String TAG = "HomeFrag";
 
     private FragmentHomeBinding binding;
-    CryptoListAdapter myAdapter6, myAdapter2, myAdapter30;
+    CryptoApprovedAdapter myAdapter6, myAdapter2, myAdapter30;
     //SimpleListAdapter myAdapterLONG, myAdapterSHORT;
     CryptoGridAdapter gridAdapter;
 
@@ -42,9 +42,9 @@ public class HomeFragment extends Fragment {
         ArrayList<ListViewElement> initialList = new ArrayList<>();
         ArrayList<GridViewElement> initialGrid = new ArrayList<>();
         gridAdapter = new CryptoGridAdapter(initialGrid);
-        myAdapter6 = new CryptoListAdapter(initialList);
-        myAdapter2 = new CryptoListAdapter(initialList);
-        myAdapter30 = new CryptoListAdapter(initialList);
+        myAdapter6 = new CryptoApprovedAdapter(initialList);
+//        myAdapter2 = new CryptoListAdapter(initialList);
+//        myAdapter30 = new CryptoListAdapter(initialList);
 //        myAdapterLONG = new SimpleListAdapter(initialList);
 //        myAdapterSHORT = new SimpleListAdapter(initialList);
         binding.cryptoRecyclerView.setAdapter(gridAdapter);
@@ -73,7 +73,7 @@ public class HomeFragment extends Fragment {
 
                 onReceiveNewGridList(gridAdapter, (ArrayList<GridViewElement>) bundle.getSerializable("cryptoGridViewList"));
                 onReceiveNewList(myAdapter6, (ArrayList<ListViewElement>) bundle.getSerializable("list3"));
-                onReceiveNewList(myAdapter30, (ArrayList<ListViewElement>) bundle.getSerializable("list1"));
+                //onReceiveNewList(myAdapter30, (ArrayList<ListViewElement>) bundle.getSerializable("list1"));
 
             } else if (intent.getAction().equals("DB_updated")) {
                 Log.e(TAG, "SendUPDMessageReceived");
@@ -141,7 +141,7 @@ public class HomeFragment extends Fragment {
         super.onResume();
     }
 
-    public void onReceiveNewList(CryptoListAdapter adapter, ArrayList<ListViewElement> newList) {
+    public void onReceiveNewList(CryptoApprovedAdapter adapter, ArrayList<ListViewElement> newList) {
         adapter.updateList(newList);
     }
 

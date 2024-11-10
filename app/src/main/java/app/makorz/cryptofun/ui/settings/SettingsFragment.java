@@ -4,6 +4,7 @@ import static android.content.Context.INPUT_METHOD_SERVICE;
 
 import androidx.appcompat.app.AlertDialog;
 
+import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.database.Cursor;
 import android.os.Bundle;
@@ -27,9 +28,12 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.cryptofun.BuildConfig;
 import com.example.cryptofun.R;
 import app.makorz.cryptofun.data.database.DBHandler;
 import com.example.cryptofun.databinding.FragmentSettingsBinding;
+
+import app.makorz.cryptofun.services.EmailSender;
 import app.makorz.cryptofun.services.ServiceFunctionsOther;
 import app.makorz.cryptofun.ui.settings.infoBox.PagerAdapter;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -54,7 +58,7 @@ public class SettingsFragment extends Fragment {
     private static final String ID = "id";
 
     private FragmentSettingsBinding binding;
-    private Button resetTestBalanceButton, resetAutomaticTestBalanceButton, resetApprovedListTableAndLogFilesButton, showKeysButton, updateParamsButton, accountInfoButton;
+    private Button resetTestBalanceButton, resetAutomaticTestBalanceButton, resetApprovedListTableAndLogFilesButton, showKeysButton, updateParamsButton, accountInfoButton, emailTestButton;
     private EditText apikeyET, secretET, marginET, takeProfitET, stopLossET, windowET, strategyET, stopLossStrategyET, emaLengthET, offsetSarET, hoursForApprovedET, globalHoursET, firstThresholdET, secondThresholdET, howOftenAlarmET;
     private Spinner emaTypeSpinner;
     private FloatingActionButton infoButton;
@@ -102,6 +106,7 @@ public class SettingsFragment extends Fragment {
         firstThresholdET = binding.etFirstPercentThreshold;
         secondThresholdET = binding.etSecondPercentThreshold;
         howOftenAlarmET = binding.etHowOftenAlarmMustRun;
+        emailTestButton = binding.btSendEmail;
         checkIfParamsArePresent();
         buttonsJob();
         return root;
@@ -432,6 +437,14 @@ public class SettingsFragment extends Fragment {
 
         });
 
+        emailTestButton.setOnClickListener(v -> {
+
+            // Usage
+            EmailSender emailSender = new EmailSender();
+            emailSender.sendEmail(BuildConfig.SMTP_USERNAME, BuildConfig.SMTP_PASSWORD, "TEST CRYPTO", "CryptofunWelcomes!");
+
+        });
+
         updateParamsButton.setOnClickListener(view -> {
 
             // Hide the keyboard
@@ -550,8 +563,8 @@ public class SettingsFragment extends Fragment {
                 }
             }
             if (!howManyHours.equals("")) {
-                if (Integer.parseInt(howManyHours) > 24 || Integer.parseInt(howManyHours) < 6) {
-                    Toast.makeText(getContext(), "Hours should be between 6 and 24", Toast.LENGTH_SHORT).show();
+                if (Integer.parseInt(howManyHours) > 168 || Integer.parseInt(howManyHours) < 6) {
+                    Toast.makeText(getContext(), "Hours should be between 6 and 168 (7 days)", Toast.LENGTH_SHORT).show();
                 } else {
                     String add = "Hours to show historic: " + howManyHours + "\n\n";
                     finalMessage += add;
@@ -861,7 +874,7 @@ public class SettingsFragment extends Fragment {
 
             View customLayout = getLayoutInflater().inflate(R.layout.custom_snackbar, null);
             Snackbar snackbar = Snackbar.make(root, "", Snackbar.LENGTH_SHORT);
-            Snackbar.SnackbarLayout snackbarLayout = (Snackbar.SnackbarLayout) snackbar.getView();
+            @SuppressLint("RestrictedApi") Snackbar.SnackbarLayout snackbarLayout = (Snackbar.SnackbarLayout) snackbar.getView();
             snackbarLayout.addView(customLayout, 0);
 
             TextView textView = customLayout.findViewById(R.id.message_for_snack);

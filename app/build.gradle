@@ -3,11 +3,31 @@ plugins {
     id 'org.jetbrains.kotlin.android' version '1.7.20' apply false
 }
 
+// Load the properties from local.properties
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { stream ->
+        localProperties.load(stream)
+    }
+}
+
+// Access the variables
+def smtpUsername = localProperties.getProperty('SMTP_USERNAME')
+def smtpPassword = localProperties.getProperty('SMTP_PASSWORD')
+def smtpHost = localProperties.getProperty('SMTP_HOST')
+def smtpPort = localProperties.getProperty('SMTP_PORT')
+
 android {
     compileSdk 33
 
     configurations.implementation {
         exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
+    }
+
+    buildFeatures {
+        viewBinding true
+        buildConfig true
     }
 
     defaultConfig {
@@ -16,6 +36,12 @@ android {
         targetSdk 33
         versionCode 1
         versionName "1.0"
+
+        // Pass the variables to BuildConfig fields
+        buildConfigField "String", "SMTP_USERNAME", "\"${smtpUsername}\""
+        buildConfigField "String", "SMTP_PASSWORD", "\"${smtpPassword}\""
+        buildConfigField "String", "SMTP_HOST", "\"${smtpHost}\""
+        buildConfigField "int", "SMTP_PORT", smtpPort
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -43,11 +69,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-    buildFeatures {
-        viewBinding true
-    }
+
     namespace 'com.example.cryptofun'
 }
+
 
 dependencies {
 

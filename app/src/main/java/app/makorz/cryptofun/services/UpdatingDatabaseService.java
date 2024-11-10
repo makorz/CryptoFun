@@ -257,83 +257,154 @@ public class UpdatingDatabaseService extends Service {
         observableStart(observableList);
     }
 
-    public ObservableModel updateIntervalOfDB(String symbol, String interval, long timeCurrent) {
-
-        Cursor data, data2;
-        int nrOfKlines;
-        long closeTime, differenceTime, minutes = 1;
-        ObservableModel model = new ObservableModel(symbol, 0, interval, 0, 0);
-        int nrOfKlinesFromLastDBUpdate = 1;
-        int restOfKlineDivision = 0;
-        int maxNrOfKlines = 180;
-        data = databaseDB.retrieveLastCloseTime(interval);
-        data2 = databaseDB.checkIfThereAreDuplicates(symbol, interval);
-        data.moveToFirst();
-        data2.moveToFirst();
+//    public ObservableModel updateIntervalOfDB(String symbol, String interval, long timeCurrent) {
+//
+//        Cursor data, data2;
+//        int nrOfKlines;
+//        long closeTime, differenceTime, minutes = 1;
+//        ObservableModel model = new ObservableModel(symbol, 0, interval, 0, 0);
+//        int nrOfKlinesFromLastDBUpdate = 1;
+//        int maxNrOfKlines = 200;
+//        data = databaseDB.retrieveLastCloseTime(interval);
+//        data2 = databaseDB.checkIfThereAreDuplicates(symbol, interval);
+//        data.moveToFirst();
+//        data2.moveToFirst();
 //        if (symbol.equals("ETHUSDT")) {
 //            Log.e(TAG, "CHECK " + interval + " " + data2.getCount() + " " + data2.getInt(1));
 //        }
+//
+//        // First check if table is empty or has duplicates
+//        if (data2.getCount() == 0) {
+//            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB]");
+//            model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
+//        } else if (data2.getInt(1) > 1) {
+//            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB] or " + interval + " duplicates are present if value is > 1 ===> " + data2.getInt(1));
+//            model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
+//        } else {
+//            nrOfKlines = data2.getCount();
+//            closeTime = data.getLong(8);
+//            differenceTime = closeTime - timeCurrent;
+//            switch (interval) {
+//                case "3m":
+//                    minutes = 180000;
+//                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
+//                    break;
+//                case "15m":
+//                    minutes = 900000;
+//                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
+//                    break;
+//                case "4h":
+//                    minutes = 14400000;
+//                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
+//                    break;
+//            }
+//            if (nrOfKlines < maxNrOfKlines) {
+//                model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
+//                if (symbol.equals("ETHUSDT")) {
+//                    Log.e(TAG, "A nrOfKlines are less than maxNrOfKlines, so clear table and load new maxNrOfKlines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
+//                }
+//            } else {
+//                long timeSinceLastUpdate = 50000;
+//                //Here in first step we only need to update last kline values, in second we need to update last kline values + add new klines
+//                if (differenceTime - timeSinceLastUpdate > 0) {
+//                    model = new ObservableModel(symbol, 1, interval, 2, 0);
+//                    if (symbol.equals("ETHUSDT")) {
+//                        Log.e(TAG, "B more NrOfKlines than maxNrOfKlines and still inside closeTime of last Kline. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
+//                    }
+//                } else if (differenceTime <= 0) {
+//                    if (nrOfKlinesFromLastDBUpdate >= maxNrOfKlines) {
+//                        model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
+//                        if (symbol.equals("ETHUSDT")) {
+//                            Log.e(TAG, "D nrOfKlinesFromLastDBUpdate is higher than maxNrOfKlines, so better to clean and fresh download maxNrOfKlines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
+//                        }
+//                    } else { //if (minutes - timeSinceLastUpdate > restOfKlineDivision)
+//                        model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate + 2, interval, 3, 0);
+//                        if (symbol.equals("ETHUSDT")) {
+//                            Log.e(TAG, "C NrOfKlines do not equal max nr of Klines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//        data.close();
+//        data2.close();
+//        return model;
+//    }
 
-        // First check if table is empty or has duplicates
-        if (data2.getCount() == 0) {
-            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB]");
-            model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
-        } else if (data2.getInt(1) > 1) {
-            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB] or " + interval + " duplicates are present if value is > 1 ===> " + data2.getInt(1));
-            model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
-        } else {
-            nrOfKlines = data2.getCount();
-            closeTime = data.getLong(8);
-            differenceTime = closeTime - timeCurrent;
-            switch (interval) {
-                case "3m":
-                    minutes = 180000;
-                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
-                    restOfKlineDivision += (-1 * differenceTime) % minutes;
-                    break;
-                case "15m":
-                    minutes = 900000;
-                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
-                    restOfKlineDivision += (-1 * differenceTime) % minutes;
-                    break;
-                case "4h":
-                    minutes = 14400000;
-                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
-                    restOfKlineDivision += (-1 * differenceTime) % minutes;
-                    break;
+
+    public ObservableModel updateIntervalOfDB(String symbol, String interval, long timeCurrent) {
+        final int MAX_NR_OF_KLINES = 200;
+        final long TIME_SINCE_LAST_UPDATE = 50000;
+        ObservableModel model = new ObservableModel(symbol, 0, interval, 0, 0);
+
+        try (Cursor lastCloseTimeCursor = databaseDB.retrieveLastCloseTime(interval);
+             Cursor duplicatesCursor = databaseDB.checkIfThereAreDuplicates(symbol, interval)) {
+
+            if (!lastCloseTimeCursor.moveToFirst() || !duplicatesCursor.moveToFirst()) {
+                Log.e(TAG, "Data retrieval failed or table is empty.");
+                return model;
             }
-            if (nrOfKlines < maxNrOfKlines) {
-                model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
-                if (symbol.equals("ETHUSDT")) {
-                    Log.e(TAG, "A nrOfKlines are less than maxNrOfKlines, so clear table and load new maxNrOfKlines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
-                }
+
+            int duplicateCount = duplicatesCursor.getInt(1);
+            if (duplicatesCursor.getCount() == 0 || duplicateCount > 1) {
+                Log.e(TAG, "Table is empty or contains duplicates.");
+                return new ObservableModel(symbol, MAX_NR_OF_KLINES, interval, 1, 0);
+            }
+
+            int nrOfKlines = duplicatesCursor.getCount();
+            long closeTime = lastCloseTimeCursor.getLong(8);
+            long differenceTime = closeTime - timeCurrent;
+            long intervalMillis = getIntervalMillis(interval);
+            int klinesFromLastUpdate = calculateKlinesFromLastUpdate(differenceTime, intervalMillis);
+
+            // Update decisions based on klines counts
+            if (nrOfKlines < MAX_NR_OF_KLINES) {
+                logUpdateDecision(symbol, "A", closeTime, timeCurrent, nrOfKlines, MAX_NR_OF_KLINES, intervalMillis);
+                return new ObservableModel(symbol, MAX_NR_OF_KLINES, interval, 1, 0);
+            } else if (differenceTime - TIME_SINCE_LAST_UPDATE > 0) {
+                logUpdateDecision(symbol, "B", closeTime, timeCurrent, nrOfKlines, MAX_NR_OF_KLINES, intervalMillis);
+                return new ObservableModel(symbol, 1, interval, 2, 0);
+            } else if (klinesFromLastUpdate >= MAX_NR_OF_KLINES) {
+                logUpdateDecision(symbol, "D", closeTime, timeCurrent, nrOfKlines, MAX_NR_OF_KLINES, intervalMillis);
+                return new ObservableModel(symbol, MAX_NR_OF_KLINES, interval, 1, 0);
             } else {
-                long timeSinceLastUpdate = 50000;
-                //Here in first step we only need to update last kline values, in second we need to update last kline values + add new klines
-                if (differenceTime - timeSinceLastUpdate > 0) {
-                    model = new ObservableModel(symbol, 1, interval, 2, 0);
-                    if (symbol.equals("ETHUSDT")) {
-                        Log.e(TAG, "B more NrOfKlines than maxNrOfKlines and still inside closeTime of last Kline. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
-                    }
-                } else if (differenceTime <= 0) {
-                    if (nrOfKlinesFromLastDBUpdate >= maxNrOfKlines) {
-                        model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
-                        if (symbol.equals("ETHUSDT")) {
-                            Log.e(TAG, "D nrOfKlinesFromLastDBUpdate is higher than maxNrOfKlines, so better to clean and fresh download maxNrOfKlines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
-                        }
-                    } else { //if (minutes - timeSinceLastUpdate > restOfKlineDivision)
-                        model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate + 2, interval, 3, 0);
-                        if (symbol.equals("ETHUSDT")) {
-                            Log.e(TAG, "C NrOfKlines do not equal max nr of Klines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
-                        }
-                    }
-                }
+                logUpdateDecision(symbol, "C", closeTime, timeCurrent, nrOfKlines, MAX_NR_OF_KLINES, intervalMillis);
+                return new ObservableModel(symbol, klinesFromLastUpdate + 2, interval, 3, 0);
             }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error while updating interval: " + e.getMessage());
         }
-        data.close();
-        data2.close();
+
         return model;
     }
+
+    // Helper Method to Calculate Interval Milliseconds
+    private long getIntervalMillis(String interval) {
+        switch (interval) {
+            case "3m": return 180000;
+            case "15m": return 900000;
+            case "4h": return 14400000;
+            default: throw new IllegalArgumentException("Unsupported interval: " + interval);
+        }
+    }
+
+    // Helper Method to Calculate Klines from Last Update
+    private int calculateKlinesFromLastUpdate(long differenceTime, long intervalMillis) {
+        return 1 + (int) ((-1 * differenceTime) / intervalMillis);
+    }
+
+    // Helper Method to Log Update Decisions
+    private void logUpdateDecision(String symbol, String caseLabel, long closeTime, long currentTime,
+                                   int nrOfKlines, int maxNrOfKlines, long intervalMillis) {
+        if (symbol.equals("ETHUSDT")) {
+            Log.e(TAG, caseLabel + " Update Decision - Symbol: " + symbol + ", Close Time: " + closeTime +
+                    ", Current Time: " + currentTime + ", Klines Difference: " + (closeTime - currentTime) / intervalMillis +
+                    ", NrOfKlines: " + nrOfKlines + ", MaxNrOfKlines: " + maxNrOfKlines);
+        }
+    }
+
+
 
     @SuppressLint("CheckResult")
     private void observableStart(List<ObservableModel> list) {
@@ -347,7 +418,10 @@ public class UpdatingDatabaseService extends Service {
         for (int i = 0; i < list.size(); i++) {
             request.add(new KlineRequest(RetrofitClientFutures.getInstance().getMyApi().getKlinesData(list.get(i).getSymbol(), list.get(i).getNrOfKlinesToDownload(), list.get(i).getInterval()),
                     list.get(i).getSymbol(), list.get(i).getInterval(), list.get(i).getWhatToDoWithDB(), list.get(i).getHowManyOldOnesToDelete()));
-//            Log.e(TAG, "Request [" + list.get(i).getSymbol() + "] NrOfKlines: " + list.get(i).getNrOfKlinesToDownload() + " Interval: " + list.get(i).getInterval() + " WhatToDo: " + list.get(i).getWhatToDoWithDB() + " HowManyOldOnesToDelete: " + list.get(i).getHowManyOldOnesToDelete());
+            if (list.get(i).getSymbol().equals("ETHUSDT")) {
+                Log.e(TAG, "Request [" + list.get(i).getSymbol() + "] NrOfKlines: " + list.get(i).getNrOfKlinesToDownload() + " Interval: " + list.get(i).getInterval() + " WhatToDo: " + list.get(i).getWhatToDoWithDB() + " HowManyOldOnesToDelete: " + list.get(i).getHowManyOldOnesToDelete());
+            }
+
         }
         for (int i = 0; i < request.size(); i++) {
             observableRequestList.add(request.get(i).getRequest());
@@ -402,8 +476,8 @@ public class UpdatingDatabaseService extends Service {
                                                                 Long.parseLong(aaa[j][8]),
                                                                 interval);
 
-                                                        if (symbol.equals("ETHUSDT")) {
-                                                            Log.e(TAG, "ResultDataParse: " + interval + " " + temp.toString());
+                                                        if (symbol.equals("ETHUSDT") && j > aaa.length - 10) {
+                                                            Log.e(TAG, "ResultDataParse [" + j + "] " + interval + " -> " + temp.toString());
                                                         }
 
                                                         klinesDataList.add(temp);
@@ -472,8 +546,25 @@ public class UpdatingDatabaseService extends Service {
                 listOfSymbols.add(data.getString(0));
             } while (data.moveToNext());
             //databaseDB.clearTable(TABLE_NAME_APPROVED);
+
+            int activeStrategy;
+            Cursor data2 = databaseDB.retrieveParam(17);
+            data2.moveToFirst();
+            if (data2.getCount() == 0) {
+                Log.e(TAG, "There is no param nr 17");
+                databaseDB.addParam(17, "Active Strategy Nr:", "", 1, 0);
+                activeStrategy = 1;
+            } else if (data2.getCount() >= 2) {
+                databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 17);
+                databaseDB.addParam(17, "Active Strategy Nr:", "", 1, 0);
+                activeStrategy = 1;
+            } else {
+                activeStrategy = data2.getInt(3);
+            }
+            data2.close();
+
             for (int i = 0; i < listOfSymbols.size(); i++) {
-                countBestCryptoToBuy(listOfSymbols.get(i));
+                countBestCryptoToBuy(listOfSymbols.get(i), activeStrategy);
             }
             Timestamp stamp = new Timestamp(System.currentTimeMillis());
             //long twentyFourHours = 86400000;
@@ -483,7 +574,7 @@ public class UpdatingDatabaseService extends Service {
             String date;
             if (wasThereError) {
                 Log.e(TAG, "Error from Observable/Or DB is actual.");
-                Cursor data2 = databaseDB.retrieveParam(1);
+                data2 = databaseDB.retrieveParam(1);
                 if (data2.getCount() == 0) {
                     Log.e(TAG, "No param");
                     date = "No update time";
@@ -507,91 +598,48 @@ public class UpdatingDatabaseService extends Service {
         data.close();
     }
 
-    private void countBestCryptoToBuy(String symbol) {
+    private void countBestCryptoToBuy(String symbol, int activeStrategy) {
 
-        int activeStrategy;
-        Cursor data = databaseDB.retrieveParam(17);
-        data.moveToFirst();
-        if (data.getCount() == 0) {
-            Log.e(TAG, "There is no param nr 17");
-            databaseDB.addParam(17, "Active Strategy Nr:", "", 1, 0);
-            activeStrategy = 1;
-        } else if (data.getCount() >= 2) {
-            databaseDB.deleteWithWhereClause(TABLE_NAME_CONFIG, ID, 17);
-            databaseDB.addParam(17, "Active Strategy Nr:", "", 1, 0);
-            activeStrategy = 1;
-        } else {
-            activeStrategy = data.getInt(3);
-        }
-        data.close();
-
-        List<Kline> coinKlines3m = new ArrayList<>();
-        List<Kline> coinKlines15m = new ArrayList<>();
-        List<Kline> coinKlines4h = new ArrayList<>();
+        List<Kline> coinKlines3m, coinKlines15m, coinKlines4h;
 
         switch (activeStrategy) {
-            /*
-            1.strategyNr1_quickTestStrategy_15m
-            2.strategyNr2_EMA_KlineSize_WT_4h
-            3.strategyNr3_EMA_KlineSize_WT_15m
-            4.strategyNr4_RSI_EMA_4h
-            5.strategyNr10_Ichimoku_4h
-            6.strategyNr10_Ichimoku_15m
-            7.strategyNr7_EMA_4h_WT_ADX_EMA_15m
-            8.strategyNr8_KlinesCrossEMA_RSI_Appear_15m2
-             */
-
-
-
-            case 2:
-                // Do poprawienia ma szanse na byt
+            case 2: // Ma szanse na byt
                 coinKlines15m = getList(symbol,"15m");
                 coinKlines4h = getList(symbol,"4h");
                 ServiceMainStrategies.strategyNr2_EMA_KlineSize_WT_4h(symbol, coinKlines15m, coinKlines4h, getApplicationContext());
                 break;
             case 3:
-                coinKlines4h = getList(symbol,"4h");
+                coinKlines3m = getList(symbol,"3m");
                 coinKlines15m = getList(symbol,"15m");
-                //coinKlines3m = getList(symbol,"3m");
-                ServiceMainStrategies.strategyNr3_MultiTimeframe_IchimokuRsiMacd(symbol, coinKlines15m, coinKlines4h, getApplicationContext());
-                //ServiceMainStrategies.strategyNr3_EMA_KlineSize_WT_15m(symbol, coinKlines3m, coinKlines15m, getApplicationContext());
+                ServiceMainStrategies.strategyNr3_EMA_KlineSize_WT_15m(symbol, coinKlines3m, coinKlines15m, getApplicationContext());
                 break;
             case 4:
-                //Nie działa
-                coinKlines15m = getList(symbol,"15m");
-                coinKlines4h = getList(symbol,"4h");
-                ServiceMainStrategies.strategyNr4_RSI_EMA_4h(symbol, coinKlines3m, coinKlines15m, coinKlines4h, getApplicationContext());
-                break;
-            case 5:
-//                coinKlines15m = getList(symbol,"15m");
-//                ServiceMainStrategies.strategyNr5_EMA_ADX_percentDifferenceEMA_15m(symbol, coinKlines15m, getApplicationContext());
-                coinKlines4h = getList(symbol,"4h");
-                ServiceMainStrategies.strategyNr10_Ichimoku_4h(symbol, coinKlines4h, getApplicationContext());
-                break;
-            case 6:
-                coinKlines15m = getList(symbol,"15m");
-                coinKlines4h = getList(symbol,"4h");
-                ServiceMainStrategies.strategyNr6_AdvancedIchimoku_15m4h(symbol, coinKlines15m, coinKlines4h, getApplicationContext());
-
-               // ServiceMainStrategies.strategyNr10_Ichimoku_15m(symbol, coinKlines15m, getApplicationContext());
-
-                // to samo co pod 8 tylko inne interwaly -- słabe
-//                coinKlines4h = getList(symbol,"4h");
-//                ServiceMainStrategies.strategyNr6_KlinesCrossEMA_RSI_Appear(symbol, coinKlines4h, getApplicationContext());
-                break;
-            case 7:
                 coinKlines15m = getList(symbol,"15m");
                 coinKlines4h = getList(symbol,"4h");
                 ServiceMainStrategies.strategyNr7_EMA_4h_WT_ADX_EMA_15m(symbol, coinKlines15m, coinKlines4h, getApplicationContext());
                 break;
-            case 8:
+            case 5:
                 coinKlines15m = getList(symbol,"15m");
-                ServiceMainStrategies.strategyNr8_KlinesCrossEMA_RSI_Appear_15m(symbol, coinKlines15m, getApplicationContext());
+                ServiceMainStrategies.strategyNr8_KlinesCrossEMA_RSI_Appear_15m(symbol,  coinKlines15m, getApplicationContext());
+                break;
+            case 6:
+                coinKlines15m = getList(symbol,"15m");
+                ServiceMainStrategies.strategyNr21_WT_15m(symbol, coinKlines15m, getApplicationContext());
+                break;
+            case 7:
+                coinKlines15m = getList(symbol,"15m");
+                ServiceMainStrategies.strategyNr20_EMA_ICHIMOKU_15m(symbol, coinKlines15m, getApplicationContext());
+                break;
+            case 8:
+                coinKlines3m = getList(symbol,"3m");
+                coinKlines15m = getList(symbol,"15m");
+                coinKlines4h = getList(symbol,"4h");
+                ServiceMainStrategies.strategyNr4_Trend_GreenRed_15m_3m(symbol, coinKlines3m, coinKlines15m, coinKlines4h, getApplicationContext());
                 break;
             default:
-                //To jest tylko testowe
+                //ONLY TEST
                 coinKlines15m = getList(symbol,"15m");
-                ServiceMainStrategies.strategyNr1_quickTestStrategy_15m(symbol, coinKlines15m, getApplicationContext());
+                ServiceMainStrategies.strategyNr0_quickTestStrategy_15m(symbol, coinKlines15m, getApplicationContext());
                 break;
         }
     }
@@ -600,7 +648,7 @@ public class UpdatingDatabaseService extends Service {
 
         List<Kline> list = new ArrayList<>();
 
-        Cursor data = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA, symbol, interval);
+        Cursor data = databaseDB.retrieveDataToFindBestCrypto2(TABLE_NAME_KLINES_DATA, symbol, interval);
         data.moveToFirst();
         if (data.getCount() > 0) {
             do {
