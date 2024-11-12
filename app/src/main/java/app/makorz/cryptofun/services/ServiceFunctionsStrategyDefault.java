@@ -6,62 +6,60 @@ import java.util.List;
 
 public class ServiceFunctionsStrategyDefault {
 
-    // Count $ volume in certain interval
-    public static float countMoneyVolumeAtInterval(List<Kline> data, int firstKline, int lastKline) {
-
-        if (firstKline - lastKline > 0) {
+    public static float countMoneyVolumeAtInterval(List<Kline> data, int startIndex, int endIndex) {
+        if (startIndex > endIndex) {
             return 0;
         }
 
         int volume = 0;
-        float moneyInUSD = 0;
         float closePriceSum = 0;
 
-        for (int i = firstKline; i < lastKline; i++) {
+        for (int i = startIndex; i <= endIndex; i++) {
             closePriceSum += data.get(i).gettClosePrice();
-            volume += data.get(i).gettVolume();
+            volume += (int) data.get(i).gettVolume();
         }
 
-        float averageClosePrice = closePriceSum / (lastKline - firstKline);
-        moneyInUSD = averageClosePrice * volume;
-
-        return moneyInUSD;
-
+        float averageClosePrice = closePriceSum / (endIndex - startIndex + 1);
+        return averageClosePrice * volume;
     }
 
-    // Count nr Of Trades committed in certain interval
-    public static int countNrOfTradesAtInterval(List<Kline> data, int firstKline, int lastKline) {
-
-        int result = 0;
-
-        if (firstKline - lastKline >= 0) {
+    public static int countNrOfTradesAtInterval(List<Kline> data, int startIndex, int endIndex) {
+        if (startIndex > endIndex) {
             return 0;
         }
 
-        for (int i = firstKline; i < lastKline; i++) {
-            result += data.get(i).gettNumberOfTrades();
+        int result = 0;
+        for (int i = startIndex; i <= endIndex; i++) {
+            result += (int) data.get(i).gettNumberOfTrades();
         }
-
         return result;
     }
 
-    // Count if volume has raised in second part of provided klines (intervals)
     public static float countBeforeAndAfter(List<Kline> data, int nrOfKlinesToInspect) {
-
-        // e.g We are taking 8 klines - then comparing 4 to 4
-        float result;
-        int nrBefore = 1;
-        int nrAfter = 1;
-
-        for (int i = 0; i < (nrOfKlinesToInspect / 2); i++) {
-            nrAfter += data.get(i).gettVolume();
+        int klineSize = data.size();
+        if (nrOfKlinesToInspect > klineSize) {
+            return 0; // Not enough data to compare
         }
 
-        for (int i = (nrOfKlinesToInspect / 2); i < nrOfKlinesToInspect; i++) {
-            nrBefore += data.get(i).gettVolume();
+        int midPoint = nrOfKlinesToInspect / 2;
+        int startOfSecondHalf = klineSize - nrOfKlinesToInspect;
+        int endOfSecondHalf = startOfSecondHalf + midPoint;
+        int endIndex = klineSize - 1;
+
+        int volumeFirstHalf = 0;
+        int volumeSecondHalf = 0;
+
+        // Calculate volume for the second half (most recent)
+        for (int i = startOfSecondHalf; i < endOfSecondHalf; i++) {
+            volumeSecondHalf += (int) data.get(i).gettVolume();
         }
-        result = (((float) nrAfter / (float) nrBefore) * 100) - 100;
-        return result;
+
+        // Calculate volume for the first half (older klines in the interval)
+        for (int i = endOfSecondHalf; i <= endIndex; i++) {
+            volumeFirstHalf += (int) data.get(i).gettVolume();
+        }
+
+        return (((float) volumeSecondHalf / (float) volumeFirstHalf) * 100) - 100;
     }
 
     public static double calculateATR(List<Kline> klines, int period) {

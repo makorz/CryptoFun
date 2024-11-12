@@ -1,0 +1,26 @@
+<!-- res/layout/item_group_header.xml -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/groupHeaderLayout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="?android:attr/selectableItemBackground"
+    android:gravity="center"
+    android:layout_marginStart="10dp"
+    android:layout_marginEnd="10dp"
+    android:layout_marginBottom="5dp"
+    android:padding="8dp"
+    android:elevation="2dp">
+
+    <TextView
+        android:id="@+id/textStrategyHeader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="@style/MaterialAlertDialog.Material3.Title.Text"
+        android:textSize="13sp"
+        android:textColor="@android:color/black"
+        android:gravity="center"
+        android:text="Strategy Header" />
+
+</LinearLayout>

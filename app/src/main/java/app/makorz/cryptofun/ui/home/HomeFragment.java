@@ -18,9 +18,14 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.cryptofun.databinding.FragmentHomeBinding;
+
+import app.makorz.cryptofun.data.ApprovedGroupedTokens;
 import app.makorz.cryptofun.services.ApprovingService;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class HomeFragment extends Fragment {
 
@@ -28,6 +33,7 @@ public class HomeFragment extends Fragment {
 
     private FragmentHomeBinding binding;
     CryptoApprovedAdapter myAdapter6, myAdapter2, myAdapter30;
+    CryptoApprovedGroupedAdapter approvedAdapter;
     //SimpleListAdapter myAdapterLONG, myAdapterSHORT;
     CryptoGridAdapter gridAdapter;
 
@@ -36,23 +42,29 @@ public class HomeFragment extends Fragment {
 
         binding = FragmentHomeBinding.inflate(inflater, container, false);
 
-        binding.cryptoRecyclerView.setLayoutManager(new GridLayoutManager(getContext(), 6, GridLayoutManager.HORIZONTAL, false));
-        binding.cryptoList6RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
-        //binding.cryptoList30RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
-        ArrayList<ListViewElement> initialList = new ArrayList<>();
-        ArrayList<GridViewElement> initialGrid = new ArrayList<>();
-        gridAdapter = new CryptoGridAdapter(initialGrid);
-        myAdapter6 = new CryptoApprovedAdapter(initialList);
+//        binding.cryptoList30RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
 //        myAdapter2 = new CryptoListAdapter(initialList);
 //        myAdapter30 = new CryptoListAdapter(initialList);
 //        myAdapterLONG = new SimpleListAdapter(initialList);
 //        myAdapterSHORT = new SimpleListAdapter(initialList);
+//        binding.cryptoList30RecyclerView.setAdapter(myAdapter30);
+
+        binding.cryptoRecyclerView.setLayoutManager(new GridLayoutManager(getContext(), 6, GridLayoutManager.HORIZONTAL, false));
+        ArrayList<GridViewElement> initialGrid = new ArrayList<>();
+        gridAdapter = new CryptoGridAdapter(initialGrid);
         binding.cryptoRecyclerView.setAdapter(gridAdapter);
-        binding.cryptoList6RecyclerView.setAdapter(myAdapter6);
-       // binding.cryptoList30RecyclerView.setAdapter(myAdapter30);
+
+        binding.cryptoList6RecyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
+//        ArrayList<ListViewElement> initialList = new ArrayList<>();
+//        myAdapter6 = new CryptoApprovedAdapter(initialList);
+//        binding.cryptoList6RecyclerView.setAdapter(myAdapter6);
 
 
-        View root = binding.getRoot();
+        ArrayList<ListViewElement> items = new ArrayList<>();
+        ArrayList<ApprovedGroupedTokens> groupedItems = groupItemsByStrategy(items);
+        approvedAdapter = new CryptoApprovedGroupedAdapter(groupedItems);
+        binding.cryptoList6RecyclerView.setAdapter(approvedAdapter);
+
         Log.e(TAG, "CreateView");
 
         LocalBroadcastManager.getInstance(getActivity()).registerReceiver(
@@ -60,7 +72,7 @@ public class HomeFragment extends Fragment {
         LocalBroadcastManager.getInstance(getActivity()).registerReceiver(
                 mMessageReceiver, new IntentFilter("DB_updated"));
 
-        return root;
+        return binding.getRoot();
     }
 
     // Receive broadcast from ApprovingService
@@ -72,7 +84,8 @@ public class HomeFragment extends Fragment {
                 Log.e(TAG, "APRVServiceReceived " + Thread.currentThread());
 
                 onReceiveNewGridList(gridAdapter, (ArrayList<GridViewElement>) bundle.getSerializable("cryptoGridViewList"));
-                onReceiveNewList(myAdapter6, (ArrayList<ListViewElement>) bundle.getSerializable("list3"));
+                //onReceiveNewList(myAdapter6, (ArrayList<ListViewElement>) bundle.getSerializable("list3"));
+                onReceiveNewGroupedList(approvedAdapter, (ArrayList<ListViewElement>) bundle.getSerializable("list3"));
                 //onReceiveNewList(myAdapter30, (ArrayList<ListViewElement>) bundle.getSerializable("list1"));
 
             } else if (intent.getAction().equals("DB_updated")) {
@@ -100,6 +113,34 @@ public class HomeFragment extends Fragment {
             }
         }
         return false;
+    }
+
+    public static final HashMap<Integer, String> strategyNames = new HashMap<>();
+    static {
+        strategyNames.put(1, "EMA_4h_WT_ADX_EMA_15m");
+        strategyNames.put(2, "EMA_KlineSize_WT_15m");
+        strategyNames.put(3, "ICHIMOKU_15m");
+        strategyNames.put(4, "Trend_GreenRed_15m_3m");
+        strategyNames.put(5, "EMA_KlineSize_WT_4h");
+        strategyNames.put(6, "KlinesCrossEMA_RSI_Appear_15m");
+    }
+
+    // Method to group items by strategyNr
+    public ArrayList<ApprovedGroupedTokens> groupItemsByStrategy(ArrayList<ListViewElement> items) {
+        HashMap<Integer, List<ListViewElement>> groupedMap = new HashMap<>();
+        for (ListViewElement item : items) {
+            int strategyNr = item.getStrategyNr();
+            if (!groupedMap.containsKey(strategyNr)) {
+                groupedMap.put(strategyNr, new ArrayList<>());
+            }
+            groupedMap.get(strategyNr).add(item);
+        }
+
+        ArrayList<ApprovedGroupedTokens> groupedItems = new ArrayList<>();
+        for (Map.Entry<Integer, List<ListViewElement>> entry : groupedMap.entrySet()) {
+            groupedItems.add(new ApprovedGroupedTokens(entry.getKey(), entry.getValue()));
+        }
+        return groupedItems;
     }
 
     @Override
@@ -143,6 +184,13 @@ public class HomeFragment extends Fragment {
 
     public void onReceiveNewList(CryptoApprovedAdapter adapter, ArrayList<ListViewElement> newList) {
         adapter.updateList(newList);
+    }
+
+    public void onReceiveNewGroupedList(CryptoApprovedGroupedAdapter adapter, ArrayList<ListViewElement> newList) {
+
+        ArrayList<ApprovedGroupedTokens> groupedItems = groupItemsByStrategy(newList);
+
+        adapter.updateList(groupedItems);
     }
 
     public void onReceiveNewSimpleList(SimpleListAdapter adapter, ArrayList<ListViewElement> newList) {

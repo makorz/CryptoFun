@@ -477,6 +477,14 @@ public class DBHandler extends SQLiteOpenHelper {
         return data;
     }
 
+    public Cursor retrieveLastCloseTime2(String symbol, String interval) {
+        SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
+        String query = "SELECT * FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' and " + SYMBOL_CRYPTO + " = '" + symbol + "' ORDER BY " + CLOSE_TIME + " DESC LIMIT 1";
+        @SuppressLint("Recycle") Cursor data = sqLiteDatabase.rawQuery(query, null);
+        //Log.i(TAG, query);
+        return data;
+    }
+
     public Cursor retrieveLastCloseTime(String interval) {
         SQLiteDatabase sqLiteDatabase = getInstance(mContext).getReadableDatabase();
         String query = "SELECT * FROM " + TABLE_NAME_KLINES_DATA + " WHERE " + INTERVAL + " = '" + interval + "' ORDER BY " + CLOSE_TIME + " DESC LIMIT 1";

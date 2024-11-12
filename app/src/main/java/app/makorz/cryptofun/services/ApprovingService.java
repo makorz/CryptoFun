@@ -157,7 +157,7 @@ public class ApprovingService extends Service {
     public void approvingCryptos() {
 
         //Wait two minutes before entering
-        long howManyHours, twoMinutes = 120000;
+        long howManyHours, threeMinutes = 180000;
 
         Cursor data = databaseDB.retrieveParam(22);
         if (data.getCount() == 0) {
@@ -206,14 +206,14 @@ public class ApprovingService extends Service {
             }
         }
 
-        last3MinutesTokensStat = getListOfSymbolsAccordingToProvidedTime(twoMinutes, 0, TABLE_NAME_APPROVED, false);
+        last3MinutesTokensStat = getListOfSymbolsAccordingToProvidedTime(threeMinutes, 0, TABLE_NAME_APPROVED, false);
 
         Log.e(TAG, "list3mTokensSize: " + last3MinutesTokensStat.size());
 
-        @SuppressLint("SimpleDateFormat") DateFormat df3 = new SimpleDateFormat("dd/MM/yyyy - HH:mm:ss");
-
         if (!last3MinutesTokensStat.isEmpty()) {
-            String topic = "NEW TOKENS caught at " + df3.format(last3MinutesTokensStat.get(0).getTime());
+
+            Log.e(TAG, "EMAIL size: " + last3MinutesTokensStat.size() + "time: " + last3MinutesTokensStat.get(0).getTime() );
+            String topic = "NEW TOKENS caught at " + last3MinutesTokensStat.get(0).getTime();
             // String topic = "NEW TOKENS for strategy nr " + strategyNumber;
             StringBuilder body = new StringBuilder();
             String shortOrNot= "";

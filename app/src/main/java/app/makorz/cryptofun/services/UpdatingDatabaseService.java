@@ -39,8 +39,6 @@ public class UpdatingDatabaseService extends Service {
 
     private static final String TABLE_NAME_KLINES_DATA = "klines_data";
     private static final String TABLE_SYMBOL_AVG = "crypto_avg_price";
-    private static final String TABLE_NAME_APPROVED = "approved_tokens";
-    private static final String TABLE_NAME_APPROVED_HISTORIC = "historic_approved_tokens";
     private static final String TABLE_NAME_CONFIG = "config";
     private static final String VALUE_STRING = "value_string";
     private static final String ID = "id";
@@ -50,7 +48,6 @@ public class UpdatingDatabaseService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
 
         new Thread(
                 new Runnable() {
@@ -73,7 +70,6 @@ public class UpdatingDatabaseService extends Service {
 
         return START_STICKY;
     }
-
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -257,121 +253,54 @@ public class UpdatingDatabaseService extends Service {
         observableStart(observableList);
     }
 
-//    public ObservableModel updateIntervalOfDB(String symbol, String interval, long timeCurrent) {
-//
-//        Cursor data, data2;
-//        int nrOfKlines;
-//        long closeTime, differenceTime, minutes = 1;
-//        ObservableModel model = new ObservableModel(symbol, 0, interval, 0, 0);
-//        int nrOfKlinesFromLastDBUpdate = 1;
-//        int maxNrOfKlines = 200;
-//        data = databaseDB.retrieveLastCloseTime(interval);
-//        data2 = databaseDB.checkIfThereAreDuplicates(symbol, interval);
-//        data.moveToFirst();
-//        data2.moveToFirst();
-//        if (symbol.equals("ETHUSDT")) {
-//            Log.e(TAG, "CHECK " + interval + " " + data2.getCount() + " " + data2.getInt(1));
-//        }
-//
-//        // First check if table is empty or has duplicates
-//        if (data2.getCount() == 0) {
-//            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB]");
-//            model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
-//        } else if (data2.getInt(1) > 1) {
-//            Log.e(TAG, "Table " + TABLE_NAME_KLINES_DATA + " is empty. [updateIntervalOfDB] or " + interval + " duplicates are present if value is > 1 ===> " + data2.getInt(1));
-//            model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
-//        } else {
-//            nrOfKlines = data2.getCount();
-//            closeTime = data.getLong(8);
-//            differenceTime = closeTime - timeCurrent;
-//            switch (interval) {
-//                case "3m":
-//                    minutes = 180000;
-//                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
-//                    break;
-//                case "15m":
-//                    minutes = 900000;
-//                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
-//                    break;
-//                case "4h":
-//                    minutes = 14400000;
-//                    nrOfKlinesFromLastDBUpdate += (-1 * differenceTime) / minutes;
-//                    break;
-//            }
-//            if (nrOfKlines < maxNrOfKlines) {
-//                model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
-//                if (symbol.equals("ETHUSDT")) {
-//                    Log.e(TAG, "A nrOfKlines are less than maxNrOfKlines, so clear table and load new maxNrOfKlines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
-//                }
-//            } else {
-//                long timeSinceLastUpdate = 50000;
-//                //Here in first step we only need to update last kline values, in second we need to update last kline values + add new klines
-//                if (differenceTime - timeSinceLastUpdate > 0) {
-//                    model = new ObservableModel(symbol, 1, interval, 2, 0);
-//                    if (symbol.equals("ETHUSDT")) {
-//                        Log.e(TAG, "B more NrOfKlines than maxNrOfKlines and still inside closeTime of last Kline. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
-//                    }
-//                } else if (differenceTime <= 0) {
-//                    if (nrOfKlinesFromLastDBUpdate >= maxNrOfKlines) {
-//                        model = new ObservableModel(symbol, maxNrOfKlines, interval, 1, 0);
-//                        if (symbol.equals("ETHUSDT")) {
-//                            Log.e(TAG, "D nrOfKlinesFromLastDBUpdate is higher than maxNrOfKlines, so better to clean and fresh download maxNrOfKlines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
-//                        }
-//                    } else { //if (minutes - timeSinceLastUpdate > restOfKlineDivision)
-//                        model = new ObservableModel(symbol, nrOfKlinesFromLastDBUpdate + 2, interval, 3, 0);
-//                        if (symbol.equals("ETHUSDT")) {
-//                            Log.e(TAG, "C NrOfKlines do not equal max nr of Klines. CloseT: " + closeTime + " CurrentT: " + timeCurrent + " Difference: " + (closeTime - timeCurrent) + " KlinesSinceLastUpdate: " + -(closeTime - timeCurrent) / minutes + " NrOfKlines: " + nrOfKlines + " MaxNrOfKlines: " + maxNrOfKlines);
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//        data.close();
-//        data2.close();
-//        return model;
-//    }
-
-
     public ObservableModel updateIntervalOfDB(String symbol, String interval, long timeCurrent) {
         final int MAX_NR_OF_KLINES = 200;
-        final long TIME_SINCE_LAST_UPDATE = 50000;
         ObservableModel model = new ObservableModel(symbol, 0, interval, 0, 0);
 
-        try (Cursor lastCloseTimeCursor = databaseDB.retrieveLastCloseTime(interval);
-             Cursor duplicatesCursor = databaseDB.checkIfThereAreDuplicates(symbol, interval)) {
+        try (Cursor latestCursor = databaseDB.retrieveLastCloseTime2(symbol, interval);
+             Cursor allRowsCursor = databaseDB.retrieveDataToFindBestCrypto(TABLE_NAME_KLINES_DATA,symbol, interval)) {
 
-            if (!lastCloseTimeCursor.moveToFirst() || !duplicatesCursor.moveToFirst()) {
-                Log.e(TAG, "Data retrieval failed or table is empty.");
-                return model;
-            }
-
-            int duplicateCount = duplicatesCursor.getInt(1);
-            if (duplicatesCursor.getCount() == 0 || duplicateCount > 1) {
-                Log.e(TAG, "Table is empty or contains duplicates.");
+            // 1. Check if the table has any data for this interval
+            if (allRowsCursor.getCount() == 0) {
+                // If empty, need full reload
+                Log.e(TAG, "X emptyData - full " + symbol + " on interval " + interval + ". Initiating full reload.");
                 return new ObservableModel(symbol, MAX_NR_OF_KLINES, interval, 1, 0);
             }
 
-            int nrOfKlines = duplicatesCursor.getCount();
-            long closeTime = lastCloseTimeCursor.getLong(8);
-            long differenceTime = closeTime - timeCurrent;
-            long intervalMillis = getIntervalMillis(interval);
-            int klinesFromLastUpdate = calculateKlinesFromLastUpdate(differenceTime, intervalMillis);
-
-            // Update decisions based on klines counts
-            if (nrOfKlines < MAX_NR_OF_KLINES) {
-                logUpdateDecision(symbol, "A", closeTime, timeCurrent, nrOfKlines, MAX_NR_OF_KLINES, intervalMillis);
+            // 2. Check consistency by verifying no gaps between consecutive klines
+            boolean isConsistent = checkKlineConsistency(allRowsCursor, interval);
+            if (!isConsistent) {
+                Log.e(TAG, "X gaps/doubles - full " + symbol + " on interval " + interval + ". Initiating full reload.");
                 return new ObservableModel(symbol, MAX_NR_OF_KLINES, interval, 1, 0);
-            } else if (differenceTime - TIME_SINCE_LAST_UPDATE > 0) {
-                logUpdateDecision(symbol, "B", closeTime, timeCurrent, nrOfKlines, MAX_NR_OF_KLINES, intervalMillis);
-                return new ObservableModel(symbol, 1, interval, 2, 0);
-            } else if (klinesFromLastUpdate >= MAX_NR_OF_KLINES) {
-                logUpdateDecision(symbol, "D", closeTime, timeCurrent, nrOfKlines, MAX_NR_OF_KLINES, intervalMillis);
-                return new ObservableModel(symbol, MAX_NR_OF_KLINES, interval, 1, 0);
-            } else {
-                logUpdateDecision(symbol, "C", closeTime, timeCurrent, nrOfKlines, MAX_NR_OF_KLINES, intervalMillis);
-                return new ObservableModel(symbol, klinesFromLastUpdate + 2, interval, 3, 0);
             }
 
+            // 3. Calculate how many klines we need to update
+            if (latestCursor.moveToFirst()) {
+                @SuppressLint("Range") long lastCloseTime = latestCursor.getLong(latestCursor.getColumnIndex("close_time"));
+                long timeDifference = timeCurrent - lastCloseTime;
+
+                // Determine number of klines required since last update
+                long intervalMillis = getIntervalMillis(interval);
+                int klinesNeeded = (int) Math.ceil((double) timeDifference / intervalMillis);
+
+                if (klinesNeeded > 0) {
+                    // 4. Check if we need to fetch a full set or just missing klines
+                    if (klinesNeeded >= MAX_NR_OF_KLINES) {
+                        logUpdateDecision(symbol, "A - full ", lastCloseTime, timeCurrent, klinesNeeded, MAX_NR_OF_KLINES, intervalMillis);
+                        return new ObservableModel(symbol, MAX_NR_OF_KLINES, interval, 1, 0);
+                    } else {
+                        logUpdateDecision(symbol, "B - part ", lastCloseTime, timeCurrent, klinesNeeded, MAX_NR_OF_KLINES, intervalMillis);
+                        return new ObservableModel(symbol, klinesNeeded+3, interval, 3, 0);
+                    }
+                } else if (klinesNeeded == 0) {
+                    logUpdateDecision(symbol, "C- single ", lastCloseTime, timeCurrent, klinesNeeded, MAX_NR_OF_KLINES, intervalMillis);
+                    return new ObservableModel(symbol, 1, interval, 2, 0);
+                } else {
+                    // Data is consistent and up-to-date, no update needed
+                    logUpdateDecision(symbol, "D - full ", lastCloseTime, timeCurrent, klinesNeeded, MAX_NR_OF_KLINES, intervalMillis);
+                    return model;
+                }
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error while updating interval: " + e.getMessage());
         }
@@ -379,19 +308,33 @@ public class UpdatingDatabaseService extends Service {
         return model;
     }
 
-    // Helper Method to Calculate Interval Milliseconds
+    // Helper method to calculate interval in milliseconds
     private long getIntervalMillis(String interval) {
         switch (interval) {
-            case "3m": return 180000;
-            case "15m": return 900000;
-            case "4h": return 14400000;
+            case "3m": return 180000;  // 3 minutes in milliseconds
+            case "15m": return 900000; // 15 minutes in milliseconds
+            case "4h": return 14400000; // 4 hours in milliseconds
             default: throw new IllegalArgumentException("Unsupported interval: " + interval);
         }
     }
 
-    // Helper Method to Calculate Klines from Last Update
-    private int calculateKlinesFromLastUpdate(long differenceTime, long intervalMillis) {
-        return 1 + (int) ((-1 * differenceTime) / intervalMillis);
+    // Helper method to check if klines data is consistent (no gaps)
+    @SuppressLint("Range")
+    private boolean checkKlineConsistency(Cursor cursor, String interval) {
+        long intervalMillis = getIntervalMillis(interval);
+
+        if (cursor.moveToFirst()) {
+            long prevCloseTime = cursor.getLong(cursor.getColumnIndex("close_time"));
+            while (cursor.moveToNext()) {
+                long closeTime = cursor.getLong(cursor.getColumnIndex("close_time"));
+                if (prevCloseTime != closeTime + intervalMillis) {
+                    Log.e(TAG, "Inconsistent data detected at " + closeTime + " prevTime " + prevCloseTime);
+                    return false;
+                }
+                prevCloseTime = cursor.getLong(cursor.getColumnIndex("close_time"));
+            }
+        }
+        return true;
     }
 
     // Helper Method to Log Update Decisions
@@ -403,8 +346,6 @@ public class UpdatingDatabaseService extends Service {
                     ", NrOfKlines: " + nrOfKlines + ", MaxNrOfKlines: " + maxNrOfKlines);
         }
     }
-
-
 
     @SuppressLint("CheckResult")
     private void observableStart(List<ObservableModel> list) {
@@ -603,38 +544,11 @@ public class UpdatingDatabaseService extends Service {
         List<Kline> coinKlines3m, coinKlines15m, coinKlines4h;
 
         switch (activeStrategy) {
-            case 2: // Ma szanse na byt
-                coinKlines15m = getList(symbol,"15m");
-                coinKlines4h = getList(symbol,"4h");
-                ServiceMainStrategies.strategyNr2_EMA_KlineSize_WT_4h(symbol, coinKlines15m, coinKlines4h, getApplicationContext());
-                break;
-            case 3:
-                coinKlines3m = getList(symbol,"3m");
-                coinKlines15m = getList(symbol,"15m");
-                ServiceMainStrategies.strategyNr3_EMA_KlineSize_WT_15m(symbol, coinKlines3m, coinKlines15m, getApplicationContext());
-                break;
-            case 4:
-                coinKlines15m = getList(symbol,"15m");
-                coinKlines4h = getList(symbol,"4h");
-                ServiceMainStrategies.strategyNr7_EMA_4h_WT_ADX_EMA_15m(symbol, coinKlines15m, coinKlines4h, getApplicationContext());
-                break;
-            case 5:
-                coinKlines15m = getList(symbol,"15m");
-                ServiceMainStrategies.strategyNr8_KlinesCrossEMA_RSI_Appear_15m(symbol,  coinKlines15m, getApplicationContext());
-                break;
-            case 6:
-                coinKlines15m = getList(symbol,"15m");
-                ServiceMainStrategies.strategyNr21_WT_15m(symbol, coinKlines15m, getApplicationContext());
-                break;
-            case 7:
-                coinKlines15m = getList(symbol,"15m");
-                ServiceMainStrategies.strategyNr20_EMA_ICHIMOKU_15m(symbol, coinKlines15m, getApplicationContext());
-                break;
             case 8:
                 coinKlines3m = getList(symbol,"3m");
                 coinKlines15m = getList(symbol,"15m");
                 coinKlines4h = getList(symbol,"4h");
-                ServiceMainStrategies.strategyNr4_Trend_GreenRed_15m_3m(symbol, coinKlines3m, coinKlines15m, coinKlines4h, getApplicationContext());
+                ServiceMainStrategies.multipleStrategiesFunction(symbol, coinKlines3m, coinKlines15m, coinKlines4h, getApplicationContext());
                 break;
             default:
                 //ONLY TEST
